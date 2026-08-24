@@ -153,7 +153,8 @@ class _AnimatedBackdropState extends State<AnimatedBackdrop> {
   }
 }
 
-/// Logo N'MaShop vectoriel (Icon + Text), parfait, sans fond blanc.
+/// Logo N'MaShop officiel — utilise l'image PNG du logo branding.
+/// [onDark] adapte la version de l'image (fond transparent sur fond sombre).
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.height = 40, this.onDark = true});
 
@@ -162,40 +163,41 @@ class BrandLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: EdgeInsets.all(height * 0.15),
-          decoration: BoxDecoration(
-            color: onDark ? AppColors.brandEmerald : AppColors.brandNavy,
-            borderRadius: BorderRadius.circular(height * 0.25),
-            boxShadow: [
-              BoxShadow(
-                color: (onDark ? AppColors.brandEmerald : AppColors.brandNavy)
-                    .withValues(alpha: 0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+    // Utilise le logo officiel N'MaShop (sac + texte orange/bleu)
+    return Image.asset(
+      'assets/images/nmashop_logo_official.png',
+      height: height * 1.2,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stack) {
+        // Fallback si l'image ne se charge pas
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(height * 0.15),
+              decoration: BoxDecoration(
+                color: onDark ? const Color(0xFFE85D04) : AppColors.brandNavy,
+                borderRadius: BorderRadius.circular(height * 0.25),
               ),
-            ],
-          ),
-          child: Icon(
-            Icons.storefront_rounded,
-            color: Colors.white,
-            size: height * 0.7,
-          ),
-        ),
-        SizedBox(width: height * 0.3),
-        Text(
-          'N\'MaShop',
-          style: TextStyle(
-            color: onDark ? Colors.white : AppColors.brandNavy,
-            fontSize: height * 0.65,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.5,
-          ),
-        ),
-      ],
+              child: Icon(
+                Icons.shopping_bag_rounded,
+                color: Colors.white,
+                size: height * 0.7,
+              ),
+            ),
+            SizedBox(width: height * 0.3),
+            Text(
+              'N\'MaShop',
+              style: TextStyle(
+                color: onDark ? Colors.white : AppColors.brandNavy,
+                fontSize: height * 0.65,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

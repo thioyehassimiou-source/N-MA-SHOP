@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/formatters.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/app_page_header.dart';
 import '../application/deliveries_providers.dart';
 import '../../../core/database/tables/deliveries.dart';
+import 'new_delivery_dialog.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
 
@@ -31,9 +31,17 @@ class DeliveriesScreen extends ConsumerWidget {
             icon: Icons.local_shipping_outlined,
             gradientColors: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
             actions: [
-              // Bouton "Assigner une livraison" pour l'avenir, mais l'assignation
-              // devrait idéalement se faire depuis la carte de la commande dans l'onglet Commandes.
-              // On peut ajouter un dialogue plus tard.
+              FilledButton.icon(
+                onPressed: () => NewDeliveryDialog.show(context),
+                icon: const Icon(Icons.add_circle_outline, size: 20),
+                label: const Text('Nouvelle Assignation'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF7C3AED),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
             ],
           ),
         ),

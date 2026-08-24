@@ -35,91 +35,130 @@ class AppMetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AppCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Icône dans carré arrondi coloré
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: theme.brightness == Brightness.dark
-                  ? iconColor.withValues(alpha: 0.15)
-                  : iconBackgroundColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
+    // Détection d'un indicateur de tendance
+    IconData? trendIcon;
+    Color effectiveBadgeColor = badgeColor ?? theme.colorScheme.onSurfaceVariant;
+    
+    if (badgeText.startsWith('+')) {
+      trendIcon = Icons.trending_up_rounded;
+      effectiveBadgeColor = const Color(0xFF10B981); // Vert
+    } else if (badgeText.startsWith('-')) {
+      trendIcon = Icons.trending_down_rounded;
+      effectiveBadgeColor = const Color(0xFFEF4444); // Rouge
+    }
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+      builder: (context, anim, child) {
+        return Transform.translate(
+          offset: Offset(0, 20 * (1 - anim)),
+          child: Opacity(
+            opacity: anim,
+            child: child,
           ),
-          const SizedBox(height: 10),
-          // Titre de la métrique
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          // Valeur principale + badge sur la même ligne
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: theme.colorScheme.onSurface,
-                      letterSpacing: -0.5,
-                    ),
+        );
+      },
+      child: AppCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // En-tête : Icône + Titre
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: theme.brightness == Brightness.dark
+                        ? iconColor.withValues(alpha: 0.15)
+                        : iconBackgroundColor,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconBackgroundColor.withValues(alpha: 0.5),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
+                  child: Icon(icon, color: iconColor, size: 20),
                 ),
-              ),
-              if (badgeText.isNotEmpty) ...[
-                const SizedBox(width: 6),
-                Flexible(
+                const SizedBox(width: 12),
+                Expanded(
                   child: Text(
-                    badgeText,
+                    title,
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: badgeColor ?? theme.colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
-            ],
-          ),
-          // Barre de progression optionnelle
-          if (progressValue != null) ...[
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progressValue!.clamp(0.0, 1.0),
-                backgroundColor: theme.colorScheme.surfaceContainerHigh,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  progressColor ?? theme.colorScheme.primary,
+            ),
+            const SizedBox(height: 12),
+            // Valeur principale
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: -0.5,
                 ),
-                minHeight: 5,
               ),
             ),
+            const SizedBox(height: 8),
+            // Badge / Indicateur de tendance
+            if (badgeText.isNotEmpty)
+              Row(
+                children: [
+                  if (trendIcon != null) ...[
+                    Icon(trendIcon, size: 14, color: effectiveBadgeColor),
+                    const SizedBox(width: 4),
+                  ],
+                  Flexible(
+                    child: Text(
+                      badgeText,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: effectiveBadgeColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            // Barre de progression optionnelle
+            if (progressValue != null) ...[
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progressValue!.clamp(0.0, 1.0),
+                  backgroundColor: theme.colorScheme.surfaceContainerHigh,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    progressColor ?? theme.colorScheme.primary,
+                  ),
+                  minHeight: 4,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 }
+

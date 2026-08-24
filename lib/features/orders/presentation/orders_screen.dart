@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/database/database.dart';
 import '../../../../core/format/formatters.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_chip.dart';
@@ -11,6 +10,7 @@ import '../../../../core/widgets/app_page_header.dart';
 import '../application/order_providers.dart';
 import '../data/repositories/drift_order_repository.dart';
 import 'new_order_dialog.dart';
+import '../../../../core/widgets/app_form_dialog.dart';
 import '../../deliveries/presentation/assign_delivery_dialog.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
@@ -426,13 +426,17 @@ class _OrderCard extends ConsumerWidget {
                             onPressed: () async {
                               final confirm = await showDialog<bool>(
                                 context: context,
-                                builder: (_) => AlertDialog(
-                                  title: const Text('Annuler la commande ?'),
-                                  content: const Text('Cette action est irréversible.'),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Non')),
-                                    FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Oui, annuler')),
-                                  ],
+                                builder: (_) => AppFormDialog(
+                                  title: 'Annuler la commande ?',
+                                  subtitle: 'Cette action est irréversible.',
+                                  icon: Icons.warning_amber_rounded,
+                                  gradientColors: const [Color(0xFFDC2626), Color(0xFFEF4444)],
+                                  width: 400,
+                                  primaryLabel: 'Oui, annuler',
+                                  primaryIcon: Icons.close,
+                                  onPrimary: () => Navigator.pop(context, true),
+                                  onCancel: () => Navigator.pop(context, false),
+                                  body: const SizedBox.shrink(),
                                 ),
                               );
                               if (confirm == true) {

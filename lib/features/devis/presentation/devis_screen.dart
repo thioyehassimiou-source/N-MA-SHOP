@@ -1,8 +1,13 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/providers/app_settings_provider.dart';
+import '../../../core/providers/database_provider.dart';
+import '../../../core/services/pdf_receipt_service.dart';
 import '../../../core/theme/app_colors.dart';
+import 'package:printing/printing.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_chip.dart';
@@ -221,6 +226,7 @@ class _DevisScreenState extends ConsumerState<DevisScreen> {
                                   Expanded(flex: 2, child: Text('Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.colors.onSurfaceVariant))),
                                   Expanded(flex: 1, child: Text('Statut', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.colors.onSurfaceVariant))),
                                   Expanded(flex: 2, child: Text('Montant', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.colors.onSurfaceVariant), textAlign: TextAlign.end)),
+                                  const SizedBox(width: 40), // space for actions
                                 ],
                               ),
                             ),
@@ -265,6 +271,11 @@ class _DevisScreenState extends ConsumerState<DevisScreen> {
                                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                         ),
                                       ),
+                                      // ── Actions ──────────────────────────────
+                                      SizedBox(
+                                        width: 40,
+                                        child: _DevisActionMenu(doc: doc, ref: ref),
+                                      ),
                                     ],
                                   ),
                                 );
@@ -299,5 +310,133 @@ class _StatusChip extends StatelessWidget {
       case DevisStatus.pending:
         return const AppChip(label: 'En attente', status: AppChipStatus.error);
     }
+  }
+}
+
+// ── Menu d'actions sur une facture ─────────────────────────────────────────
+class _DevisActionMenu extends ConsumerWidget {
+  const _DevisActionMenu({required this.doc, required this.ref});
+
+  final DevisDocumentView doc;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PopupMenuButton<String>(
+      icon: Icon(Icons.more_vert, size: 18, color: context.colors.onSurfaceVariant),
+      tooltip: 'Actions',
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      itemBuilder: (_) => [
+        const PopupMenuItem(
+          value: 'print',
+          child: Row(children: [
+            Icon(Icons.print_outlined, size: 18),
+            SizedBox(width: 10),
+            Text('Réimprimer PDF'),
+          ]),
+        ),
+        if (doc.status != DevisStatus.paid)
+          const PopupMenuItem(
+            value: 'pay',
+            child: Row(children: [
+              Icon(Icons.check_circle_outline, size: 18, color: Colors.green),
+              SizedBox(width: 10),
+              Text('Marquer comme Payée', style: TextStyle(color: Colors.green)),
+            ]),
+          ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'delete',
+          child: Row(children: [
+            Icon(Icons.delete_outline, size: 18, color: Colors.red),
+            SizedBox(width: 10),
+            Text('Annuler / Supprimer', style: TextStyle(color: Colors.red)),
+          ]),
+        ),
+      ],
+      onSelected: (value) async {
+        final db = ref.read(databaseProvider);
+        switch (value) {
+          case 'print':
+            final settings = ref.read(appSettingsProvider);
+            // Reconstruct basic receipt from sale record
+            final receiptData = ReceiptData(
+              reference: doc.reference,
+              date: doc.date,
+              businessName: settings.businessName,
+              businessPhone: settings.businessPhone,
+              businessAddress: settings.businessAddress,
+              businessNif: settings.businessNif,
+              lines: const [],
+              total: doc.totalAmount,
+              amountPaid: doc.status == DevisStatus.paid ? doc.totalAmount : 0,
+              creditAmount: doc.status == DevisStatus.paid ? 0 : doc.totalAmount,
+              paymentMethodLabel: 'Proforma',
+              customerName: doc.customerName,
+            );
+            await Printing.layoutPdf(
+              name: 'Facture_${doc.reference}',
+              onLayout: (_) => PdfReceiptService.generateReceiptPdf(receiptData),
+            );
+            break;
+
+          case 'pay':
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                title: const Text('Confirmer le paiement'),
+                content: Text('Marquer ${doc.reference} comme entièrement payée ?'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+                  FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirmer')),
+                ],
+              ),
+            );
+            if (confirmed == true) {
+              await (db.update(db.sales)..where((s) => s.id.equals(doc.id))).write(
+                SalesCompanion(amountPaid: drift.Value(doc.totalAmount)),
+              );
+              ref.invalidate(devisDataProvider);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('✅ Facture marquée comme payée'), backgroundColor: Colors.green),
+                );
+              }
+            }
+            break;
+
+          case 'delete':
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                title: const Text('Annuler la facture'),
+                content: Text('Supprimer définitivement ${doc.reference} ?'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Non')),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                    child: const Text('Supprimer'),
+                  ),
+                ],
+              ),
+            );
+            if (confirmed == true) {
+              await (db.update(db.sales)..where((s) => s.id.equals(doc.id))).write(
+                const SalesCompanion(isCancelled: drift.Value(true)),
+              );
+              ref.invalidate(devisDataProvider);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Facture supprimée'), backgroundColor: Colors.red),
+                );
+              }
+            }
+            break;
+        }
+      },
+    );
   }
 }

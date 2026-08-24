@@ -45,28 +45,28 @@ class AppTheme {
   static ThemeData dark([AppPalette palette = AppPalette.fallback]) {
     const scheme = ColorScheme(
       brightness: Brightness.dark,
-      primary: Color(0xFF6366F1), // Indigo 500
+      primary: Color(0xFFE85D04), // Orange N'MaShop
       onPrimary: Color(0xFFFFFFFF),
-      primaryContainer: Color(0xFF3730A3), // Indigo 800
-      onPrimaryContainer: Color(0xFFE0E7FF),
-      secondary: Color(0xFF94A3B8),
+      primaryContainer: Color(0xFF9D3C00), // Darker Orange
+      onPrimaryContainer: Color(0xFFFFDBC7),
+      secondary: Color(0xFF8899BB),
       onSecondary: Color(0xFF020617),
-      secondaryContainer: Color(0xFF1E293B), // Slate 800
+      secondaryContainer: Color(0xFF1E293B),
       onSecondaryContainer: Color(0xFFF1F5F9),
       error: Color(0xFFF87171),
       onError: Color(0xFF450A0A),
       errorContainer: Color(0xFF7F1D1D),
       onErrorContainer: Color(0xFFFEE2E2),
-      surface: Color(0xFF0B1120), // Very deep midnight blue
+      surface: Color(0xFF0F1B3D), // N'MaShop Navy
       onSurface: Color(0xFFF8FAFC),
-      surfaceContainerLowest: Color(0xFF020617), // Slate 950
-      surfaceContainerLow: Color(0xFF0B1120),
-      surfaceContainer: Color(0xFF131B2C), // Cards
-      surfaceContainerHigh: Color(0xFF1E293B),
-      surfaceContainerHighest: Color(0xFF334155),
-      onSurfaceVariant: Color(0xFF94A3B8),
+      surfaceContainerLowest: Color(0xFF0A1229), // Deeper Navy
+      surfaceContainerLow: Color(0xFF0F1B3D),
+      surfaceContainer: Color(0xFF16254E), // Cards in dark mode
+      surfaceContainerHigh: Color(0xFF1E3163),
+      surfaceContainerHighest: Color(0xFF2A427E),
+      onSurfaceVariant: Color(0xFFAABBCC), // Muted blue-grey
       outline: Color(0xFF334155),
-      outlineVariant: Color(0xFF1E293B),
+      outlineVariant: Color(0xFF1E3163),
     );
     return _base(scheme, palette);
   }

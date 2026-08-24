@@ -1,10 +1,12 @@
+import 'dart:io';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/format/formatters.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_page_header.dart';
@@ -13,31 +15,143 @@ import '../application/reports_providers.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
 
-class ReportsScreen extends ConsumerWidget {
+class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends ConsumerState<ReportsScreen> {
+  bool _isExporting = false;
+
+  Future<void> _exportCsv(ReportData data, ReportRange range) async {
+    setState(() => _isExporting = true);
+    try {
+      final dayFmt = DateFormat('dd/MM/yyyy', 'fr');
+      final buf = StringBuffer();
+
+      buf.writeln("Rapport N'MaShop \u2014 ${range.label}");
+      buf.writeln('G\u00e9n\u00e9r\u00e9 le ${dayFmt.format(DateTime.now())}');
+      buf.writeln();
+
+      buf.writeln('INDICATEURS CL\u00c9S');
+      buf.writeln('Chiffre d\'Affaires,${formatGnf(data.revenue)}');
+      buf.writeln('B\u00e9n\u00e9fice Brut,${formatGnf(data.grossProfit)}');
+      buf.writeln('Total D\u00e9penses,${formatGnf(data.totalExpenses)}');
+      buf.writeln('B\u00e9n\u00e9fice Net,${formatGnf(data.netProfit)}');
+      buf.writeln('Ventes,${data.salesCount}');
+      buf.writeln('Commandes Livr\u00e9es,${data.ordersCount}');
+      buf.writeln();
+
+      if (data.dailyRevenues.isNotEmpty) {
+        buf.writeln('\u00c9VOLUTION JOURNALI\u00c8RE');
+        buf.writeln('Date,Chiffre d\'Affaires,B\u00e9n\u00e9fice');
+        for (final d in data.dailyRevenues) {
+          buf.writeln('${dayFmt.format(d.date)},${formatGnf(d.revenue)},${formatGnf(d.profit)}');
+        }
+        buf.writeln();
+      }
+
+      if (data.topProducts.isNotEmpty) {
+        buf.writeln('TOP PRODUITS');
+        buf.writeln('Produit,Quantit\u00e9 vendue,Chiffre d\'Affaires');
+        for (final p in data.topProducts) {
+          buf.writeln('${p.name},${p.quantitySold},${formatGnf(p.revenue)}');
+        }
+        buf.writeln();
+      }
+
+      if (data.expensesByCategory.isNotEmpty) {
+        buf.writeln('D\u00c9PENSES PAR CAT\u00c9GORIE');
+        buf.writeln('Cat\u00e9gorie,Montant');
+        for (final e in data.expensesByCategory) {
+          buf.writeln('${e.category.label},${formatGnf(e.total)}');
+        }
+      }
+
+      final dir = await getApplicationDocumentsDirectory();
+      final fileName = 'rapport_nmashop_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsString(buf.toString());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 6),
+            behavior: SnackBarBehavior.floating,
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'CSV exporté : ${file.path}',
+                    style: const TextStyle(fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur export : $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final asyncData = ref.watch(reportDataProvider);
     final range = ref.watch(reportRangeProvider);
 
     return Column(
       children: [
-        // ── En-tête avec sélecteur de période ──
         AppPageHeader(
           title: 'Rapports & Analytiques',
-          subtitle: 'Pilotez la rentabilité de votre commerce',
+          subtitle: 'Pilotez la rentabilit\u00e9 de votre commerce',
           icon: Icons.bar_chart_rounded,
           gradientColors: const [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+          actions: [
+            asyncData.whenOrNull(
+              data: (data) => _isExporting
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : OutlinedButton.icon(
+                      onPressed: () => _exportCsv(data, range),
+                      icon: const Icon(Icons.download_rounded, size: 18),
+                      label: const Text('Exporter CSV'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      ),
+                    ),
+            ) ?? const SizedBox.shrink(),
+          ],
           bottom: _PeriodSelector(current: range),
         ),
-
-        // ── Corps ──
         Expanded(
           child: asyncData.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Erreur: $e')),
-            data: (data) => _ReportBody(data: data, range: range),
+            data: (data) => data.salesCount == 0 && data.totalExpenses == 0
+                ? _EmptyReportState(range: range)
+                : _ReportBody(data: data, range: range),
           ),
         ),
       ],
@@ -659,6 +773,80 @@ class _SummaryLine extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── État vide illustré ───────────────────────────────────────────────────────
+
+class _EmptyReportState extends StatelessWidget {
+  const _EmptyReportState({required this.range});
+  final ReportRange range;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Icône illustrée
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF6366F1).withValues(alpha: 0.12),
+                    const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: const Icon(
+                Icons.bar_chart_rounded,
+                size: 52,
+                color: Color(0xFF6366F1),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Aucune donnée pour cette période',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: context.colors.onSurface,
+                letterSpacing: -0.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Il n\'y a aucune vente ni dépense\npour « ${range.label} ».\nEffectuez des ventes pour voir vos rapports.',
+              style: TextStyle(
+                fontSize: 14,
+                color: context.colors.onSurfaceVariant,
+                height: 1.6,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            OutlinedButton.icon(
+              onPressed: null, // passif — guide l'utilisateur
+              icon: const Icon(Icons.point_of_sale_rounded, size: 18),
+              label: const Text('Aller à la caisse'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                foregroundColor: const Color(0xFF6366F1),
+                side: const BorderSide(color: Color(0xFF6366F1)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

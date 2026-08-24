@@ -136,6 +136,17 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _barcodeMeta = const VerificationMeta(
+    'barcode',
+  );
+  @override
+  late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
+    'barcode',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -161,6 +172,7 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
     weightedAverageCost,
     isActive,
     imageUrl,
+    barcode,
     createdAt,
   ];
   @override
@@ -254,6 +266,12 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         imageUrl.isAcceptableOrUnknown(data['image_url']!, _imageUrlMeta),
       );
     }
+    if (data.containsKey('barcode')) {
+      context.handle(
+        _barcodeMeta,
+        barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -313,6 +331,10 @@ class $ProductsTable extends Products with TableInfo<$ProductsTable, Product> {
         DriftSqlType.string,
         data['${effectivePrefix}image_url'],
       ),
+      barcode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}barcode'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -356,6 +378,9 @@ class Product extends DataClass implements Insertable<Product> {
 
   /// Chemin ou URL de la photo du produit (facultatif).
   final String? imageUrl;
+
+  /// Code-barres EAN/QR du produit (facultatif — utilisé pour le scan caméra POS).
+  final String? barcode;
   final DateTime createdAt;
   const Product({
     required this.id,
@@ -369,6 +394,7 @@ class Product extends DataClass implements Insertable<Product> {
     required this.weightedAverageCost,
     required this.isActive,
     this.imageUrl,
+    this.barcode,
     required this.createdAt,
   });
   @override
@@ -388,6 +414,9 @@ class Product extends DataClass implements Insertable<Product> {
     map['is_active'] = Variable<bool>(isActive);
     if (!nullToAbsent || imageUrl != null) {
       map['image_url'] = Variable<String>(imageUrl);
+    }
+    if (!nullToAbsent || barcode != null) {
+      map['barcode'] = Variable<String>(barcode);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -410,6 +439,9 @@ class Product extends DataClass implements Insertable<Product> {
       imageUrl: imageUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(imageUrl),
+      barcode: barcode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(barcode),
       createdAt: Value(createdAt),
     );
   }
@@ -433,6 +465,7 @@ class Product extends DataClass implements Insertable<Product> {
       ),
       isActive: serializer.fromJson<bool>(json['isActive']),
       imageUrl: serializer.fromJson<String?>(json['imageUrl']),
+      barcode: serializer.fromJson<String?>(json['barcode']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -451,6 +484,7 @@ class Product extends DataClass implements Insertable<Product> {
       'weightedAverageCost': serializer.toJson<int>(weightedAverageCost),
       'isActive': serializer.toJson<bool>(isActive),
       'imageUrl': serializer.toJson<String?>(imageUrl),
+      'barcode': serializer.toJson<String?>(barcode),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -467,6 +501,7 @@ class Product extends DataClass implements Insertable<Product> {
     int? weightedAverageCost,
     bool? isActive,
     Value<String?> imageUrl = const Value.absent(),
+    Value<String?> barcode = const Value.absent(),
     DateTime? createdAt,
   }) => Product(
     id: id ?? this.id,
@@ -480,6 +515,7 @@ class Product extends DataClass implements Insertable<Product> {
     weightedAverageCost: weightedAverageCost ?? this.weightedAverageCost,
     isActive: isActive ?? this.isActive,
     imageUrl: imageUrl.present ? imageUrl.value : this.imageUrl,
+    barcode: barcode.present ? barcode.value : this.barcode,
     createdAt: createdAt ?? this.createdAt,
   );
   Product copyWithCompanion(ProductsCompanion data) {
@@ -503,6 +539,7 @@ class Product extends DataClass implements Insertable<Product> {
           : this.weightedAverageCost,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       imageUrl: data.imageUrl.present ? data.imageUrl.value : this.imageUrl,
+      barcode: data.barcode.present ? data.barcode.value : this.barcode,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -521,6 +558,7 @@ class Product extends DataClass implements Insertable<Product> {
           ..write('weightedAverageCost: $weightedAverageCost, ')
           ..write('isActive: $isActive, ')
           ..write('imageUrl: $imageUrl, ')
+          ..write('barcode: $barcode, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -539,6 +577,7 @@ class Product extends DataClass implements Insertable<Product> {
     weightedAverageCost,
     isActive,
     imageUrl,
+    barcode,
     createdAt,
   );
   @override
@@ -556,6 +595,7 @@ class Product extends DataClass implements Insertable<Product> {
           other.weightedAverageCost == this.weightedAverageCost &&
           other.isActive == this.isActive &&
           other.imageUrl == this.imageUrl &&
+          other.barcode == this.barcode &&
           other.createdAt == this.createdAt);
 }
 
@@ -571,6 +611,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
   final Value<int> weightedAverageCost;
   final Value<bool> isActive;
   final Value<String?> imageUrl;
+  final Value<String?> barcode;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const ProductsCompanion({
@@ -585,6 +626,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.weightedAverageCost = const Value.absent(),
     this.isActive = const Value.absent(),
     this.imageUrl = const Value.absent(),
+    this.barcode = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -600,6 +642,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     this.weightedAverageCost = const Value.absent(),
     this.isActive = const Value.absent(),
     this.imageUrl = const Value.absent(),
+    this.barcode = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -616,6 +659,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Expression<int>? weightedAverageCost,
     Expression<bool>? isActive,
     Expression<String>? imageUrl,
+    Expression<String>? barcode,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -632,6 +676,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
         'weighted_average_cost': weightedAverageCost,
       if (isActive != null) 'is_active': isActive,
       if (imageUrl != null) 'image_url': imageUrl,
+      if (barcode != null) 'barcode': barcode,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -649,6 +694,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     Value<int>? weightedAverageCost,
     Value<bool>? isActive,
     Value<String?>? imageUrl,
+    Value<String?>? barcode,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
@@ -664,6 +710,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
       weightedAverageCost: weightedAverageCost ?? this.weightedAverageCost,
       isActive: isActive ?? this.isActive,
       imageUrl: imageUrl ?? this.imageUrl,
+      barcode: barcode ?? this.barcode,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -705,6 +752,9 @@ class ProductsCompanion extends UpdateCompanion<Product> {
     if (imageUrl.present) {
       map['image_url'] = Variable<String>(imageUrl.value);
     }
+    if (barcode.present) {
+      map['barcode'] = Variable<String>(barcode.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -728,6 +778,7 @@ class ProductsCompanion extends UpdateCompanion<Product> {
           ..write('weightedAverageCost: $weightedAverageCost, ')
           ..write('isActive: $isActive, ')
           ..write('imageUrl: $imageUrl, ')
+          ..write('barcode: $barcode, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -8976,6 +9027,7 @@ typedef $$ProductsTableCreateCompanionBuilder =
       Value<int> weightedAverageCost,
       Value<bool> isActive,
       Value<String?> imageUrl,
+      Value<String?> barcode,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -8992,6 +9044,7 @@ typedef $$ProductsTableUpdateCompanionBuilder =
       Value<int> weightedAverageCost,
       Value<bool> isActive,
       Value<String?> imageUrl,
+      Value<String?> barcode,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -9134,6 +9187,11 @@ class $$ProductsTableFilterComposer
 
   ColumnFilters<String> get imageUrl => $composableBuilder(
     column: $table.imageUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get barcode => $composableBuilder(
+    column: $table.barcode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9307,6 +9365,11 @@ class $$ProductsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -9362,6 +9425,9 @@ class $$ProductsTableAnnotationComposer
 
   GeneratedColumn<String> get imageUrl =>
       $composableBuilder(column: $table.imageUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get barcode =>
+      $composableBuilder(column: $table.barcode, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -9511,6 +9577,7 @@ class $$ProductsTableTableManager
                 Value<int> weightedAverageCost = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<String?> imageUrl = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProductsCompanion(
@@ -9525,6 +9592,7 @@ class $$ProductsTableTableManager
                 weightedAverageCost: weightedAverageCost,
                 isActive: isActive,
                 imageUrl: imageUrl,
+                barcode: barcode,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -9541,6 +9609,7 @@ class $$ProductsTableTableManager
                 Value<int> weightedAverageCost = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<String?> imageUrl = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProductsCompanion.insert(
@@ -9555,6 +9624,7 @@ class $$ProductsTableTableManager
                 weightedAverageCost: weightedAverageCost,
                 isActive: isActive,
                 imageUrl: imageUrl,
+                barcode: barcode,
                 createdAt: createdAt,
                 rowid: rowid,
               ),

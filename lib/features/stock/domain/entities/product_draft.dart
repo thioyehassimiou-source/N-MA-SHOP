@@ -15,6 +15,7 @@ class ProductDraft {
     required this.stockQuantity,
     required this.lowStockThreshold,
     this.imageUrl,
+    this.barcode,
   });
 
   final String name;
@@ -25,6 +26,7 @@ class ProductDraft {
   final int stockQuantity;
   final int lowStockThreshold;
   final String? imageUrl;
+  final String? barcode;
 
   /// Validations pures (sans accès base). Retourne la première erreur trouvée,
   /// ou `null` si la saisie est saine.

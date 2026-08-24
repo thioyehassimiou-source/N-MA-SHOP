@@ -1,0 +1,70 @@
+name: 🚀 Build N'MaShop — Windows Installer
+
+on:
+  # Déclenchement manuel depuis l'onglet "Actions" de GitHub
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version de l'application (ex: 1.0.1)"
+        required: false
+        default: "1.0.0"
+  # Déclenchement automatique à chaque push sur la branche main
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+
+jobs:
+  build-windows:
+    name: 🪟 Compiler pour Windows
+    runs-on: windows-latest
+
+    steps:
+      # ── 1. Récupérer le code source ──────────────────────────────────────
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
+
+      # ── 2. Installer Flutter ──────────────────────────────────────────────
+      - name: 🐦 Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"
+          channel: "stable"
+          cache: true
+
+      # ── 3. Vérifier l'environnement ───────────────────────────────────────
+      - name: 🔍 Vérifier Flutter
+        run: flutter doctor -v
+
+      # ── 4. Installer les dépendances ──────────────────────────────────────
+      - name: 📦 Installer les dépendances (flutter pub get)
+        run: flutter pub get
+
+      # ── 5. Compiler l'application pour Windows ────────────────────────────
+      - name: 🔨 Compiler N'MaShop (Windows Release)
+        run: flutter build windows --release --build-name=${{ github.event.inputs.version || '1.0.0' }}
+
+      # ── 6. Compiler l'installeur avec Inno Setup ──────────────────────────
+      # Inno Setup est pré-installé sur les runners GitHub Windows
+      - name: 📦 Créer l'installeur avec Inno Setup
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows\setup.iss"
+        shell: pwsh
+
+      # ── 7. Uploader le fichier .exe d'installation ────────────────────────
+      - name: ⬆️ Publier l'installeur en artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMaShop-Windows-Setup-v${{ github.event.inputs.version || '1.0.0' }}
+          path: build\windows\NMaShop_Setup_v1.0.0.exe
+          retention-days: 30
+
+      # ── 8. Uploader aussi les fichiers bruts pour les développeurs ─────────
+      - name: ⬆️ Publier les binaires bruts (optionnel)
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMaShop-Windows-Binaries-v${{ github.event.inputs.version || '1.0.0' }}
+          path: build\windows\x64\runner\Release\
+          retention-days: 7

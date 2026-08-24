@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/database.dart';
+import '../../../../core/domain/payment_method.dart';
 import '../../domain/entities/dashboard_snapshot.dart';
 import '../../domain/repositories/dashboard_repository.dart';
 
@@ -22,18 +23,44 @@ class DriftDashboardRepository implements DashboardRepository {
     final startWeek = startToday.subtract(const Duration(days: 7));
     final startPrevWeek = startToday.subtract(const Duration(days: 14));
 
+    // Toutes les requêtes en parallèle pour la performance
+    final results = await Future.wait([
+      _salesSum(startToday, endToday),        // 0
+      _salesSum(startYesterday, startToday),  // 1
+      _profit(startToday, endToday),           // 2
+      _profit(startYesterday, startToday),     // 3
+      _salesSum(startWeek, endToday),          // 4
+      _salesSum(startPrevWeek, startWeek),     // 5
+      _owed(),                                  // 6
+      _owedCount(),                             // 7
+      _cashAvailable(),                         // 8
+    ]);
+
+    final dailySales = await _dailySales(startWeek, endToday);
+    final paymentBreakdown = await _paymentBreakdown();
+    final supplierDebt = await _supplierDebt();
+    final avgTicket = await _avgTicket(startWeek, endToday);
+    final creditRate = await _creditRate(startWeek, endToday);
+    final lowStockList = await _lowStock();
+    final recentSalesList = await _recentSales();
+
     return DashboardSnapshot(
-      todaySales: await _salesSum(startToday, endToday),
-      yesterdaySales: await _salesSum(startYesterday, startToday),
-      todayProfit: await _profit(startToday, endToday),
-      yesterdayProfit: await _profit(startYesterday, startToday),
-      thisWeekSales: await _salesSum(startWeek, endToday),
-      prevWeekSales: await _salesSum(startPrevWeek, startWeek),
-      owed: await _owed(),
-      owedCount: await _owedCount(),
-      cashAvailable: await _cashAvailable(),
-      lowStock: await _lowStock(),
-      recentSales: await _recentSales(),
+      todaySales: results[0],
+      yesterdaySales: results[1],
+      todayProfit: results[2],
+      yesterdayProfit: results[3],
+      thisWeekSales: results[4],
+      prevWeekSales: results[5],
+      owed: results[6],
+      owedCount: results[7],
+      cashAvailable: results[8],
+      lowStock: lowStockList,
+      recentSales: recentSalesList,
+      dailySales: dailySales,
+      paymentBreakdown: paymentBreakdown,
+      supplierDebt: supplierDebt,
+      avgTicket: avgTicket,
+      creditRate: creditRate,
     );
   }
 
@@ -134,13 +161,29 @@ class DriftDashboardRepository implements DashboardRepository {
         .toSet()
         .toList();
 
-    // Lignes des 5 ventes seulement (borné), regroupées par vente.
-    final items = await (_db.select(
-      _db.saleItems,
-    )..where((i) => i.saleId.isIn(saleIds))).get();
+    // Lignes des 5 ventes + jointure produits pour récupérer imageUrl
+    final itemRows = await (_db.select(_db.saleItems).join([
+      leftOuterJoin(
+        _db.products,
+        _db.products.id.equalsExp(_db.saleItems.productId),
+      ),
+    ])..where(_db.saleItems.saleId.isIn(saleIds))).get();
+
     final itemsBySale = <String, List<SaleItem>>{};
-    for (final it in items) {
+    // Map saleId -> first product imageUrl
+    final imageUrlBySale = <String, String?>{};
+    for (final row in itemRows) {
+      final it = row.readTable(_db.saleItems);
       itemsBySale.putIfAbsent(it.saleId, () => []).add(it);
+      // Keep first image found for each sale
+      if (!imageUrlBySale.containsKey(it.saleId)) {
+        try {
+          final prod = row.readTable(_db.products);
+          imageUrlBySale[it.saleId] = prod.imageUrl;
+        } catch (_) {
+          imageUrlBySale[it.saleId] = null;
+        }
+      }
     }
 
     final customerNames = <String, String>{};
@@ -168,8 +211,80 @@ class DriftDashboardRepository implements DashboardRepository {
             amount: s.totalAmount,
             paid: s.amountPaid >= s.totalAmount,
             isCancelled: s.isCancelled,
+            imageUrl: imageUrlBySale[s.id],
           );
         })
         .toList(growable: false);
+  }
+
+  /// Ventes par jour sur les 7 derniers jours, pour le graphique CA.
+  Future<List<DailySalesPoint>> _dailySales(
+      DateTime start, DateTime end) async {
+    final days = <DailySalesPoint>[];
+    var cursor = DateTime(start.year, start.month, start.day);
+    final endDay = DateTime(end.year, end.month, end.day);
+    while (!cursor.isAfter(endDay)) {
+      final next = cursor.add(const Duration(days: 1));
+      final total = await _salesSum(cursor, next);
+      days.add(DailySalesPoint(date: cursor, total: total));
+      cursor = next;
+    }
+    return days;
+  }
+
+  /// Répartition des ventes par mode de paiement (7 derniers jours).
+  Future<List<PaymentBreakdownItem>> _paymentBreakdown() async {
+    final rows = _db.select(_db.sales)
+      ..where((s) => s.isCancelled.equals(false));
+    final all = await rows.get();
+
+    final totals = <PaymentMethod, int>{};
+    for (final s in all) {
+      final method = s.paymentMethod;
+      totals[method] = (totals[method] ?? 0) + s.amountPaid;
+    }
+    return totals.entries
+        .map((e) => PaymentBreakdownItem(method: e.key, amount: e.value))
+        .toList();
+  }
+
+  /// Dettes fournisseurs (solde des achats non réglés).
+  Future<int> _supplierDebt() async {
+    final owed = (_db.purchases.totalAmount - _db.purchases.amountPaid).sum();
+    final q = _db.selectOnly(_db.purchases)..addColumns([owed]);
+    return (await q.getSingle()).read(owed) ?? 0;
+  }
+
+  /// Ticket moyen sur les 7 derniers jours.
+  Future<double?> _avgTicket(DateTime start, DateTime end) async {
+    final avg = _db.sales.totalAmount.avg();
+    final q = _db.selectOnly(_db.sales)
+      ..addColumns([avg])
+      ..where(
+        _db.sales.date.isBiggerOrEqualValue(start) &
+            _db.sales.date.isSmallerThanValue(end) &
+            _db.sales.isCancelled.equals(false),
+      );
+    return (await q.getSingle()).read(avg);
+  }
+
+  /// Taux de ventes à crédit (%) sur les 7 derniers jours.
+  Future<double?> _creditRate(DateTime start, DateTime end) async {
+    final total = _db.sales.id.count();
+    final credit = _db.sales.id.count(
+      filter: _db.sales.paymentMethod.equalsValue(PaymentMethod.credit),
+    );
+    final q = _db.selectOnly(_db.sales)
+      ..addColumns([total, credit])
+      ..where(
+        _db.sales.date.isBiggerOrEqualValue(start) &
+            _db.sales.date.isSmallerThanValue(end) &
+            _db.sales.isCancelled.equals(false),
+      );
+    final row = await q.getSingle();
+    final t = row.read(total) ?? 0;
+    if (t == 0) return null;
+    final c = row.read(credit) ?? 0;
+    return (c / t) * 100;
   }
 }

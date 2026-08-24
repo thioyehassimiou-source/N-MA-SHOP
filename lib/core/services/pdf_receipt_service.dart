@@ -61,140 +61,139 @@ class PdfReceiptService {
   static Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
     final pdf = pw.Document();
 
-    // Utilisation d'une police système/standard compatible PDF
     final font = await PdfGoogleFonts.interRegular();
     final fontBold = await PdfGoogleFonts.interBold();
 
     pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.roll80, // Ticket caisse 80mm
-        margin: const pw.EdgeInsets.all(12),
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
         build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.center,
-            children: [
-              // En-tête commerce
-              pw.Text(
-                data.businessName.toUpperCase(),
-                style: pw.TextStyle(
-                  font: fontBold,
-                  fontSize: 14,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-                textAlign: pw.TextAlign.center,
-              ),
-              if (data.businessAddress.isNotEmpty)
-                pw.Text(
-                  data.businessAddress,
-                  style: pw.TextStyle(font: font, fontSize: 8),
-                  textAlign: pw.TextAlign.center,
-                ),
-              if (data.businessPhone.isNotEmpty)
-                pw.Text(
-                  'Tél : ${data.businessPhone}',
-                  style: pw.TextStyle(font: font, fontSize: 8),
-                  textAlign: pw.TextAlign.center,
-                ),
-              if (data.businessNif.isNotEmpty)
-                pw.Text(
-                  'NIF : ${data.businessNif}',
-                  style: pw.TextStyle(font: font, fontSize: 8),
-                  textAlign: pw.TextAlign.center,
-                ),
-              pw.SizedBox(height: 6),
-              pw.Divider(thickness: 0.5),
-
-              // Informations ticket
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Réf : ${data.reference}', style: pw.TextStyle(font: fontBold, fontSize: 9)),
-                  pw.Text(formatDateTime(data.date), style: pw.TextStyle(font: font, fontSize: 8)),
-                ],
-              ),
-              if (data.customerName != null && data.customerName!.isNotEmpty) ...[
-                pw.SizedBox(height: 2),
-                pw.Row(
-                  children: [
-                    pw.Text('Client : ', style: pw.TextStyle(font: fontBold, fontSize: 8)),
-                    pw.Text(data.customerName!, style: pw.TextStyle(font: font, fontSize: 8)),
-                  ],
-                ),
-              ],
-              pw.SizedBox(height: 6),
-              pw.Divider(thickness: 0.5),
-
-              // En-tête du tableau d'articles
-              pw.Row(
-                children: [
-                  pw.Expanded(flex: 3, child: pw.Text('Article', style: pw.TextStyle(font: fontBold, fontSize: 8))),
-                  pw.Expanded(flex: 1, child: pw.Text('Qté', textAlign: pw.TextAlign.center, style: pw.TextStyle(font: fontBold, fontSize: 8))),
-                  pw.Expanded(flex: 2, child: pw.Text('Total', textAlign: pw.TextAlign.right, style: pw.TextStyle(font: fontBold, fontSize: 8))),
-                ],
-              ),
-              pw.SizedBox(height: 4),
-
-              // Articles
-              for (final line in data.lines) ...[
-                pw.Row(
+          return [
+            // Header: Business Info
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Expanded(
-                      flex: 3,
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    pw.Text(
+                      data.businessName.toUpperCase(),
+                      style: pw.TextStyle(font: fontBold, fontSize: 24, color: PdfColors.indigo800),
+                    ),
+                    pw.SizedBox(height: 4),
+                    if (data.businessAddress.isNotEmpty)
+                      pw.Text(data.businessAddress, style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
+                    if (data.businessPhone.isNotEmpty)
+                      pw.Text('Tél : ${data.businessPhone}', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
+                    if (data.businessNif.isNotEmpty)
+                      pw.Text('NIF : ${data.businessNif}', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('FACTURE', style: pw.TextStyle(font: fontBold, fontSize: 24, color: PdfColors.grey400)),
+                    pw.SizedBox(height: 4),
+                    pw.Text('Réf : ${data.reference}', style: pw.TextStyle(font: fontBold, fontSize: 12)),
+                    pw.Text('Date : ${formatDateTime(data.date)}', style: pw.TextStyle(font: font, fontSize: 10)),
+                  ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 24),
+            pw.Divider(color: PdfColors.grey300),
+            pw.SizedBox(height: 24),
+
+            // Customer Info
+            if (data.customerName != null && data.customerName!.isNotEmpty) ...[
+              pw.Text('FACTURE À :', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey600)),
+              pw.SizedBox(height: 4),
+              pw.Text(data.customerName!, style: pw.TextStyle(font: fontBold, fontSize: 14)),
+              pw.SizedBox(height: 24),
+            ],
+
+            // Table of items
+            pw.TableHelper.fromTextArray(
+              headers: ['Désignation', 'PU', 'Quantité', 'Total'],
+              data: [
+                for (final line in data.lines)
+                  [
+                    line.name,
+                    formatAmount(line.unitPrice) + ' / ' + line.unit,
+                    '${line.quantity}',
+                    formatAmount(line.lineTotal),
+                  ]
+              ],
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              headerStyle: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.white),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo600),
+              cellStyle: pw.TextStyle(font: font, fontSize: 10),
+              cellAlignments: {
+                0: pw.Alignment.centerLeft,
+                1: pw.Alignment.centerRight,
+                2: pw.Alignment.center,
+                3: pw.Alignment.centerRight,
+              },
+              cellPadding: const pw.EdgeInsets.all(8),
+            ),
+            pw.SizedBox(height: 24),
+
+            // Totals
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.end,
+              children: [
+                pw.Container(
+                  width: 250,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                    children: [
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text(line.name, style: pw.TextStyle(font: fontBold, fontSize: 8)),
-                          pw.Text('${formatAmount(line.unitPrice)} GNF / ${line.unit}', style: pw.TextStyle(font: font, fontSize: 7, color: PdfColors.grey700)),
+                          pw.Text('TOTAL', style: pw.TextStyle(font: fontBold, fontSize: 14)),
+                          pw.Text(formatGnf(data.total), style: pw.TextStyle(font: fontBold, fontSize: 14)),
                         ],
                       ),
-                    ),
-                    pw.Expanded(
-                      flex: 1,
-                      child: pw.Text('${line.quantity}', textAlign: pw.TextAlign.center, style: pw.TextStyle(font: font, fontSize: 8)),
-                    ),
-                    pw.Expanded(
-                      flex: 2,
-                      child: pw.Text(formatAmount(line.lineTotal), textAlign: pw.TextAlign.right, style: pw.TextStyle(font: fontBold, fontSize: 8)),
-                    ),
-                  ],
-                ),
-                pw.SizedBox(height: 3),
-              ],
-
-              pw.Divider(thickness: 0.5),
-
-              // Totaux & Règlement
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('TOTAL :', style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                  pw.Text(formatGnf(data.total), style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                ],
-              ),
-              pw.SizedBox(height: 2),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Paiement (${data.paymentMethodLabel}) :', style: pw.TextStyle(font: font, fontSize: 8)),
-                  pw.Text(formatGnf(data.amountPaid), style: pw.TextStyle(font: font, fontSize: 8)),
-                ],
-              ),
-              if (data.isCredit) ...[
-                pw.SizedBox(height: 2),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('Reste dû (Crédit) :', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.red800)),
-                    pw.Text(formatGnf(data.creditAmount), style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.red800)),
-                  ],
+                      pw.SizedBox(height: 8),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Paiement (${data.paymentMethodLabel})', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
+                          pw.Text(formatGnf(data.amountPaid), style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
+                        ],
+                      ),
+                      if (data.isCredit) ...[
+                        pw.SizedBox(height: 8),
+                        pw.Row(
+                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                          children: [
+                            pw.Text('RESTE DÛ', style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.red600)),
+                            pw.Text(formatGnf(data.creditAmount), style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.red600)),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
+            ),
+            pw.SizedBox(height: 48),
 
-              pw.SizedBox(height: 10),
-              pw.Text('Merci pour votre confiance !', style: pw.TextStyle(font: font, fontSize: 8, fontStyle: pw.FontStyle.italic), textAlign: pw.TextAlign.center),
-            ],
-          );
+            // Footer
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Signature Client', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+                pw.Text('Cachet & Signature', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+              ],
+            ),
+            pw.SizedBox(height: 60),
+            pw.Center(
+              child: pw.Text('Merci de votre confiance.', style: pw.TextStyle(font: font, fontSize: 10, fontStyle: pw.FontStyle.italic, color: PdfColors.grey600)),
+            ),
+          ];
         },
       ),
     );

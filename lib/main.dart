@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/database/database.dart';
+import 'core/license/license_provider.dart';
+import 'core/license/license_service.dart';
 import 'core/providers/app_settings_provider.dart';
 import 'core/providers/database_provider.dart';
 import 'core/providers/startup_flags.dart';
@@ -20,6 +22,10 @@ Future<void> main() async {
   // Ouvre la base locale et SharedPreferences.
   final database = AppDatabase();
   final prefs = await SharedPreferences.getInstance();
+
+  // Vérification de la licence (synchrone — prefs déjà en mémoire).
+  // Résultat disponible avant le premier rendu pour éviter tout flash.
+  final initialLicense = LicenseService().check(prefs);
 
   final container = ProviderContainer(
     overrides: [

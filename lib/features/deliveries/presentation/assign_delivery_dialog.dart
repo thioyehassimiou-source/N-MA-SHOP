@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/database.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_form_dialog.dart';
+import '../../../core/widgets/app_form_field.dart';
 import '../application/deliveries_providers.dart';
 import '../../../core/database/tables/deliveries.dart';
 
@@ -61,99 +61,69 @@ class _AssignDeliveryDialogState extends ConsumerState<AssignDeliveryDialog> {
   Widget build(BuildContext context) {
     final couriersAsync = ref.watch(couriersProvider);
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 450,
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: couriersAsync.when(
-          loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
-          error: (e, _) => SizedBox(height: 100, child: Center(child: Text('Erreur: $e'))),
-          data: (couriers) {
-            final activeCouriers = couriers.where((c) => c.isActive).toList();
-            
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.delivery_dining_outlined, color: context.colors.primary),
-                    const SizedBox(width: AppSpacing.md),
-                    const Text(
-                      'Assigner un Livreur',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
+    return AppFormDialog(
+      title: 'Assigner un Livreur',
+      subtitle: 'Commande : ${widget.order.reference}',
+      icon: Icons.delivery_dining_outlined,
+      gradientColors: const [Color(0xFFEAB308), Color(0xFFF59E0B)],
+      width: 450,
+      primaryLabel: 'Confirmer l\'expédition',
+      primaryIcon: Icons.check_circle_outline,
+      onPrimary: _selectedCourierId == null ? null : _assign,
+      body: couriersAsync.when(
+        loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+        error: (e, _) => SizedBox(height: 100, child: Center(child: Text('Erreur: $e'))),
+        data: (couriers) {
+          final activeCouriers = couriers.where((c) => c.isActive).toList();
+          
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Client : ${widget.order.customerName}', style: TextStyle(color: context.colors.onSurfaceVariant)),
+              if (widget.order.deliveryAddress != null)
+                Text('Adresse : ${widget.order.deliveryAddress}', style: TextStyle(color: context.colors.onSurfaceVariant)),
+              const SizedBox(height: AppSpacing.xl),
+              
+              if (activeCouriers.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Text('Aucun livreur actif disponible. Veuillez en ajouter un dans l\'onglet Livreurs.', style: TextStyle(color: Colors.red)),
+                )
+              else ...[
+                AppFormDropdown<String>(
+                  label: 'Choisir le Livreur',
+                  value: _selectedCourierId,
+                  icon: Icons.sports_motorsports_outlined,
+                  isRequired: true,
+                  items: activeCouriers.map((c) {
+                    return DropdownMenuItem(
+                      value: c.id,
+                      child: Text('${c.name} (${c.vehicleType == VehicleType.moto ? 'Moto' : 'Véhicule'})'),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() => _selectedCourierId = val);
+                  },
                 ),
-                const SizedBox(height: 8),
-                Text('Commande : ${widget.order.reference}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text('Client : ${widget.order.customerName}', style: TextStyle(color: context.colors.onSurfaceVariant)),
-                if (widget.order.deliveryAddress != null)
-                  Text('Adresse : ${widget.order.deliveryAddress}', style: TextStyle(color: context.colors.onSurfaceVariant)),
-                const SizedBox(height: AppSpacing.xl),
-                
-                if (activeCouriers.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Text('Aucun livreur actif disponible. Veuillez en ajouter un dans l\'onglet Livreurs.', style: TextStyle(color: Colors.red)),
-                  )
-                else ...[
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedCourierId,
-                    decoration: const InputDecoration(
-                      labelText: 'Choisir le Livreur *',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: activeCouriers.map((c) {
-                      return DropdownMenuItem(
-                        value: c.id,
-                        child: Text('${c.name} (${c.vehicleType == VehicleType.moto ? 'Moto' : 'Véhicule'})'),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      setState(() => _selectedCourierId = val);
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(
-                    controller: _feeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Frais dus au livreur (GNF)',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.payments_outlined),
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(
-                    controller: _noteController,
-                    decoration: const InputDecoration(
-                      labelText: 'Instructions spéciales',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.note_alt_outlined),
-                    ),
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  SizedBox(
-                    width: double.infinity,
-                    child: AppButton(
-                      label: 'Confirmer l\'expédition',
-                      onPressed: _selectedCourierId == null ? null : _assign,
-                      icon: Icons.check_circle_outline,
-                    ),
-                  ),
-                ],
+                const SizedBox(height: AppSpacing.md),
+                AppFormField(
+                  label: 'Frais dus au livreur (GNF)',
+                  controller: _feeController,
+                  icon: Icons.payments_outlined,
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppFormField(
+                  label: 'Instructions spéciales',
+                  controller: _noteController,
+                  icon: Icons.note_alt_outlined,
+                  maxLines: 2,
+                ),
               ],
-            );
-          },
-        ),
+            ],
+          );
+        },
       ),
     );
   }

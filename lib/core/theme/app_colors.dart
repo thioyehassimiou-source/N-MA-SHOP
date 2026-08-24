@@ -106,8 +106,10 @@ abstract final class AppColors {
   static const iconAmberBg = Color(0xFFFEF3C7);
 
   // ── Marque N'MaShop ──
-  static const brandNavy = Color(0xFF0F172A);
-  static const brandNavyLight = Color(0xFF1A2E5A);
+  static const brandNavy = Color(0xFF0F1B3D);
+  static const brandNavyLight = Color(0xFF1A2B52);
+  static const brandOrange = Color(0xFFE85D04);
+  static const brandOrangeLight = Color(0xFFFF7A2A);
   static const brandEmerald = Color(0xFF10B981);
   static const brandEmeraldLight = Color(0xFF6EE7B7);
 }

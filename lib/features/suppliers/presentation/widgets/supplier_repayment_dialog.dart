@@ -6,7 +6,8 @@ import '../../../../core/database/database.dart';
 import '../../../../core/domain/payment_method.dart';
 import '../../../../core/format/formatters.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_form_dialog.dart';
+import '../../../../core/widgets/app_form_field.dart';
 import '../../application/suppliers_providers.dart';
 import '../../domain/supplier_summary.dart';
 
@@ -132,161 +133,138 @@ class _SupplierRepaymentDialogState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      title: Text('Régler : ${widget.summary.supplierName}'),
-      content: SizedBox(
-        width: 400,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppFormDialog(
+      title: 'Régler : ${widget.summary.supplierName}',
+      subtitle: 'Dette restante : ${formatGnf(widget.summary.balance)}',
+      icon: Icons.payments_outlined,
+      gradientColors: const [Color(0xFFEAB308), Color(0xFFF59E0B)],
+      width: 450,
+      primaryLabel: 'Confirmer',
+      primaryIcon: Icons.check_circle_outline,
+      onPrimary: _isValid && !_isSubmitting ? _submit : null,
+      isPrimaryLoading: _isSubmitting,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppFormField(
+            label: 'Montant réglé (GNF)',
+            controller: _amountController,
+            icon: Icons.payments_outlined,
+            isRequired: true,
+            keyboardType: TextInputType.number,
+            onChanged: _onAmountChanged,
+          ),
+          if (_amount != null && _amount! > widget.summary.balance)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 12),
+              child: Text(
+                'Montant supérieur à la dette',
+                style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
+              ),
+            ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: 8,
             children: [
-              Text(
-                'Dette restante : ${formatGnf(widget.summary.balance)}',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              ActionChip(
+                label: const Text('25%'),
+                onPressed: () => _setPercentage(0.25),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              TextFormField(
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: 'Montant réglé (GNF) *',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.payments_outlined),
-                  errorText:
-                      (_amount != null && _amount! > widget.summary.balance)
-                      ? 'Montant supérieur à la dette'
-                      : null,
-                ),
-                onChanged: _onAmountChanged,
+              ActionChip(
+                label: const Text('50%'),
+                onPressed: () => _setPercentage(0.5),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Wrap(
-                spacing: 8,
+              ActionChip(
+                label: const Text('100%'),
+                onPressed: () => _setPercentage(1.0),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppFormDropdown<PaymentMethod>(
+            label: 'Moyen de paiement',
+            value: _method,
+            icon: Icons.account_balance_wallet_outlined,
+            isRequired: true,
+            items: PaymentMethod.values
+                .where((m) => m != PaymentMethod.credit)
+                .map((m) => DropdownMenuItem(
+                      value: m,
+                      child: Text(m.name.toUpperCase()),
+                    ))
+                .toList(),
+            onChanged: (val) {
+              if (val != null) setState(() => _method = val);
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (_amount != null && _amount! > 0 && _amount! <= widget.summary.balance)
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  ActionChip(
-                    label: const Text('25%'),
-                    onPressed: () => _setPercentage(0.25),
-                  ),
-                  ActionChip(
-                    label: const Text('50%'),
-                    onPressed: () => _setPercentage(0.5),
-                  ),
-                  ActionChip(
-                    label: const Text('100%'),
-                    onPressed: () => _setPercentage(1.0),
+                  Text('Nouveau solde :', style: theme.textTheme.bodyMedium),
+                  Text(
+                    formatGnf(widget.summary.balance - _amount!),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
-              InputDecorator(
-                decoration: InputDecoration(
-                  labelText: 'Moyen de paiement *',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
-                ),
-                child: DropdownButton<PaymentMethod>(
-                  value: _method,
-                  isExpanded: true,
-                  underline: const SizedBox(),
-                  items: PaymentMethod.values
-                      .where((m) => m != PaymentMethod.credit)
-                      .map((m) => DropdownMenuItem(
-                            value: m,
-                            child: Text(m.name.toUpperCase()),
-                          ))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => _method = val);
-                  },
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              if (_amount != null && _amount! > 0 && _amount! <= widget.summary.balance)
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Nouveau solde :', style: theme.textTheme.bodyMedium),
-                      Text(
-                        formatGnf(widget.summary.balance - _amount!),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: AppSpacing.xl),
-              Text(
-                'Historique des paiements',
-                style: theme.textTheme.titleMedium,
-              ),
-              const Divider(),
-              if (_isLoadingHistory)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              else if (_historyError != null)
-                Text(
-                  'Erreur: $_historyError',
-                  style: TextStyle(color: theme.colorScheme.error),
-                )
-              else if (_history == null || _history!.isEmpty)
-                Text(
-                  'Aucun paiement précédent enregistré.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.outline,
-                  ),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _history!.length,
-                  itemBuilder: (context, index) {
-                    final item = _history![index];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.history, size: 20),
-                      title: Text(
-                        formatGnf(item.amount),
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Text(formatDateTime(item.date)),
-                    );
-                  },
-                ),
-            ],
+            ),
+          const SizedBox(height: AppSpacing.xl),
+          Text(
+            'Historique des paiements',
+            style: theme.textTheme.titleMedium,
           ),
-        ),
+          const Divider(),
+          if (_isLoadingHistory)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_historyError != null)
+            Text(
+              'Erreur: $_historyError',
+              style: TextStyle(color: theme.colorScheme.error),
+            )
+          else if (_history == null || _history!.isEmpty)
+            Text(
+              'Aucun paiement précédent enregistré.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _history!.length,
+              itemBuilder: (context, index) {
+                final item = _history![index];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.history, size: 20),
+                  title: Text(
+                    formatGnf(item.amount),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(formatDateTime(item.date)),
+                );
+              },
+            ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Annuler'),
-        ),
-        AppButton(
-          label: 'Confirmer',
-          onPressed: _isValid && !_isSubmitting ? _submit : null,
-        ),
-      ],
     );
   }
 }

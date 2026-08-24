@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/format/formatters.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_form_dialog.dart';
+import '../../../../core/widgets/app_form_field.dart';
 import '../../application/receivables_providers.dart';
 import '../../domain/credit_summary.dart';
 import '../../domain/repositories/receivables_repository.dart';
@@ -126,103 +127,88 @@ class _RepaymentDialogState extends ConsumerState<RepaymentDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      title: Text('Régler : ${widget.summary.customerName}'),
-      content: SizedBox(
-        width: 400,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Reste dû total : ${formatGnf(widget.summary.balance)}',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              TextFormField(
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: 'Montant réglé (GNF) *',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.payments_outlined),
-                  errorText:
-                      (_amount != null && _amount! > widget.summary.balance)
-                      ? 'Montant supérieur au reste dû'
-                      : null,
-                ),
-                onChanged: _onAmountChanged,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Le paiement sera déduit des ventes les plus anciennes.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Text(
-                'Historique des paiements',
-                style: theme.textTheme.titleMedium,
-              ),
-              const Divider(),
-              if (_isLoadingHistory)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              else if (_historyError != null)
-                Text(
-                  'Erreur: $_historyError',
-                  style: TextStyle(color: theme.colorScheme.error),
-                )
-              else if (_history == null || _history!.isEmpty)
-                Text(
-                  'Aucun paiement précédent enregistré.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.outline,
-                  ),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _history!.length,
-                  itemBuilder: (context, index) {
-                    final item = _history![index];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.history, size: 20),
-                      title: Text(
-                        formatGnf(item.amount),
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Text(formatDateTime(item.date)),
-                    );
-                  },
-                ),
-            ],
+    return AppFormDialog(
+      title: 'Régler : ${widget.summary.customerName}',
+      subtitle: 'Reste dû total : ${formatGnf(widget.summary.balance)}',
+      icon: Icons.payments_outlined,
+      gradientColors: const [Color(0xFFEAB308), Color(0xFFF59E0B)],
+      width: 450,
+      primaryLabel: 'Confirmer',
+      primaryIcon: Icons.check_circle_outline,
+      onPrimary: _isValid && !_isSubmitting ? _submit : null,
+      isPrimaryLoading: _isSubmitting,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppFormField(
+            label: 'Montant réglé (GNF)',
+            controller: _amountController,
+            icon: Icons.payments_outlined,
+            isRequired: true,
+            keyboardType: TextInputType.number,
+            onChanged: _onAmountChanged,
           ),
-        ),
+          if (_amount != null && _amount! > widget.summary.balance)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 12),
+              child: Text(
+                'Montant supérieur au reste dû',
+                style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
+              ),
+            ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Le paiement sera déduit des ventes les plus anciennes.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Text(
+            'Historique des paiements',
+            style: theme.textTheme.titleMedium,
+          ),
+          const Divider(),
+          if (_isLoadingHistory)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_historyError != null)
+            Text(
+              'Erreur: $_historyError',
+              style: TextStyle(color: theme.colorScheme.error),
+            )
+          else if (_history == null || _history!.isEmpty)
+            Text(
+              'Aucun paiement précédent enregistré.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _history!.length,
+              itemBuilder: (context, index) {
+                final item = _history![index];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.history, size: 20),
+                  title: Text(
+                    formatGnf(item.amount),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(formatDateTime(item.date)),
+                );
+              },
+            ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Annuler'),
-        ),
-        AppButton(
-          label: 'Confirmer',
-          onPressed: _isValid && !_isSubmitting ? _submit : null,
-        ),
-      ],
     );
   }
 }

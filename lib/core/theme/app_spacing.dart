@@ -12,7 +12,7 @@ abstract final class AppSpacing {
   static const double navWidth = 72;
 
   /// Largeur maximale du contenu centré.
-  static const double containerMax = 1280;
+  static const double containerMax = double.infinity;
 
   /// Hauteur de la barre supérieure.
   static const double topBarHeight = 64;
@@ -23,6 +23,7 @@ abstract final class AppRadius {
   static const double xs = 4;
   static const double sm = 6;
   static const double lg = 8;
+  static const double md = 14; // Premium form fields radius
   static const double xl = 12; // Used to be much larger. 12px is maximum for cards.
   static const double full = 9999;
 }

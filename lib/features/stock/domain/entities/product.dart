@@ -15,6 +15,7 @@ class Product {
     required this.weightedAverageCost,
     required this.isActive,
     this.imageUrl,
+    this.barcode,
     required this.createdAt,
   });
 
@@ -44,5 +45,9 @@ class Product {
 
   final bool isActive;
   final String? imageUrl;
+
+  /// Code-barres EAN/QR (facultatif).
+  final String? barcode;
+
   final DateTime createdAt;
 }

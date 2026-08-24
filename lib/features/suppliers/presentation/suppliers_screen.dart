@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/formatters.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -11,6 +10,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/app_page_header.dart';
 import '../../../core/widgets/app_table.dart';
+import '../../../core/widgets/app_form_dialog.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../../core/database/tables/users.dart';
 import '../application/suppliers_providers.dart';
@@ -566,39 +566,33 @@ class _RecentPurchases extends ConsumerWidget {
   void _confirmCancel(BuildContext context, WidgetRef ref, RecentPurchaseView purchase) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Annuler l\'achat ?'),
-        content: const Text(
-          'Attention : Le stock de ces produits sera décrémenté et les paiements associés seront effacés.\n'
-          'Cette action est irréversible.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Retour'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ref.read(purchaseServiceProvider).cancelPurchase(purchase.purchaseId);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Achat annulé avec succès.')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur : $e')),
-                  );
-                }
-              }
-            },
-            child: const Text('Confirmer l\'annulation'),
-          ),
-        ],
+      builder: (ctx) => AppFormDialog(
+        title: 'Annuler l\'achat ?',
+        subtitle: 'Attention : Le stock de ces produits sera décrémenté et les paiements associés seront effacés.\nCette action est irréversible.',
+        icon: Icons.warning_amber_rounded,
+        gradientColors: const [Color(0xFFDC2626), Color(0xFFEF4444)],
+        width: 450,
+        primaryLabel: 'Confirmer l\'annulation',
+        primaryIcon: Icons.cancel_outlined,
+        onCancel: () => Navigator.pop(ctx),
+        onPrimary: () async {
+          Navigator.pop(ctx);
+          try {
+            await ref.read(purchaseServiceProvider).cancelPurchase(purchase.purchaseId);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Achat annulé avec succès.')),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Erreur : $e')),
+              );
+            }
+          }
+        },
+        body: const SizedBox.shrink(),
       ),
     );
   }
@@ -632,12 +626,21 @@ class _RecentPurchases extends ConsumerWidget {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.filter_list),
-                      onPressed: () {},
+                      tooltip: 'Filtrer par statut',
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Filtres disponibles bientôt'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     IconButton(
                       icon: const Icon(Icons.download),
-                      onPressed: () {},
+                      tooltip: 'Télécharger les achats',
+                      onPressed: () => context.go('/rapports'),
                     ),
                   ],
                 ),

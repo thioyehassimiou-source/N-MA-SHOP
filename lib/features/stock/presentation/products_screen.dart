@@ -15,9 +15,12 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_chip.dart';
+import '../../../core/widgets/app_form_dialog.dart';
+import '../../../core/widgets/app_form_field.dart';
 import '../../../core/widgets/app_metric_card.dart';
 import '../../../core/widgets/app_page_header.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../../core/widgets/barcode_scanner_dialog.dart';
 import '../../../core/widgets/product_thumbnail.dart';
 import '../../auth/application/auth_providers.dart';
 import '../application/stock_providers.dart';
@@ -240,6 +243,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildHeader(all, isAdmin),
+                      // ── Bandeau Alerte Stock Bas ─────────────
+                      _LowStockAlertBanner(products: all),
                       const SizedBox(height: AppSpacing.lg),
                       _buildFilterBar(filtered.length, start, pageItems.length),
                       const SizedBox(height: AppSpacing.lg),
@@ -254,11 +259,20 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
             Positioned(
               right: AppSpacing.lg,
               bottom: AppSpacing.lg,
-              child: FloatingActionButton(
-                onPressed: () {},
+              child: FloatingActionButton.extended(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Scanner de code-barres : branchez un lecteur USB ou activez l\'option depuis les paramètres.'),
+                      backgroundColor: context.colors.secondary,
+                      duration: const Duration(seconds: 4),
+                    ),
+                  );
+                },
                 backgroundColor: context.colors.primary,
                 foregroundColor: context.colors.onPrimary,
-                child: const Icon(Icons.barcode_reader, size: 28),
+                icon: const Icon(Icons.barcode_reader, size: 22),
+                label: const Text('Scanner'),
               ),
             ),
           ],
@@ -580,6 +594,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
   late final TextEditingController _stock;
   late final TextEditingController _threshold;
   String? _imageUrl;
+  String? _barcode;
   bool _saving = false;
 
   bool get _isEdit => widget.product != null;
@@ -589,6 +604,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
     super.initState();
     final p = widget.product;
     _imageUrl = p?.imageUrl;
+    _barcode = p?.barcode;
     _name = TextEditingController(text: p?.name ?? '');
     _reference = TextEditingController(text: p?.reference ?? '');
     _unit = TextEditingController(text: p?.unit ?? 'pièce');
@@ -659,6 +675,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
       stockQuantity: int.tryParse(_stock.text.trim()) ?? 0,
       lowStockThreshold: int.tryParse(_threshold.text.trim()) ?? 0,
       imageUrl: _imageUrl,
+      barcode: _barcode?.trim().isEmpty == true ? null : _barcode?.trim(),
     );
 
     final result = _isEdit
@@ -686,152 +703,381 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
   Widget build(BuildContext context) {
     final hasImage = _imageUrl != null && File(_imageUrl!).existsSync();
 
-    return AlertDialog(
-      title: Text(
-        _isEdit ? 'Modifier Produit' : 'Ajouter Produit',
-        style: AppTypography.headlineMd,
-      ),
-      backgroundColor: context.colors.surfaceContainerLowest,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-      ),
-      content: SizedBox(
-        width: 440,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Stack(
-                    children: [
-                      InkWell(
-                        onTap: _pickImage,
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        child: Container(
-                          width: 90,
-                          height: 90,
-                          decoration: BoxDecoration(
-                            color: context.colors.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                            border: Border.all(color: context.colors.outlineVariant),
+    return AppFormDialog(
+      title: _isEdit ? 'Modifier Produit' : 'Ajouter Produit',
+      subtitle: _isEdit
+          ? 'Mise à jour des informations du produit'
+          : 'Nouveau produit dans votre catalogue',
+      icon: Icons.inventory_2_outlined,
+      gradientColors: const [Color(0xFF0F7B6C), Color(0xFF10B981)],
+      width: 520,
+      primaryLabel: 'Enregistrer',
+      primaryIcon: Icons.check_circle_outline,
+      onPrimary: _saving ? null : _save,
+      isPrimaryLoading: _saving,
+      body: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Section Photo ─────────────────────────────────
+            _FormSectionContainer(
+              title: 'Photo du Produit',
+              icon: Icons.camera_alt_outlined,
+              child: Center(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    InkWell(
+                      onTap: _pickImage,
+                      borderRadius: BorderRadius.circular(50),
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: context.colors.surfaceContainer,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: context.colors.outline,
+                            width: 2,
                           ),
-                          child: hasImage
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                                  child: Image.file(
-                                    File(_imageUrl!),
-                                    fit: BoxFit.cover,
-                                    width: 90,
-                                    height: 90,
-                                  ),
-                                )
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.add_a_photo_outlined, size: 28, color: context.colors.onSurfaceVariant),
-                                    SizedBox(height: 4),
-                                    Text('Photo', style: TextStyle(fontSize: 11, color: context.colors.onSurfaceVariant)),
-                                  ],
+                        ),
+                        child: hasImage
+                            ? ClipOval(
+                                child: Image.file(
+                                  File(_imageUrl!),
+                                  fit: BoxFit.cover,
+                                  width: 100,
+                                  height: 100,
                                 ),
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.add_a_photo_outlined,
+                                    size: 28,
+                                    color: context.colors.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Photo',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: context.colors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                    // Camera overlay badge
+                    Positioned(
+                      bottom: 2,
+                      right: 2,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: context.colors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: context.colors.surfaceContainerLowest,
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 14,
                         ),
                       ),
-                      if (hasImage)
-                        Positioned(
-                          top: -4,
-                          right: -4,
-                          child: IconButton(
-                            icon: Icon(Icons.cancel, color: context.colors.error, size: 20),
-                            onPressed: () => setState(() => _imageUrl = null),
+                    ),
+                    // Remove button
+                    if (hasImage)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: InkWell(
+                          onTap: () => setState(() => _imageUrl = null),
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: context.colors.error,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 14,
+                            ),
                           ),
                         ),
-                    ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // ── Section Informations ──────────────────────────
+            _FormSectionContainer(
+              title: 'Informations Produit',
+              icon: Icons.info_outline,
+              child: Column(
+                children: [
+                  AppFormField(
+                    label: 'Nom du produit',
+                    hint: 'Ex: Riz Uncle Ben\'s 5kg',
+                    controller: _name,
+                    icon: Icons.label_outline,
+                    isRequired: true,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Requis' : null,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  FormFieldRow(
+                    left: AppFormField(
+                      label: 'Référence',
+                      hint: 'Auto-généré si vide',
+                      controller: _reference,
+                      icon: Icons.qr_code_outlined,
+                    ),
+                    right: AppFormField(
+                      label: 'Unité',
+                      hint: 'Ex: pièce, kg, litre',
+                      controller: _unit,
+                      icon: Icons.straighten_outlined,
+                      isRequired: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // ── Section Prix ──────────────────────────────────
+            _FormSectionContainer(
+              title: 'Prix & Tarification',
+              icon: Icons.payments_outlined,
+              child: FormFieldRow(
+                left: AppFormField(
+                  label: 'Prix d\'achat (GNF)',
+                  hint: 'Ex: 50 000',
+                  controller: _purchase,
+                  icon: Icons.shopping_cart_outlined,
+                  isRequired: true,
+                  keyboardType: TextInputType.number,
+                  iconColor: const Color(0xFFF59E0B),
+                ),
+                right: AppFormField(
+                  label: 'Prix de vente (GNF)',
+                  hint: 'Ex: 75 000',
+                  controller: _sale,
+                  icon: Icons.sell_outlined,
+                  isRequired: true,
+                  keyboardType: TextInputType.number,
+                  iconColor: const Color(0xFF10B981),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // ── Section Stock ─────────────────────────────────
+            _FormSectionContainer(
+              title: 'Niveaux de Stock',
+              icon: Icons.inventory_outlined,
+              child: FormFieldRow(
+                left: AppFormField(
+                  label: 'Stock initial',
+                  hint: 'Ex: 100',
+                  controller: _stock,
+                  icon: Icons.archive_outlined,
+                  isRequired: true,
+                  keyboardType: TextInputType.number,
+                ),
+                right: AppFormField(
+                  label: 'Seuil d\'alerte',
+                  hint: 'Ex: 10',
+                  controller: _threshold,
+                  icon: Icons.warning_amber_outlined,
+                  isRequired: true,
+                  keyboardType: TextInputType.number,
+                  iconColor: const Color(0xFFEF4444),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // ── Section Code-barres ────────────────────────────
+            _FormSectionContainer(
+              title: 'Code-barres (Scan POS)',
+              icon: Icons.qr_code_2_outlined,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      initialValue: _barcode,
+                      decoration: InputDecoration(
+                        hintText: 'Ex: 6141234567890',
+                        prefixIcon: Icon(Icons.barcode_reader, size: 20, color: context.colors.primary),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                      onChanged: (v) => _barcode = v.isEmpty ? null : v,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Tooltip(
+                    message: 'Scanner via caméra',
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        final code = await BarcodeScannerDialog.show(context);
+                        if (code != null && mounted) setState(() => _barcode = code);
+                      },
+                      icon: const Icon(Icons.qr_code_scanner, size: 18),
+                      label: const Text('Scanner'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Section de formulaire avec bordure et titre icône (utilisé localement).
+class _FormSectionContainer extends StatelessWidget {
+  const _FormSectionContainer({
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
+
+  final String title;
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.colors.surfaceContainerLowest,
+        border: Border.all(color: context.colors.outline),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: context.colors.primary),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: AppTypography.labelMd.copyWith(
+                  color: context.colors.onSurface,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+// ── Bandeau Alerte Stock Bas ───────────────────────────────────────────────
+class _LowStockAlertBanner extends StatefulWidget {
+  const _LowStockAlertBanner({required this.products});
+  final List<Product> products;
+
+  @override
+  State<_LowStockAlertBanner> createState() => _LowStockAlertBannerState();
+}
+
+class _LowStockAlertBannerState extends State<_LowStockAlertBanner> {
+  bool _dismissed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final alerts = widget.products
+        .where(
+          (p) => p.isActive && p.lowStockThreshold > 0 && p.stockQuantity <= p.lowStockThreshold,
+        )
+        .toList();
+
+    if (alerts.isEmpty || _dismissed) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFCA5A5)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${alerts.length} produit(s) en alerte de stock bas',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: Color(0xFFB91C1C),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                TextFormField(
-                  controller: _name,
-                  decoration: const InputDecoration(labelText: 'Nom *'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Requis' : null,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _reference,
-                        decoration: const InputDecoration(labelText: 'Réf'),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: alerts.map((p) {
+                    final isOut = p.stockQuantity <= 0;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isOut ? const Color(0xFFEF4444) : const Color(0xFFF97316),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _unit,
-                        decoration: const InputDecoration(labelText: 'Unité *'),
+                      child: Text(
+                        '${p.name} (${formatQuantity(p.stockQuantity)} restant)',
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _purchase,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Achat (GNF) *',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _sale,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Vente (GNF) *',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _stock,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Stock *'),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _threshold,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Seuil d\'alerte *',
-                        ),
-                      ),
-                    ),
-                  ],
+                    );
+                  }).toList(),
                 ),
               ],
             ),
           ),
-        ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18, color: Color(0xFFEF4444)),
+            onPressed: () => setState(() => _dismissed = true),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
       ),
-      actions: [
-        AppButton.secondary(
-          label: 'Annuler',
-          onPressed: _saving ? null : () => Navigator.of(context).pop(),
-        ),
-        AppButton(label: 'Enregistrer', onPressed: _saving ? null : _save),
-      ],
     );
   }
 }
+

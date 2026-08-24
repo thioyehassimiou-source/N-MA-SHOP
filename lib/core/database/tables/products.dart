@@ -39,6 +39,9 @@ class Products extends Table {
   /// Chemin ou URL de la photo du produit (facultatif).
   TextColumn get imageUrl => text().nullable()();
 
+  /// Code-barres EAN/QR du produit (facultatif — utilisé pour le scan caméra POS).
+  TextColumn get barcode => text().nullable()();
+
   DateTimeColumn get createdAt =>
       dateTime().withDefault(currentDateAndTime)();
 

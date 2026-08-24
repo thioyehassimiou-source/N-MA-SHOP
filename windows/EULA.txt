@@ -1,0 +1,23 @@
+CONTRAT DE LICENCE UTILISATEUR FINAL ET POLITIQUE DE CONFIDENTIALITÉ
+LOGICIEL N'MASHOP
+
+Veuillez lire attentivement les conditions suivantes avant d'installer ce logiciel.
+
+1. ACCEPTATION DES CONDITIONS
+En installant et en utilisant l'application N'MaShop (ci-après "le Logiciel"), vous acceptez d'être lié par les termes de ce contrat. Si vous n'acceptez pas ces conditions, veuillez ne pas installer ni utiliser ce Logiciel.
+
+2. LICENCE D'UTILISATION
+L'équipe N'MaShop vous accorde une licence non exclusive et non transférable pour utiliser ce Logiciel dans le cadre de la gestion de votre point de vente. Vous ne pouvez pas distribuer, louer, vendre ou sous-licencier ce Logiciel.
+
+3. CONFIDENTIALITÉ ET SÉCURITÉ DES DONNÉES
+a. Données Locales : Le Logiciel fonctionne hors-ligne. Toutes vos données (ventes, clients, produits, rapports) sont stockées localement sur votre ordinateur.
+b. Responsabilité : Vous êtes seul responsable de la sécurité de vos données. Il vous est fortement conseillé d'utiliser la fonctionnalité de "Sauvegarde" intégrée pour exporter régulièrement vos données sur un support externe (clé USB, disque dur externe).
+c. Traitement des données : N'MaShop n'a pas accès à vos données commerciales, ne les collecte pas et ne les transmet à aucun serveur distant, sauf accord explicite de votre part dans le cadre d'un support technique.
+
+4. LIMITATION DE RESPONSABILITÉ
+Dans toute la mesure permise par la loi applicable, N'MaShop ne saurait être tenu responsable de toute perte de profits, perte de données, ou dommages indirects découlant de l'utilisation ou de l'impossibilité d'utiliser le Logiciel.
+
+5. MISES À JOUR
+N'MaShop peut occasionnellement proposer des mises à jour du Logiciel. L'installation de ces mises à jour peut être soumise à des conditions supplémentaires.
+
+En cliquant sur "J'accepte" lors de l'installation, vous confirmez avoir lu, compris et accepté les termes de ce contrat et de la politique de confidentialité.

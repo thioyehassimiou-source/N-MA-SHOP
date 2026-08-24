@@ -19,6 +19,7 @@ class AppSettings {
     required this.businessDomain,
     required this.businessPhone,
     required this.paletteId,
+    required this.useCustomTheme,
   });
 
   final bool isSetupCompleted;
@@ -36,6 +37,10 @@ class AppSettings {
   /// Identifiant du template visuel choisi ([AppPalette.id]).
   final String paletteId;
 
+  /// Active le thème personnalisé (palette) à la place de la charte N'MaShop.
+  /// Réservé aux utilisateurs avec licence active.
+  final bool useCustomTheme;
+
   AppSettings copyWith({
     bool? isSetupCompleted,
     String? businessName,
@@ -47,6 +52,7 @@ class AppSettings {
     String? businessDomain,
     String? businessPhone,
     String? paletteId,
+    bool? useCustomTheme,
   }) {
     return AppSettings(
       isSetupCompleted: isSetupCompleted ?? this.isSetupCompleted,
@@ -59,6 +65,7 @@ class AppSettings {
       businessDomain: businessDomain ?? this.businessDomain,
       businessPhone: businessPhone ?? this.businessPhone,
       paletteId: paletteId ?? this.paletteId,
+      useCustomTheme: useCustomTheme ?? this.useCustomTheme,
     );
   }
 }
@@ -79,6 +86,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   static const _kBusinessDomain = 'business_domain';
   static const _kBusinessPhone = 'business_phone';
   static const _kPaletteId = 'business_palette';
+  static const _kUseCustomTheme = 'use_custom_theme';
 
   @override
   AppSettings build() {
@@ -94,6 +102,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       businessDomain: prefs.getString(_kBusinessDomain),
       businessPhone: prefs.getString(_kBusinessPhone) ?? '',
       paletteId: prefs.getString(_kPaletteId) ?? AppPalette.fallback.id,
+      useCustomTheme: prefs.getBool(_kUseCustomTheme) ?? false,
     );
   }
 
@@ -184,6 +193,12 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     state = state.copyWith(paletteId: paletteId);
   }
 
+  /// Active ou désactive le thème personnalisé (licence requise).
+  Future<void> updateUseCustomTheme(bool value) async {
+    await _prefs.setBool(_kUseCustomTheme, value);
+    state = state.copyWith(useCustomTheme: value);
+  }
+
   Future<void> resetSetup() async {
     await _prefs.remove(_kIsSetupCompleted);
     await _prefs.remove(_kBusinessName);
@@ -196,6 +211,8 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     await _prefs.remove(_kBusinessPhone);
     await _prefs.remove(_kPaletteId);
 
+    await _prefs.remove(_kUseCustomTheme);
+
     state = AppSettings(
       isSetupCompleted: false,
       businessName: 'Ma Boutique',
@@ -207,6 +224,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       businessDomain: null,
       businessPhone: '',
       paletteId: AppPalette.fallback.id,
+      useCustomTheme: false,
     );
   }
 }

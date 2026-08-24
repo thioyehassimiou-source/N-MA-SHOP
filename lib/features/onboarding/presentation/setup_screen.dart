@@ -63,6 +63,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   String? _selectedDomain;
   String? _logoPath;
   bool _saving = false;
+  bool _acceptedTerms = false;
 
   @override
   void dispose() {
@@ -134,6 +135,15 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   Future<void> _submit() async {
     if (!_accountFormKey.currentState!.validate()) return;
+    if (!_acceptedTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: context.colors.error,
+          content: const Text('Vous devez accepter les conditions d\'utilisation et la politique de confidentialité.'),
+        ),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
       await ref
@@ -656,7 +666,57 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                 ? 'Les mots de passe ne correspondent pas'
                 : null,
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
+
+          // ── Conditions d'utilisation ─────────────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 24,
+                width: 24,
+                child: Checkbox(
+                  value: _acceptedTerms,
+                  onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+                  activeColor: context.colors.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _acceptedTerms = !_acceptedTerms),
+                  child: Text.rich(
+                    TextSpan(
+                      text: 'En créant ce compte, j\'accepte les ',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'Conditions d\'utilisation',
+                          style: TextStyle(
+                            color: context.colors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const TextSpan(text: ' et la '),
+                        TextSpan(
+                          text: 'Politique de confidentialité',
+                          style: TextStyle(
+                            color: context.colors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const TextSpan(text: ' de N\'MaShop.'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
 
           // ── Actions finale & Retour ─────────────────
           Row(

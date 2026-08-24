@@ -6,6 +6,9 @@ import '../data/repositories/drift_dashboard_repository.dart';
 import '../domain/entities/dashboard_snapshot.dart';
 import '../domain/repositories/dashboard_repository.dart';
 
+export '../domain/entities/dashboard_snapshot.dart'
+    show DailySalesPoint, PaymentBreakdownItem;
+
 /// Une vente récente, prête à l'affichage (langage commerçant).
 class RecentSaleView {
   const RecentSaleView({
@@ -17,6 +20,7 @@ class RecentSaleView {
     required this.amount,
     required this.paid,
     required this.isCancelled,
+    this.imageUrl,
   });
 
   final String id;
@@ -27,11 +31,10 @@ class RecentSaleView {
   final int amount;
   final bool paid;
   final bool isCancelled;
+  final String? imageUrl;
 }
 
-/// Toutes les données de l'écran Accueil. Les agrégats viennent d'un
-/// [DashboardRepository] (calculs SQL) ; cette couche ne fait que dériver les
-/// variations en % et habiller les ventes récentes pour l'affichage.
+/// Toutes les données de l'écran Accueil.
 class DashboardData {
   const DashboardData({
     required this.todaySales,
@@ -44,6 +47,8 @@ class DashboardData {
     required this.salesGrowth,
     required this.profitGrowth,
     required this.weeklyGrowth,
+    required this.dailySales,
+    required this.paymentBreakdown,
     this.supplierDebt = 0,
     this.avgTicket,
     this.creditRate,
@@ -62,7 +67,13 @@ class DashboardData {
   final double? profitGrowth;
   final double? weeklyGrowth;
 
-  /// Nouveaux indicateurs pour le dashboard enrichi.
+  /// Ventes par jour sur 7 jours (graphique CA).
+  final List<DailySalesPoint> dailySales;
+
+  /// Répartition par mode de paiement.
+  final List<PaymentBreakdownItem> paymentBreakdown;
+
+  /// Indicateurs enrichis.
   final int supplierDebt;
   final double? avgTicket;
   final double? creditRate;
@@ -97,10 +108,17 @@ final dashboardDataProvider = FutureProvider<DashboardData>((ref) async {
         amount: s.amount,
         paid: s.paid,
         isCancelled: s.isCancelled,
+        imageUrl: s.imageUrl,
       );
     }).toList(),
     salesGrowth: growth(snapshot.todaySales, snapshot.yesterdaySales),
     profitGrowth: growth(snapshot.todayProfit, snapshot.yesterdayProfit),
     weeklyGrowth: growth(snapshot.thisWeekSales, snapshot.prevWeekSales),
+    dailySales: snapshot.dailySales,
+    paymentBreakdown: snapshot.paymentBreakdown,
+    supplierDebt: snapshot.supplierDebt,
+    avgTicket: snapshot.avgTicket,
+    creditRate: snapshot.creditRate,
   );
 });
+

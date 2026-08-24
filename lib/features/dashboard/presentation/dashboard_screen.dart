@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +15,7 @@ import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../sales/application/sales_providers.dart';
 import '../application/dashboard_providers.dart';
+import '../../../core/providers/app_settings_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -563,69 +565,287 @@ class _AlertsActionsCard extends StatelessWidget {
 
 
 
-// ── En-tête de page (style dashboard de référence) ──────────────────────────
+// ── En-tête de page (Bannière de bienvenue premium) ──────────────────────────
 
-class _PageHeader extends StatelessWidget {
+class _PageHeader extends ConsumerWidget {
   const _PageHeader({required this.data});
   final DashboardData data;
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Bonjour';
+    if (hour < 18) return 'Bon après-midi';
+    return 'Bonsoir';
+  }
+
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Tableau de Bord Global',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  letterSpacing: -0.5,
-                ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider);
+    final settings = ref.watch(appSettingsProvider);
+    final useCustom = settings.useCustomTheme;
+    final colors = Theme.of(context).colorScheme;
+
+    final firstName = user?.fullName.split(' ').first ?? 'Patron';
+    final greeting = _getGreeting();
+
+    final boxDecoration = useCustom
+        ? BoxDecoration(
+            color: colors.primaryContainer,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: colors.primary.withValues(alpha: 0.2),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
               ),
-              const SizedBox(height: 4),
+            ],
+          )
+        : BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF0F1B3D),
+                Color(0xFF1A2B52),
+                Color(0xFF1E3A6E),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F1B3D).withValues(alpha: 0.35),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          );
+
+    final onlineBadgeColor = useCustom ? colors.primary : const Color(0xFFE85D04);
+    final onlineBadgeBg = useCustom ? colors.primary.withValues(alpha: 0.1) : const Color(0xFFE85D04).withValues(alpha: 0.2);
+    final onlineBadgeBorder = useCustom ? colors.primary.withValues(alpha: 0.3) : const Color(0xFFE85D04).withValues(alpha: 0.5);
+    final textColor = useCustom ? colors.onPrimaryContainer : Colors.white;
+    final textSubColor = useCustom ? colors.onPrimaryContainer.withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.65);
+
+    return Container(
+      decoration: boxDecoration,
+      padding: const EdgeInsets.all(28),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: onlineBadgeBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: onlineBadgeBorder,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.circle, size: 6, color: Color(0xFF10B981)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'EN LIGNE',
+                        style: TextStyle(
+                          color: onlineBadgeColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '$greeting, $firstName ! 👋',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "Voici le résumé de votre commerce aujourd'hui",
+                  style: TextStyle(
+                    color: textSubColor,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    _BannerButton(
+                      label: 'Exporter',
+                      icon: Icons.download_outlined,
+                      onTap: () => context.go('/rapports'),
+                      outlined: true,
+                    ),
+                    const SizedBox(width: 10),
+                    _BannerButton(
+                      label: 'Actualiser',
+                      icon: Icons.refresh_rounded,
+                      onTap: () => ref.invalidate(dashboardDataProvider),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          Expanded(
+            flex: 2,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _BannerStat(
+                  label: 'CA du jour',
+                  value: formatGnfCompact(data.todaySales),
+                  icon: Icons.trending_up_rounded,
+                  color: const Color(0xFF10B981),
+                ),
+                const SizedBox(width: 16),
+                _BannerStat(
+                  label: 'En caisse',
+                  value: formatGnfCompact(data.cashAvailable),
+                  icon: Icons.account_balance_wallet_rounded,
+                  color: const Color(0xFFE85D04),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BannerButton extends ConsumerWidget {
+  const _BannerButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.outlined = false,
+  });
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool outlined;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final useCustom = ref.watch(appSettingsProvider).useCustomTheme;
+    final colors = Theme.of(context).colorScheme;
+
+    final primaryColor = useCustom ? colors.primary : const Color(0xFFE85D04);
+    final textColor = useCustom ? (outlined ? colors.primary : colors.onPrimary) : Colors.white;
+    final bgColor = outlined ? Colors.transparent : primaryColor;
+    final borderColor = outlined
+        ? (useCustom ? colors.primary.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.3))
+        : primaryColor;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: textColor),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BannerStat extends ConsumerWidget {
+  const _BannerStat({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final useCustom = ref.watch(appSettingsProvider).useCustomTheme;
+    final colors = Theme.of(context).colorScheme;
+
+    final bgColor = useCustom ? colors.surface.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08);
+    final borderColor = useCustom ? colors.outline.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.12);
+    final textColor = useCustom ? colors.onPrimaryContainer : Colors.white;
+    final textSubColor = useCustom ? colors.onPrimaryContainer.withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.7);
+    final iconColor = useCustom ? colors.primary : color;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: iconColor),
+              const SizedBox(width: 6),
               Text(
-                'Aperçu en temps réel de votre commerce',
+                label,
                 style: TextStyle(
-                  fontSize: 14,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w400,
+                  color: textSubColor,
+                  fontSize: 12,
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(width: 16),
-        OutlinedButton.icon(
-          onPressed: () {},
-          icon: Icon(Icons.download_outlined, size: 16),
-          label: Text('Exporter'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.onSurface,
-            side: BorderSide(color: Theme.of(context).colorScheme.outline),
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        FilledButton.icon(
-          onPressed: () {},
-          icon: Icon(Icons.refresh_rounded, size: 16),
-          label: Text('Actualiser'),
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
+
 
 // ─────────────────────────── Grille des indicateurs ───────────────────────────
 
@@ -848,11 +1068,24 @@ class _RecentSalesCard extends ConsumerWidget {
                                     AppRadius.lg,
                                   ),
                                 ),
-                                child: Icon(
-                                  sale.icon,
-                                  color: theme.colorScheme.primary,
-                                  size: 20,
-                                ),
+                                child: sale.imageUrl != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                                        child: Image.file(
+                                          File(sale.imageUrl!),
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => Icon(
+                                            sale.icon,
+                                            color: theme.colorScheme.primary,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      )
+                                    : Icon(
+                                        sale.icon,
+                                        color: theme.colorScheme.primary,
+                                        size: 20,
+                                      ),
                               ),
                               const SizedBox(width: AppSpacing.md),
                               Column(

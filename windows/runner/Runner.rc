@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.gescompta" "\0"
-            VALUE "FileDescription", "gescompta" "\0"
+            VALUE "CompanyName", "CJP Hub" "\0"
+            VALUE "FileDescription", "NMaShop" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "gescompta" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.gescompta. All rights reserved." "\0"
-            VALUE "OriginalFilename", "gescompta.exe" "\0"
-            VALUE "ProductName", "gescompta" "\0"
+            VALUE "InternalName", "nmashop" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 CJP Hub. All rights reserved." "\0"
+            VALUE "OriginalFilename", "nmashop.exe" "\0"
+            VALUE "ProductName", "NMaShop" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

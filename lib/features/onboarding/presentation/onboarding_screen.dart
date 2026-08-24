@@ -170,11 +170,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             borderRadius: BorderRadius.circular(AppRadius.full),
             child: Ink(
               decoration: BoxDecoration(
-                color: AppColors.brandEmerald,
+                color: context.colors.tertiary,
                 borderRadius: BorderRadius.circular(AppRadius.full),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.brandEmerald.withValues(alpha: 0.4),
+                    color: context.colors.tertiary.withValues(alpha: 0.4),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
@@ -250,7 +250,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               end: Alignment.bottomCenter,
               colors: [
                 Colors.transparent,
-                AppColors.brandNavy.withValues(alpha: 0.7),
+                context.colors.surface.withValues(alpha: 0.7),
               ],
               stops: const [0.5, 1.0],
             ),
@@ -268,7 +268,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  AppColors.brandNavy.withValues(alpha: 0.55),
+                  context.colors.surface.withValues(alpha: 0.55),
                   Colors.transparent,
                 ],
               ),
@@ -288,7 +288,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Container(
-        color: AppColors.brandNavy,
+        color: context.colors.surface,
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.xl,
           AppSpacing.xl,
@@ -323,7 +323,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             Text(
               page.title,
               style: AppTypography.headlineLg.copyWith(
-                color: Colors.white,
+                color: context.colors.onSurface,
                 fontWeight: FontWeight.w800,
                 height: 1.1,
               ),
@@ -332,7 +332,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             Text(
               page.description,
               style: AppTypography.bodyLg.copyWith(
-                color: Colors.white.withValues(alpha: 0.7),
+                color: context.colors.onSurfaceVariant,
                 height: 1.6,
               ),
             ),
@@ -340,7 +340,25 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             Wrap(
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.sm,
-              children: page.features.map(_chip).toList(),
+              children: page.features.asMap().entries.map((e) {
+                // Animation de glissement décalée pour chaque puce
+                final label = e.value;
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, val, child) {
+                    return Transform.translate(
+                      offset: Offset(20 * (1 - val), 0),
+                      child: Opacity(
+                        opacity: val,
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _chip(label, context),
+                );
+              }).toList(),
             ),
           ],
         ),
@@ -348,18 +366,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  Widget _chip(String label) {
+  Widget _chip(String label, BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: context.colors.onSurface.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: context.colors.onSurface.withValues(alpha: 0.1)),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.white70,
+        style: TextStyle(
+          color: context.colors.onSurfaceVariant,
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
@@ -408,9 +426,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ),
           const Spacer(),
           if (!isLast)
-            TextButton(
+            OutlinedButton(
               onPressed: () => context.go('/setup'),
-              style: TextButton.styleFrom(foregroundColor: Colors.white54),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: context.colors.onSurfaceVariant,
+                side: BorderSide(color: context.colors.outlineVariant),
+              ),
               child: const Text('Passer'),
             ),
           const SizedBox(width: AppSpacing.md),

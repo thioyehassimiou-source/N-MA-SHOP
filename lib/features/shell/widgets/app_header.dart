@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -91,9 +90,7 @@ class AppHeader extends ConsumerWidget {
               icon: Icons.help_outline_rounded,
               tooltip: 'Aide',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("L'aide sera bientôt disponible.")),
-                );
+                context.go('/aide');
               },
             ),
             const SizedBox(width: 4),

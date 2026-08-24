@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/tables/users.dart';
 import '../../../core/format/formatters.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/app_page_header.dart';
+import '../../../core/widgets/app_form_dialog.dart';
+import '../../../core/widgets/app_form_field.dart';
 import '../../auth/application/auth_providers.dart';
 import '../application/equipe_providers.dart';
 
@@ -100,7 +101,7 @@ class EquipeScreen extends ConsumerWidget {
                                     const SizedBox(width: AppSpacing.md),
                                     Text(
                                       'Créé le ${formatDate(user.createdAt)}',
-                                      style: AppTypography.bodySm.copyWith(color: context.colors.outline),
+                                      style: AppTypography.bodySm.copyWith(color: context.colors.onSurfaceVariant.withValues(alpha: 0.7)),
                                     ),
                                   ],
                                 ),
@@ -121,7 +122,7 @@ class EquipeScreen extends ConsumerWidget {
                               if (user.lastLoginAt != null)
                                 Text(
                                   'Dernière connexion: ${formatDateTime(user.lastLoginAt!)}',
-                                  style: AppTypography.bodySm.copyWith(fontSize: 10, color: context.colors.outline),
+                                  style: AppTypography.bodySm.copyWith(fontSize: 10, color: context.colors.onSurfaceVariant.withValues(alpha: 0.7)),
                                 ),
                             ],
                           ),
@@ -151,93 +152,85 @@ class EquipeScreen extends ConsumerWidget {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Ajouter un utilisateur'),
-              content: SizedBox(
-                width: 400,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (error != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        color: context.colors.errorContainer,
-                        child: Text(
-                          error!,
-                          style: TextStyle(color: context.colors.error),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                    ],
-                    TextField(
-                      controller: nameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Nom complet *',
-                        border: OutlineInputBorder(),
+            return AppFormDialog(
+              title: 'Ajouter un utilisateur',
+              subtitle: 'Créer un nouvel accès pour l\'équipe',
+              icon: Icons.person_add_outlined,
+              gradientColors: const [Color(0xFF4F46E5), Color(0xFF6366F1)],
+              width: 450,
+              primaryLabel: 'Créer',
+              primaryIcon: Icons.check_circle_outline,
+              isPrimaryLoading: isLoading,
+              onCancel: isLoading ? null : () => Navigator.pop(ctx),
+              onPrimary: isLoading
+                  ? null
+                  : () async {
+                      if (nameCtrl.text.trim().isEmpty || pwdCtrl.text.isEmpty) {
+                        setState(() => error = 'Veuillez remplir tous les champs');
+                        return;
+                      }
+                      setState(() {
+                        isLoading = true;
+                        error = null;
+                      });
+                      try {
+                        await ref.read(equipeControllerProvider.notifier).createUser(
+                              fullName: nameCtrl.text,
+                              password: pwdCtrl.text,
+                              role: selectedRole,
+                            );
+                        if (context.mounted) Navigator.pop(ctx);
+                      } catch (e) {
+                        setState(() {
+                          error = e.toString();
+                          isLoading = false;
+                        });
+                      }
+                    },
+              body: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (error != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      color: context.colors.errorContainer,
+                      child: Text(
+                        error!,
+                        style: TextStyle(color: context.colors.error),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    TextField(
-                      controller: pwdCtrl,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Mot de passe *',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    const Text('Rôle', style: AppTypography.labelMd),
-                    const SizedBox(height: AppSpacing.sm),
-                    SegmentedButton<UserRole>(
-                      segments: const [
-                        ButtonSegment(value: UserRole.cashier, label: Text('Vendeur')),
-                        ButtonSegment(value: UserRole.admin, label: Text('Admin')),
-                      ],
-                      selected: {selectedRole},
-                      onSelectionChanged: (set) {
-                        setState(() => selectedRole = set.first);
-                      },
-                    ),
                   ],
-                ),
+                  AppFormField(
+                    label: 'Nom complet',
+                    controller: nameCtrl,
+                    icon: Icons.person_outline,
+                    isRequired: true,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppFormField(
+                    label: 'Mot de passe',
+                    controller: pwdCtrl,
+                    icon: Icons.lock_outline,
+                    isRequired: true,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  const Text('Rôle', style: AppTypography.labelMd),
+                  const SizedBox(height: AppSpacing.sm),
+                  SegmentedButton<UserRole>(
+                    segments: const [
+                      ButtonSegment(value: UserRole.cashier, label: Text('Vendeur')),
+                      ButtonSegment(value: UserRole.admin, label: Text('Admin')),
+                    ],
+                    selected: {selectedRole},
+                    onSelectionChanged: (set) {
+                      setState(() => selectedRole = set.first);
+                    },
+                  ),
+                ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: isLoading ? null : () => Navigator.pop(ctx),
-                  child: const Text('Annuler'),
-                ),
-                FilledButton(
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          if (nameCtrl.text.trim().isEmpty || pwdCtrl.text.isEmpty) {
-                            setState(() => error = 'Veuillez remplir tous les champs');
-                            return;
-                          }
-                          setState(() {
-                            isLoading = true;
-                            error = null;
-                          });
-                          try {
-                            await ref.read(equipeControllerProvider.notifier).createUser(
-                                  fullName: nameCtrl.text,
-                                  password: pwdCtrl.text,
-                                  role: selectedRole,
-                                );
-                            if (context.mounted) Navigator.pop(ctx);
-                          } catch (e) {
-                            setState(() {
-                              error = e.toString();
-                              isLoading = false;
-                            });
-                          }
-                        },
-                  child: isLoading
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Créer'),
-                ),
-              ],
             );
           },
         );

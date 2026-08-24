@@ -5,9 +5,9 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/database/database.dart';
 import '../../../core/providers/database_provider.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_form_dialog.dart';
+import '../../../core/widgets/app_form_field.dart';
 import '../../../core/database/tables/deliveries.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
@@ -92,86 +92,62 @@ class _NewCourierDialogState extends ConsumerState<NewCourierDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 400,
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.sports_motorsports_outlined, color: context.colors.primary),
-                const SizedBox(width: AppSpacing.md),
-                Text(
-                  widget.existingCourier == null ? 'Nouveau Livreur' : 'Modifier le livreur',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
+    return AppFormDialog(
+      title: widget.existingCourier == null ? 'Nouveau Livreur' : 'Modifier Livreur',
+      subtitle: 'Informations du livreur pour les expéditions',
+      icon: Icons.sports_motorsports_outlined,
+      gradientColors: const [Color(0xFF2563EB), Color(0xFF3B82F6)],
+      width: 420,
+      primaryLabel: 'Enregistrer',
+      primaryIcon: Icons.check_circle_outline,
+      onPrimary: _save,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppFormField(
+            label: 'Nom complet',
+            controller: _nameController,
+            icon: Icons.person_outline,
+            isRequired: true,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppFormField(
+            label: 'Téléphone',
+            controller: _phoneController,
+            icon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppFormDropdown<VehicleType>(
+            label: 'Véhicule',
+            value: _selectedType,
+            icon: Icons.directions_bike_outlined,
+            items: VehicleType.values.map((v) {
+              return DropdownMenuItem(
+                value: v,
+                child: Text(v.label),
+              );
+            }).toList(),
+            onChanged: (v) {
+              if (v != null) setState(() => _selectedType = v);
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              border: Border.all(color: context.colors.outlineVariant),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Nom complet *',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: _phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Téléphone',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.phone_outlined),
-              ),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<VehicleType>(
-              initialValue: _selectedType,
-              decoration: const InputDecoration(
-                labelText: 'Véhicule',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.directions_bike_outlined),
-              ),
-              items: VehicleType.values.map((v) {
-                return DropdownMenuItem(
-                  value: v,
-                  child: Text(v.label),
-                );
-              }).toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _selectedType = v);
-              },
-            ),
-            const SizedBox(height: AppSpacing.md),
-            SwitchListTile(
-              title: const Text('Actif (disponible)'),
+            child: SwitchListTile(
+              title: Text('Actif (disponible)', style: TextStyle(color: context.colors.onSurface)),
               value: _isActive,
               onChanged: (v) => setState(() => _isActive = v),
               activeThumbColor: context.colors.primary,
               contentPadding: EdgeInsets.zero,
             ),
-            const SizedBox(height: AppSpacing.xl),
-            SizedBox(
-              width: double.infinity,
-              child: AppButton(
-                label: 'Enregistrer',
-                onPressed: _save,
-                icon: Icons.check_circle_outline,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

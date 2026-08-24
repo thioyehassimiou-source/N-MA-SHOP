@@ -25,3 +25,18 @@ final updateProductUseCaseProvider = Provider<UpdateProductUseCase>(
 final productsStreamProvider = StreamProvider<List<Product>>(
   (ref) => ref.watch(productCatalogRepositoryProvider).watchAll(),
 );
+
+/// Nombre de produits en alerte de stock bas (seuil atteint ou rupture).
+/// Exposé à la sidebar et aux écrans pour afficher un badge.
+final lowStockCountProvider = StreamProvider<int>((ref) {
+  return ref.watch(productsStreamProvider.stream).map(
+    (products) => products
+        .where(
+          (p) =>
+              p.isActive &&
+              p.lowStockThreshold > 0 &&
+              p.stockQuantity <= p.lowStockThreshold,
+        )
+        .length,
+  );
+});

@@ -4,12 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/domain/payment_method.dart';
 import '../../../core/format/formatters.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_form_dialog.dart';
+import '../../../core/widgets/app_form_field.dart';
 import '../../stock/application/stock_providers.dart';
 import '../../stock/domain/entities/product.dart';
 import '../application/purchase_cart_controller.dart';
@@ -497,30 +498,26 @@ class _CartLineTile extends ConsumerWidget {
     final controller = TextEditingController(text: line.unitPrice.toString());
     return showDialog<int>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Modifier le prix d\'achat'),
-        content: TextField(
+      builder: (ctx) => AppFormDialog(
+        title: 'Modifier le prix d\'achat',
+        subtitle: 'Ajuster le prix pour ce produit',
+        icon: Icons.edit_outlined,
+        gradientColors: const [Color(0xFF6366F1), Color(0xFF4F46E5)],
+        width: 400,
+        primaryLabel: 'Valider',
+        primaryIcon: Icons.check_circle_outline,
+        onCancel: () => Navigator.pop(ctx),
+        onPrimary: () {
+          final val = int.tryParse(controller.text);
+          Navigator.pop(ctx, val);
+        },
+        body: AppFormField(
+          label: 'Prix Unitaire (GNF)',
           controller: controller,
+          icon: Icons.payments_outlined,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Prix Unitaire (GNF) *',
-            border: OutlineInputBorder(),
-          ),
-          autofocus: true,
+          isRequired: true,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final val = int.tryParse(controller.text);
-              Navigator.pop(ctx, val);
-            },
-            child: const Text('Valider'),
-          ),
-        ],
       ),
     );
   }
@@ -575,35 +572,25 @@ class _CartFooterState extends State<_CartFooter> {
       mainAxisSize: MainAxisSize.min,
       children: [
         // Fournisseur
-        TextField(
+        AppFormField(
+          label: 'Nom du fournisseur',
           controller: _supplierCtrl,
-          decoration: InputDecoration(
-            labelText: 'Nom du fournisseur *',
-            prefixIcon: const Icon(Icons.store_outlined, size: 18),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-            ),
-            isDense: true,
-          ),
-          style: AppTypography.bodySm,
+          icon: Icons.store_outlined,
+          isRequired: true,
           onChanged: widget.ctrl.setSupplierName,
         ),
         const SizedBox(height: AppSpacing.base),
 
         // Acompte + méthode
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: TextField(
+              child: AppFormField(
+                label: 'Acompte versé (GNF)',
                 controller: _amountCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Acompte versé (GNF) *',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                  ),
-                  isDense: true,
-                ),
-                style: AppTypography.bodySm,
+                icon: Icons.payments_outlined,
+                isRequired: true,
                 keyboardType: TextInputType.number,
                 onChanged: (v) =>
                     widget.ctrl.setAmountPaid(int.tryParse(v) ?? 0),

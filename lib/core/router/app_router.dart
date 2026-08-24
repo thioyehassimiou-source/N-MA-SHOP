@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/license/license_provider.dart';
 import '../../features/auth/application/auth_providers.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/business/presentation/business_summary_screen.dart';
@@ -25,6 +26,8 @@ import '../../features/deliveries/presentation/deliveries_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/equipe/presentation/equipe_screen.dart';
 import '../../features/security/presentation/audit_logs_screen.dart';
+import '../../features/help/presentation/help_screen.dart';
+import '../../features/license/presentation/license_gate_screen.dart';
 import '../providers/app_settings_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -40,42 +43,48 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(accountExistsProvider, (previous, next) {
     notifier.value = !notifier.value;
   });
+  ref.listen(licenseProvider, (previous, next) {
+    notifier.value = !notifier.value;
+  });
 
   return GoRouter(
     initialLocation: '/',
     refreshListenable: notifier,
     redirect: (context, state) {
-      // Une boutique « existe » dès qu'un compte est en base OU que la
-      // configuration a été menée à son terme. Ces deux signaux sont écrits
-      // ensemble à la création, mais s'appuyer sur l'existence du compte évite
-      // de forcer une re-création si le drapeau des préférences était perdu.
+      final location = state.matchedLocation;
+
+      // ── 0. Priorité absolue : vérification de la licence ──────────────────
+      final license = ref.read(licenseProvider);
+      if (license.isExpired) {
+        return location == '/licence' ? null : '/licence';
+      }
+      // Si la licence est OK et qu'on est sur /licence, rediriger
+      if (location == '/licence') return '/';
+
+      // ── 1. Aucune boutique configurée ─────────────────────────────────────
       final shopExists =
           ref.read(accountExistsProvider) ||
           ref.read(appSettingsProvider).isSetupCompleted;
       final isSignedIn = ref.read(authProvider) != null;
-      final location = state.matchedLocation;
 
       const setupRoutes = {'/onboarding', '/setup'};
 
-      // 1. Aucune boutique : le parcours d'accueil (découverte, configuration, connexion)
-      //    est accessible.
       if (!shopExists) {
         const allowedRoutes = {'/onboarding', '/setup', '/connexion'};
         return allowedRoutes.contains(location) ? null : '/onboarding';
       }
 
-      // 2. Une boutique existe mais l'application est verrouillée : on ouvre la
-      //    boutique existante par le déverrouillage.
+      // ── 2. Boutique existante mais verrouillée ────────────────────────────
       if (!isSignedIn) {
         return location == '/connexion' ? null : '/connexion';
       }
 
-      // 3. Application déverrouillée : ces écrans n'ont plus lieu d'être.
+      // ── 3. Déverrouillé : écrans d'accueil inutiles ───────────────────────
       if (setupRoutes.contains(location) || location == '/connexion') {
         return '/';
       }
 
-      // 4. Bloquer l'accès à l'équipe pour les vendeurs
+      // ── 4. Bloquer l'accès à l'équipe pour les vendeurs ───────────────────
       final user = ref.read(authProvider);
       if (user != null && user.role.name == 'cashier' && location == '/equipe') {
         return '/';
@@ -84,6 +93,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/licence',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: LicenseGateScreen()),
+      ),
       GoRoute(
         path: '/onboarding',
         pageBuilder: (context, state) =>
@@ -193,6 +207,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/settings/audit',
             pageBuilder: (c, s) =>
                 const NoTransitionPage(child: AuditLogsScreen()),
+          ),
+          GoRoute(
+            path: '/aide',
+            pageBuilder: (c, s) =>
+                const NoTransitionPage(child: HelpScreen()),
           ),
         ],
       ),

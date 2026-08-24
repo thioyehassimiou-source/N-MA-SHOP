@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 
+import 'dart:io';
+
 import '../../../core/format/formatters.dart';
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/services/pdf_receipt_service.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../stock/application/stock_providers.dart';
@@ -189,8 +190,17 @@ class _NewInvoiceDialogState extends ConsumerState<NewInvoiceDialog> {
                                         color: context.colors.primaryContainer,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: Icon(Icons.inventory_2_outlined,
-                                          size: 18, color: context.colors.primary),
+                                      child: p.imageUrl != null
+                                          ? ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Image.file(
+                                                File(p.imageUrl!),
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => Icon(Icons.inventory_2_outlined, size: 18, color: context.colors.primary),
+                                              ),
+                                            )
+                                          : Icon(Icons.inventory_2_outlined,
+                                              size: 18, color: context.colors.primary),
                                     ),
                                     title: Text(p.name, style: AppTypography.labelSm),
                                     subtitle: Text(formatGnf(p.salePrice),

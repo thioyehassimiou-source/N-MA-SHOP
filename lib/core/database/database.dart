@@ -47,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -133,6 +133,10 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 14) {
             await m.createTable(auditLogs);
+          }
+          if (from < 15) {
+            // Ajout du champ code-barres pour le scan caméra POS.
+            await m.addColumn(products, products.barcode);
           }
         },
         beforeOpen: (details) async {

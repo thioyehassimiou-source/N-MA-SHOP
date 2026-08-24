@@ -4,11 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/providers/database_provider.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../application/auth_providers.dart';
 import '../domain/repositories/auth_repository.dart';
 import 'widgets/auth_layout.dart';
+import '../../../core/widgets/app_form_dialog.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
 
@@ -67,23 +67,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _confirmReset() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Réinitialiser la boutique ?'),
-        content: const Text(
-          'Cette action supprime toutes les données (ventes, stock, compte administrateur).'
-          '\n\nCette opération est irréversible.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.colors.error),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Réinitialiser'),
-          ),
-        ],
+      builder: (ctx) => AppFormDialog(
+        title: 'Réinitialiser la boutique ?',
+        subtitle: 'Cette action supprime toutes les données (ventes, stock, compte administrateur).\n\nCette opération est irréversible.',
+        icon: Icons.warning_amber_rounded,
+        gradientColors: const [Color(0xFFDC2626), Color(0xFFEF4444)],
+        width: 450,
+        primaryLabel: 'Réinitialiser',
+        primaryIcon: Icons.delete_forever,
+        onCancel: () => Navigator.of(ctx).pop(false),
+        onPrimary: () => Navigator.of(ctx).pop(true),
+        body: const SizedBox.shrink(),
       ),
     );
 
@@ -117,7 +111,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return AuthLayout(
       title: 'Content de vous revoir',
       subtitle: 'Saisissez vos identifiants pour ouvrir $businessName.',
-      pitch: 'Votre boutique\nvous attend.',
+      pitch: 'Gérez votre boutique\ncomme un pro.',
       child: Form(
         key: _formKey,
         child: Column(
@@ -200,13 +194,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Center(
+              Center(
               child: TextButton.icon(
                 onPressed: _confirmReset,
                 icon: const Icon(Icons.refresh_rounded, size: 16),
                 label: const Text('Reconfigurer / Nouvelle boutique'),
                 style: TextButton.styleFrom(
-                  foregroundColor: context.colors.outline,
+                  foregroundColor: context.colors.onSurfaceVariant,
                   textStyle: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,

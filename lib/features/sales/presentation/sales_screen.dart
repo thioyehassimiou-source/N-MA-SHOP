@@ -17,7 +17,11 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_chip.dart';
+import '../../../core/widgets/app_metric_card.dart';
 import '../../../core/widgets/app_page_header.dart';
+import '../../../core/widgets/barcode_scanner_dialog.dart';
+import '../../../core/widgets/app_form_dialog.dart';
+import '../../../core/widgets/app_form_field.dart';
 import '../../stock/application/stock_providers.dart';
 import '../../stock/domain/entities/product.dart';
 import '../application/sale_cart_controller.dart';
@@ -174,32 +178,84 @@ class _ProductPickerState extends ConsumerState<_ProductPicker> {
         ),
         const SizedBox(height: AppSpacing.md),
 
-        // ── Barre de recherche ──
-        AppCard(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs,
-          ),
-          child: TextField(
-            decoration: InputDecoration(
-              prefixIcon: Icon(
-                Icons.search,
-                color: theme.colorScheme.onSurfaceVariant,
-                size: 20,
-              ),
-              hintText: 'Rechercher un produit…',
-              hintStyle: AppTypography.bodySm.copyWith(
-                color: context.colors.onSurfaceVariant,
-              ),
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: AppSpacing.base,
+        // ── Barre de recherche + Bouton scan ──
+        Row(
+          children: [
+            Expanded(
+              child: AppCard(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
+                child: TextField(
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      size: 20,
+                    ),
+                    hintText: 'Rechercher un produit…',
+                    hintStyle: AppTypography.bodySm.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.base,
+                    ),
+                  ),
+                  style: AppTypography.bodySm,
+                  onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                ),
               ),
             ),
-            style: AppTypography.bodySm,
-            onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
-          ),
+            const SizedBox(width: AppSpacing.sm),
+            // Bouton scan code-barres
+            Tooltip(
+              message: 'Scanner un code-barres',
+              child: AppCard(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                child: InkWell(
+                  onTap: () async {
+                    final code = await BarcodeScannerDialog.show(context);
+                    if (code != null && code.isNotEmpty && context.mounted) {
+                      // Cherche le produit
+                      final products = ref.read(productsStreamProvider).valueOrNull ?? [];
+                      final match = products.where((p) => p.isActive && p.barcode == code).firstOrNull;
+                      if (match != null) {
+                        ref.read(saleCartControllerProvider.notifier).addProduct(match);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('✅ ${match.name} ajouté au panier'),
+                            backgroundColor: Colors.green,
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      } else {
+                         ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('❌ Code inconnu : $code'),
+                            backgroundColor: theme.colorScheme.error,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(
+                      Icons.qr_code_scanner_rounded,
+                      size: 24,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.md),
 
@@ -219,7 +275,9 @@ class _ProductPickerState extends ConsumerState<_ProductPicker> {
                     (p) =>
                         p.isActive &&
                         (_query.isEmpty ||
-                            p.name.toLowerCase().contains(_query)),
+                            p.name.toLowerCase().contains(_query) ||
+                            (p.reference != null && p.reference!.toLowerCase().contains(_query)) ||
+                            (p.barcode != null && p.barcode!.toLowerCase() == _query)),
                   )
                   .toList();
               if (visible.isEmpty) {
@@ -684,23 +742,23 @@ class _SubmitButton extends ConsumerWidget {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-          ),
-          backgroundColor: context.colors.surfaceContainerLowest,
-          title: Row(
-            children: [
-              Icon(
-                Icons.check_circle,
-                color: context.colors.primary,
-                size: 24,
-              ),
-              SizedBox(width: AppSpacing.sm),
-              Expanded(child: Text('Vente enregistrée !')),
-            ],
-          ),
-          content: Column(
+        return AppFormDialog(
+          title: 'Vente enregistrée !',
+          subtitle: 'Souhaitez-vous imprimer ou exporter le reçu PDF ?',
+          icon: Icons.check_circle_outline,
+          gradientColors: const [Color(0xFF10B981), Color(0xFF059669)],
+          width: 400,
+          primaryLabel: 'Imprimer / PDF',
+          primaryIcon: Icons.print_outlined,
+          onPrimary: () {
+            Navigator.of(dialogContext).pop();
+            Printing.layoutPdf(
+              name: 'Recu_${receiptData.reference}',
+              onLayout: (_) => PdfReceiptService.generateReceiptPdf(receiptData),
+            );
+          },
+          onCancel: () => Navigator.of(dialogContext).pop(),
+          body: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -723,32 +781,8 @@ class _SubmitButton extends ConsumerWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Souhaitez-vous imprimer ou exporter le reçu PDF ?',
-                style: AppTypography.bodySm.copyWith(
-                  color: context.colors.onSurfaceVariant,
-                ),
-              ),
             ],
           ),
-          actions: [
-            AppButton.secondary(
-              label: 'Fermer',
-              onPressed: () => Navigator.of(dialogContext).pop(),
-            ),
-            AppButton(
-              icon: Icons.print_outlined,
-              label: 'Imprimer / Reçu PDF',
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                Printing.layoutPdf(
-                  name: 'Recu_${receiptData.reference}',
-                  onLayout: (_) => PdfReceiptService.generateReceiptPdf(receiptData),
-                );
-              },
-            ),
-          ],
         );
       },
     );
@@ -784,13 +818,24 @@ class _CartLineTile extends ConsumerWidget {
               color: theme.colorScheme.surfaceContainer,
               borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
-            child: Icon(
-              Icons.inventory_2_outlined,
-              size: 16,
-              color: hasIssue
-                  ? theme.colorScheme.error
-                  : theme.colorScheme.primary,
-            ),
+            child: line.imageUrl != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    child: Image.file(
+                      File(line.imageUrl!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.inventory_2_outlined,
+                        size: 16,
+                        color: hasIssue ? theme.colorScheme.error : theme.colorScheme.primary,
+                      ),
+                    ),
+                  )
+                : Icon(
+                    Icons.inventory_2_outlined,
+                    size: 16,
+                    color: hasIssue ? theme.colorScheme.error : theme.colorScheme.primary,
+                  ),
           ),
           const SizedBox(width: AppSpacing.base),
 
@@ -910,11 +955,35 @@ class _QtyBtn extends StatelessWidget {
 
 // ─────────────────────────── Sélecteur de paiement ───────────────────────────
 
-class _PaymentSelector extends StatelessWidget {
+class _PaymentSelector extends StatefulWidget {
   const _PaymentSelector({required this.state, required this.controller});
 
   final SaleCartState state;
   final SaleCartController controller;
+
+  @override
+  State<_PaymentSelector> createState() => _PaymentSelectorState();
+}
+
+class _PaymentSelectorState extends State<_PaymentSelector> {
+  // Contrôleurs persistants : les champs ne se vident pas lors du changement
+  // de méthode de paiement.
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _phoneCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.state.customerName);
+    _phoneCtrl = TextEditingController(text: widget.state.customerPhone);
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
 
   static const _methods = {
     PaymentMethod.cash: (Icons.payments_outlined, 'Espèces'),
@@ -925,6 +994,9 @@ class _PaymentSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final state = widget.state;
+    final controller = widget.controller;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -950,31 +1022,20 @@ class _PaymentSelector extends StatelessWidget {
         ),
         if (state.isCredit) ...[
           const SizedBox(height: AppSpacing.md),
-          TextField(
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.person_outline, size: 18),
-              labelText: 'Nom du client *',
-              hintText: 'Ex : Mamadou Diallo',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
-              isDense: true,
-            ),
-            style: AppTypography.bodySm,
+          AppFormField(
+            label: 'Nom du client',
+            controller: _nameCtrl,
+            icon: Icons.person_outline,
+            hint: 'Ex : Mamadou Diallo',
+            isRequired: true,
             onChanged: controller.setCustomerName,
           ),
           const SizedBox(height: AppSpacing.sm),
-          TextField(
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.phone_outlined, size: 18),
-              labelText: 'Numéro de téléphone (WhatsApp)',
-              hintText: 'Ex : 622 12 34 56',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
-              isDense: true,
-            ),
-            style: AppTypography.bodySm,
+          AppFormField(
+            label: 'Numéro de téléphone (WhatsApp)',
+            controller: _phoneCtrl,
+            icon: Icons.phone_outlined,
+            hint: 'Ex : 622 12 34 56',
             keyboardType: TextInputType.phone,
             onChanged: controller.setCustomerPhone,
           ),

@@ -18,6 +18,7 @@ class CartLine {
     required this.unitPrice,
     required this.quantity,
     required this.availableStock,
+    this.imageUrl,
   });
 
   final String productId;
@@ -26,6 +27,7 @@ class CartLine {
   final int unitPrice;
   final int quantity;
   final int availableStock;
+  final String? imageUrl;
 
   int get lineTotal => unitPrice * quantity;
   bool get exceedsStock => quantity > availableStock;
@@ -37,6 +39,7 @@ class CartLine {
     unitPrice: unitPrice ?? this.unitPrice,
     quantity: quantity ?? this.quantity,
     availableStock: availableStock,
+    imageUrl: imageUrl,
   );
 }
 
@@ -98,6 +101,7 @@ class SaleCartController extends Notifier<SaleCartState> {
           unitPrice: product.salePrice,
           quantity: 1,
           availableStock: product.stockQuantity,
+          imageUrl: product.imageUrl,
         ),
       );
     }

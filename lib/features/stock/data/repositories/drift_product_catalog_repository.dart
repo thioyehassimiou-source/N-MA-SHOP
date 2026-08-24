@@ -35,6 +35,7 @@ class DriftProductCatalogRepository implements ProductCatalogRepository {
               weightedAverageCost: r.weightedAverageCost,
               isActive: r.isActive,
               imageUrl: r.imageUrl,
+              barcode: r.barcode,
               createdAt: r.createdAt,
             ),
           )
@@ -57,6 +58,7 @@ class DriftProductCatalogRepository implements ProductCatalogRepository {
             stockQuantity: Value(draft.stockQuantity),
             lowStockThreshold: Value(draft.lowStockThreshold),
             imageUrl: Value(draft.imageUrl),
+            barcode: Value(draft.barcode),
             // Le CMP initial s'aligne sur le prix d'achat.
             weightedAverageCost: Value(draft.purchasePrice),
           ),
@@ -75,6 +77,7 @@ class DriftProductCatalogRepository implements ProductCatalogRepository {
         stockQuantity: Value(draft.stockQuantity),
         lowStockThreshold: Value(draft.lowStockThreshold),
         imageUrl: Value(draft.imageUrl),
+        barcode: Value(draft.barcode),
       ),
     );
   }

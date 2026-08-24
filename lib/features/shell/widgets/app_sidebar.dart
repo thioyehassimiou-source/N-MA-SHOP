@@ -5,8 +5,17 @@ import 'dart:io';
 
 import '../../../core/providers/app_settings_provider.dart';
 import '../../auth/application/auth_providers.dart';
+import '../../stock/application/stock_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+
+// ── Couleurs de marque N'MaShop (Sidebar fixes) ──────────────────────────────
+const _kNavy = Color(0xFF0F1B3D);
+const _kNavyDark = Color(0xFF0D1830);
+const _kOrange = Color(0xFFE85D04);
+const _kOrangeLight = Color(0xFFFF7A2A);
+const _kBlueText = Color(0xFF8899BB);
+const _kSectionLabel = Color(0xFF5570A0);
 
 class NavDestination {
   const NavDestination({
@@ -123,6 +132,17 @@ class AppSidebar extends ConsumerWidget {
     final location = GoRouterState.of(context).matchedLocation;
     final settings = ref.watch(appSettingsProvider);
     final user = ref.watch(authProvider);
+    final useCustom = settings.useCustomTheme;
+    final colors = Theme.of(context).colorScheme;
+
+    // Définition des couleurs selon le mode
+    final sidebarBg = useCustom ? colors.surface : null;
+    final sidebarBorder = useCustom ? colors.outlineVariant : Colors.white.withValues(alpha: 0.08);
+    final logoBg = useCustom ? colors.primaryContainer : _kOrange;
+    final logoShadow = useCustom ? colors.primary.withValues(alpha: 0.2) : _kOrange.withValues(alpha: 0.4);
+    final logoIcon = useCustom ? colors.primary : Colors.white;
+    final titleColor = useCustom ? colors.onSurface : Colors.white;
+    final subtitleColor = useCustom ? colors.onSurfaceVariant : _kBlueText;
 
     bool isActive(String path) =>
         path == '/' ? location == '/' : location.startsWith(path);
@@ -136,38 +156,75 @@ class AppSidebar extends ConsumerWidget {
 
     return Container(
       width: 240,
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        border: Border(
-          right: BorderSide(color: context.colors.outlineVariant, width: 1),
-        ),
-      ),
+      decoration: useCustom
+          ? BoxDecoration(
+              color: sidebarBg,
+              border: Border(right: BorderSide(color: sidebarBorder, width: 1)),
+            )
+          : const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [_kNavy, _kNavyDark],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x50000000),
+                  blurRadius: 20,
+                  offset: Offset(4, 0),
+                ),
+              ],
+            ),
       child: Column(
         children: [
           // ── Logo & Marque ───────────────────────────────────────────────
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: sidebarBorder,
+                  width: 1,
+                ),
+              ),
+            ),
             child: Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
-                    color: context.colors.primaryContainer,
-                    borderRadius: BorderRadius.circular(10),
+                    color: settings.logoPath != null ? logoBg : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
                     image: settings.logoPath != null
                         ? DecorationImage(
                             image: FileImage(File(settings.logoPath!)),
                             fit: BoxFit.cover,
                           )
                         : null,
+                    boxShadow: settings.logoPath != null
+                        ? [
+                            BoxShadow(
+                              color: logoShadow,
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
                   ),
                   child: settings.logoPath == null
-                      ? Center(
-                          child: Icon(
-                            Icons.storefront_rounded,
-                            color: context.colors.primary,
-                            size: 22,
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            'assets/images/nmashop_logo_official.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Icon(
+                                Icons.storefront_rounded,
+                                color: logoIcon,
+                                size: 22,
+                              ),
+                            ),
                           ),
                         )
                       : null,
@@ -180,9 +237,9 @@ class AppSidebar extends ConsumerWidget {
                       Text(
                         settings.businessName.isNotEmpty
                             ? settings.businessName
-                            : "N'MaShop",
+                            : "N'MA Shop",
                         style: TextStyle(
-                          color: context.colors.onSurface,
+                          color: titleColor,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.3,
@@ -191,11 +248,12 @@ class AppSidebar extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        'Gestion Commerciale',
+                        'GÉRER • VENDRE • GRANDIR',
                         style: TextStyle(
-                          color: context.colors.onSurfaceVariant,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                          color: subtitleColor,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
@@ -204,7 +262,6 @@ class AppSidebar extends ConsumerWidget {
               ],
             ),
           ),
-          Divider(height: 1, color: context.colors.outlineVariant),
           // ── Navigation ─────────────────────────────────────────────────
           Expanded(
             child: SingleChildScrollView(
@@ -212,17 +269,17 @@ class AppSidebar extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SectionLabel(label: 'MENU PRINCIPAL'),
+                  const _SectionLabel(label: 'MENU PRINCIPAL'),
                   for (final d in _mainDestinations.take(5))
                     if (destinations.contains(d))
                       _NavItem(destination: d, active: isActive(d.path)),
-                  const SizedBox(height: 8),
-                  _SectionLabel(label: 'GESTION'),
+                  const SizedBox(height: 4),
+                  const _SectionLabel(label: 'GESTION'),
                   for (final d in _mainDestinations.skip(5).take(5))
                     if (destinations.contains(d))
                       _NavItem(destination: d, active: isActive(d.path)),
-                  const SizedBox(height: 8),
-                  _SectionLabel(label: 'OUTILS'),
+                  const SizedBox(height: 4),
+                  const _SectionLabel(label: 'OUTILS'),
                   for (final d in _mainDestinations.skip(10))
                     if (destinations.contains(d))
                       _NavItem(destination: d, active: isActive(d.path)),
@@ -231,29 +288,43 @@ class AppSidebar extends ConsumerWidget {
             ),
           ),
           // ── Profil ─────────────────────────────────────────────────────
-          Divider(height: 1, color: context.colors.outlineVariant),
-          const _SidebarProfile(),
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: const _SidebarProfile(),
+          ),
         ],
       ),
     );
   }
 }
 
-class _SectionLabel extends StatelessWidget {
+class _SectionLabel extends ConsumerWidget {
   const _SectionLabel({required this.label});
   final String label;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final useCustom = ref.watch(appSettingsProvider).useCustomTheme;
+    final color = useCustom
+        ? Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8)
+        : _kSectionLabel;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
       child: Text(
         label,
         style: TextStyle(
-          color: context.colors.onSurfaceVariant,
-          fontSize: 11,
+          color: color,
+          fontSize: 10,
           fontWeight: FontWeight.w700,
-          letterSpacing: 1.2,
+          letterSpacing: 1.4,
         ),
       ),
     );
@@ -266,11 +337,23 @@ class _SidebarProfile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider);
+    final settings = ref.watch(appSettingsProvider);
+    final useCustom = settings.useCustomTheme;
+    final colors = Theme.of(context).colorScheme;
+
+    final bgColor = useCustom ? colors.primaryContainer : _kOrange.withValues(alpha: 0.2);
+    final borderColor = useCustom ? colors.primary.withValues(alpha: 0.3) : _kOrange.withValues(alpha: 0.5);
+    final initialColor = useCustom ? colors.primary : _kOrangeLight;
+    final nameColor = useCustom ? colors.onSurface : Colors.white;
+    final roleColor = useCustom ? colors.onSurfaceVariant : _kBlueText;
+    final logoutColor = useCustom ? colors.onSurfaceVariant : Colors.white.withValues(alpha: 0.4);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: InkWell(
         onTap: () => context.go('/reglages'),
         borderRadius: BorderRadius.circular(10),
+        hoverColor: useCustom ? colors.onSurface.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05),
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Row(
@@ -279,14 +362,18 @@ class _SidebarProfile extends ConsumerWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: context.colors.primaryContainer,
+                  color: bgColor,
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: borderColor,
+                    width: 1,
+                  ),
                 ),
                 child: Center(
                   child: Text(
                     user?.initials ?? '?',
                     style: TextStyle(
-                      color: context.colors.primary,
+                      color: initialColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -301,7 +388,7 @@ class _SidebarProfile extends ConsumerWidget {
                     Text(
                       user?.fullName ?? 'Boutiquier',
                       style: TextStyle(
-                        color: context.colors.onSurface,
+                        color: nameColor,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -309,9 +396,9 @@ class _SidebarProfile extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      user?.role.name == 'admin' ? 'Admin' : 'Vendeur',
+                      user?.role.name == 'admin' ? 'Administrateur' : 'Vendeur',
                       style: TextStyle(
-                        color: context.colors.onSurfaceVariant,
+                        color: roleColor,
                         fontSize: 11,
                       ),
                     ),
@@ -323,7 +410,11 @@ class _SidebarProfile extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(20),
                 child: Padding(
                   padding: const EdgeInsets.all(4.0),
-                  child: Icon(Icons.logout_rounded, color: context.colors.onSurfaceVariant, size: 18),
+                  child: Icon(
+                    Icons.logout_rounded,
+                    color: logoutColor,
+                    size: 18,
+                  ),
                 ),
               ),
             ],
@@ -331,58 +422,121 @@ class _SidebarProfile extends ConsumerWidget {
         ),
       ),
     );
-
   }
 }
 
-class _NavItem extends StatelessWidget {
+class _NavItem extends ConsumerWidget {
   const _NavItem({required this.destination, required this.active});
 
   final NavDestination destination;
   final bool active;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(appSettingsProvider);
+    final useCustom = settings.useCustomTheme;
+    final colors = Theme.of(context).colorScheme;
+
+    final hoverColor = useCustom ? colors.onSurface.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.06);
+    final splashColor = useCustom ? colors.primary.withValues(alpha: 0.1) : _kOrange.withValues(alpha: 0.15);
+    final activeBgColor = useCustom ? colors.primaryContainer.withValues(alpha: 0.6) : _kOrange.withValues(alpha: 0.15);
+    final activeBorderColor = useCustom ? colors.primary.withValues(alpha: 0.2) : _kOrange.withValues(alpha: 0.3);
+    final indicatorColor = useCustom ? colors.primary : _kOrange;
+    final iconColorActive = useCustom ? colors.primary : _kOrange;
+    final iconColorInactive = useCustom ? colors.onSurfaceVariant : const Color(0xFF8899BB);
+    final textColorActive = useCustom ? colors.primary : Colors.white;
+    final textColorInactive = useCustom ? colors.onSurface : const Color(0xFFAABBCC);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: () => context.go(destination.path),
           borderRadius: BorderRadius.circular(8),
-          hoverColor: context.colors.primaryContainer.withValues(alpha: 0.5),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          hoverColor: hoverColor,
+          splashColor: splashColor,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: active ? context.colors.primaryContainer : Colors.transparent,
+              color: active ? activeBgColor : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
+              border: active
+                  ? Border.all(
+                      color: activeBorderColor,
+                      width: 1,
+                    )
+                  : Border.all(color: Colors.transparent, width: 1),
             ),
             child: Row(
               children: [
+                // Indicateur de barre active
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 3,
+                  height: active ? 20 : 0,
+                  decoration: BoxDecoration(
+                    color: indicatorColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(width: active ? 10 : 0),
                 Icon(
                   active
                       ? (destination.iconSelected ?? destination.icon)
                       : destination.icon,
-                  color: active ? context.colors.primary : context.colors.onSurface,
-                  size: 22,
+                  color: active ? iconColorActive : iconColorInactive,
+                  size: 20,
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     destination.label,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                      color: active ? context.colors.primary : context.colors.onSurface,
+                      fontSize: 13.5,
+                      fontWeight: active ? FontWeight.w600 : (useCustom ? FontWeight.w500 : FontWeight.w400),
+                      color: active ? textColorActive : textColorInactive,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                // Badge alerte stock bas
+                if (destination.path == '/produits')
+                  _LowStockBadge(),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Badge Alerte Stock ─────────────────────────────────────────────────────
+class _LowStockBadge extends ConsumerWidget {
+  const _LowStockBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(lowStockCountProvider).valueOrNull ?? 0;
+    if (count == 0) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(left: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEF4444),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

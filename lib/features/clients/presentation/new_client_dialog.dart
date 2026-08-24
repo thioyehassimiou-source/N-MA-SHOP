@@ -5,9 +5,9 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/database/database.dart';
 import '../../../core/providers/database_provider.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_form_dialog.dart';
+import '../../../core/widgets/app_form_field.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
 
@@ -31,6 +31,9 @@ class _NewClientDialogState extends ConsumerState<NewClientDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   late final TextEditingController _addressController;
+  bool _saving = false;
+
+  bool get _isEdit => widget.existingClient != null;
 
   @override
   void initState() {
@@ -52,104 +55,98 @@ class _NewClientDialogState extends ConsumerState<NewClientDialog> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
+    setState(() => _saving = true);
+
     final db = ref.read(databaseProvider);
     
-    if (widget.existingClient == null) {
-      // Create new
-      await db.into(db.customers).insert(
-            CustomersCompanion.insert(
-              id: const Uuid().v4(),
-              name: name,
-              phone: Value(_phoneController.text.trim().isEmpty ? null : _phoneController.text.trim()),
-              address: Value(_addressController.text.trim().isEmpty ? null : _addressController.text.trim()),
-            ),
-          );
-    } else {
-      // Update existing
-      await (db.update(db.customers)..where((c) => c.id.equals(widget.existingClient!.id))).write(
-        CustomersCompanion(
-          name: Value(name),
-          phone: Value(_phoneController.text.trim().isEmpty ? null : _phoneController.text.trim()),
-          address: Value(_addressController.text.trim().isEmpty ? null : _addressController.text.trim()),
-        ),
-      );
-    }
+    try {
+      if (widget.existingClient == null) {
+        // Create new
+        await db.into(db.customers).insert(
+              CustomersCompanion.insert(
+                id: const Uuid().v4(),
+                name: name,
+                phone: Value(_phoneController.text.trim().isEmpty ? null : _phoneController.text.trim()),
+                address: Value(_addressController.text.trim().isEmpty ? null : _addressController.text.trim()),
+              ),
+            );
+      } else {
+        // Update existing
+        await (db.update(db.customers)..where((c) => c.id.equals(widget.existingClient!.id))).write(
+          CustomersCompanion(
+            name: Value(name),
+            phone: Value(_phoneController.text.trim().isEmpty ? null : _phoneController.text.trim()),
+            address: Value(_addressController.text.trim().isEmpty ? null : _addressController.text.trim()),
+          ),
+        );
+      }
 
-    if (mounted) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.existingClient == null ? 'Client ajouté ✓' : 'Client modifié ✓')),
-      );
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_isEdit ? 'Client modifié ✓' : 'Client ajouté ✓')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: context.colors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 400,
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.person_add_outlined, color: context.colors.primary),
-                const SizedBox(width: AppSpacing.md),
-                Text(
-                  widget.existingClient == null ? 'Nouveau Client' : 'Modifier le client',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return AppFormDialog(
+      title: _isEdit ? 'Modifier le Client' : 'Nouveau Client',
+      subtitle: _isEdit
+          ? 'Mise à jour des informations client'
+          : 'Ajouter un nouveau client à votre répertoire',
+      icon: Icons.person_add_outlined,
+      gradientColors: const [Color(0xFF3B82F6), Color(0xFF6366F1)],
+      primaryLabel: 'Enregistrer',
+      primaryIcon: Icons.check_circle_outline,
+      onPrimary: _saving ? null : _save,
+      isPrimaryLoading: _saving,
+      sections: [
+        FormSection(
+          title: 'Informations Personnelles',
+          icon: Icons.person_outline,
+          child: Column(
+            children: [
+              AppFormField(
+                label: 'Nom complet',
+                hint: 'Ex: Mamadou Diallo',
+                controller: _nameController,
+                icon: Icons.person_outline,
+                isRequired: true,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FormFieldRow(
+                left: AppFormField(
+                  label: 'Téléphone',
+                  hint: 'Ex: 621 00 00 00',
+                  controller: _phoneController,
+                  icon: Icons.phone_outlined,
+                  keyboardType: TextInputType.phone,
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
+                right: AppFormField(
+                  label: 'Adresse / Localisation',
+                  hint: 'Ex: Kaloum, Conakry',
+                  controller: _addressController,
+                  icon: Icons.location_on_outlined,
                 ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Nom complet *',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person_outline),
               ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: _phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Téléphone',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.phone_outlined),
-              ),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: _addressController,
-              decoration: const InputDecoration(
-                labelText: 'Adresse / Localisation',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.location_on_outlined),
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            SizedBox(
-              width: double.infinity,
-              child: AppButton(
-                label: 'Enregistrer',
-                onPressed: _save,
-                icon: Icons.check_circle_outline,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

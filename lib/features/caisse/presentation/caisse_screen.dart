@@ -8,6 +8,8 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/app_metric_card.dart';
 import '../../../core/widgets/app_page_header.dart';
+import '../../../core/widgets/app_form_dialog.dart';
+import '../../../core/widgets/app_form_field.dart';
 import '../application/caisse_providers.dart';
 import '../data/repositories/drift_caisse_repository.dart';
 import '../../../core/domain/payment_method.dart';
@@ -294,80 +296,78 @@ class _CaisseScreenState extends ConsumerState<CaisseScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isInflow ? 'Nouvelle Entrée de Caisse' : 'Nouveau Décaissement'),
-        content: Column(
+      builder: (ctx) => AppFormDialog(
+        title: isInflow ? 'Nouvelle Entrée de Caisse' : 'Nouveau Décaissement',
+        subtitle: 'Enregistrez un nouveau mouvement de caisse',
+        icon: isInflow ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+        gradientColors: isInflow
+            ? const [Color(0xFF10B981), Color(0xFF059669)]
+            : const [Color(0xFFDC2626), Color(0xFFEF4444)],
+        width: 450,
+        primaryLabel: 'Enregistrer',
+        primaryIcon: Icons.save_outlined,
+        onCancel: () => Navigator.pop(ctx),
+        onPrimary: () async {
+          final desc = descController.text.trim();
+          final amountStr = amountController.text.trim();
+          if (desc.isEmpty || amountStr.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Veuillez remplir tous les champs')),
+            );
+            return;
+          }
+
+          final amount = int.tryParse(amountStr);
+          if (amount == null || amount <= 0) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Le montant doit être valide')),
+            );
+            return;
+          }
+
+          // Enregistrement via le repository
+          await ref.read(caisseRepositoryProvider).insertMovement(
+                type: isInflow ? CashMovementType.inflow : CashMovementType.outflow,
+                description: desc,
+                amount: amount,
+                paymentMethod: PaymentMethod.cash, // On suppose espèces par défaut pour la caisse
+              );
+
+          // Invalider le provider pour rafraîchir les données
+          ref.invalidate(caisseDataProvider);
+
+          if (context.mounted) {
+            Navigator.pop(ctx);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  isInflow ? 'Entrée enregistrée avec succès' : 'Décaissement enregistré avec succès',
+                ),
+              ),
+            );
+          }
+        },
+        body: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
+            AppFormField(
+              label: 'Motif / Description',
               controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Motif / Description *',
-                hintText: 'ex: Apport initial, Frais de transport...',
-              ),
+              icon: Icons.description_outlined,
+              hint: 'ex: Apport initial, Frais de transport...',
+              isRequired: true,
             ),
-            const SizedBox(height: 16),
-            TextField(
+            const SizedBox(height: AppSpacing.md),
+            AppFormField(
+              label: 'Montant (GNF)',
               controller: amountController,
+              icon: Icons.payments_outlined,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Montant (GNF) *',
-              ),
+              isRequired: true,
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final desc = descController.text.trim();
-              final amountStr = amountController.text.trim();
-              if (desc.isEmpty || amountStr.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Veuillez remplir tous les champs')),
-                );
-                return;
-              }
-
-              final amount = int.tryParse(amountStr);
-              if (amount == null || amount <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Le montant doit être valide')),
-                );
-                return;
-              }
-
-              // Enregistrement via le repository
-              await ref.read(caisseRepositoryProvider).insertMovement(
-                    type: isInflow ? CashMovementType.inflow : CashMovementType.outflow,
-                    description: desc,
-                    amount: amount,
-                    paymentMethod: PaymentMethod.cash, // On suppose espèces par défaut pour la caisse
-                  );
-
-              // Invalider le provider pour rafraîchir les données
-              ref.invalidate(caisseDataProvider);
-
-              if (context.mounted) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      isInflow ? 'Entrée enregistrée avec succès' : 'Décaissement enregistré avec succès',
-                    ),
-                  ),
-                );
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: isInflow ? AppColors.brandEmerald : context.colors.error,
-            ),
-            child: const Text('Enregistrer'),
-          ),
-        ],
       ),
     );
   }
