@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/license/license_provider.dart';
 import '../../features/auth/application/auth_providers.dart';
+import '../../features/admin/application/admin_auth_provider.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/business/presentation/business_summary_screen.dart';
 import '../../features/caisse/presentation/caisse_screen.dart';
@@ -30,6 +31,14 @@ import '../../features/help/presentation/help_screen.dart';
 import '../../features/license/presentation/license_gate_screen.dart';
 import '../providers/app_settings_provider.dart';
 
+// Imports Admin
+import '../../features/admin/presentation/admin_login_screen.dart';
+import '../../features/admin/presentation/admin_shell.dart';
+import '../../features/admin/presentation/dashboard/admin_dashboard_screen.dart';
+import '../../features/admin/presentation/clients/admin_clients_screen.dart';
+import '../../features/admin/presentation/licenses/admin_licenses_screen.dart';
+import '../../features/admin/presentation/maintenance/admin_maintenance_screen.dart';
+
 final routerProvider = Provider<GoRouter>((ref) {
   // Le routeur se rafraîchit à chaque changement de configuration boutique
   // ou de session (connexion / déconnexion).
@@ -46,6 +55,9 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(licenseProvider, (previous, next) {
     notifier.value = !notifier.value;
   });
+  ref.listen(adminAuthProvider, (previous, next) {
+    notifier.value = !notifier.value;
+  });
 
   return GoRouter(
     initialLocation: '/',
@@ -55,11 +67,22 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // ── 0. Priorité absolue : vérification de la licence ──────────────────
       final license = ref.read(licenseProvider);
-      if (license.isExpired) {
+      if (license.isExpired && !location.startsWith('/admin')) {
         return location == '/licence' ? null : '/licence';
       }
       // Si la licence est OK et qu'on est sur /licence, rediriger
-      if (location == '/licence') return '/';
+      if (location == '/licence' && !license.isExpired) return '/';
+      
+      // ── Admin Routes Protection ──────────────────────────────────────────
+      if (location.startsWith('/admin')) {
+        final isAdminAuth = ref.read(adminAuthProvider);
+        if (!isAdminAuth) {
+          return location == '/admin/login' ? null : '/admin/login';
+        } else if (location == '/admin/login') {
+          return '/admin/dashboard';
+        }
+        return null;
+      }
 
       // ── 1. Aucune boutique configurée ─────────────────────────────────────
       final shopExists =
@@ -93,6 +116,33 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      // ── Admin Routes ──────────────────────────────────────────
+      GoRoute(
+        path: '/admin/login',
+        pageBuilder: (context, state) => const NoTransitionPage(child: AdminLoginScreen()),
+      ),
+      ShellRoute(
+        builder: (context, state, child) => AdminShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/admin/dashboard',
+            pageBuilder: (c, s) => const NoTransitionPage(child: AdminDashboardScreen()),
+          ),
+          GoRoute(
+            path: '/admin/clients',
+            pageBuilder: (c, s) => const NoTransitionPage(child: AdminClientsScreen()),
+          ),
+          GoRoute(
+            path: '/admin/licenses',
+            pageBuilder: (c, s) => const NoTransitionPage(child: AdminLicensesScreen()),
+          ),
+          GoRoute(
+            path: '/admin/maintenance',
+            pageBuilder: (c, s) => const NoTransitionPage(child: AdminMaintenanceScreen()),
+          ),
+        ],
+      ),
+      // ── Main App Routes ────────────────────────────────────────
       GoRoute(
         path: '/licence',
         pageBuilder: (context, state) =>

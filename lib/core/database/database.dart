@@ -15,6 +15,8 @@ import 'tables/cash_movements.dart';
 import 'tables/expenses.dart';
 import 'tables/orders.dart';
 import 'tables/deliveries.dart';
+import 'tables/admin_clients.dart';
+import 'tables/admin_licenses.dart';
 
 part 'database.g.dart';
 
@@ -38,6 +40,8 @@ part 'database.g.dart';
     Couriers,
     Deliveries,
     AuditLogs,
+    AdminClients,
+    AdminLicenses,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -47,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -137,6 +141,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 15) {
             // Ajout du champ code-barres pour le scan caméra POS.
             await m.addColumn(products, products.barcode);
+          }
+          if (from < 16) {
+            await m.createTable(adminClients);
+            await m.createTable(adminLicenses);
           }
         },
         beforeOpen: (details) async {

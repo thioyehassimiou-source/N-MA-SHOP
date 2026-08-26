@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -31,6 +32,26 @@ class GescomptaApp extends ConsumerWidget {
         Locale('fr'),
       ],
       locale: const Locale('fr'),
+      builder: (context, child) {
+        return Focus(
+          autofocus: true,
+          canRequestFocus: true,
+          onKeyEvent: (node, event) {
+            if (event is KeyDownEvent) {
+              final isCtrl = HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.controlLeft) ||
+                  HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.controlRight);
+              final isShift = HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.shiftLeft) ||
+                  HardwareKeyboard.instance.logicalKeysPressed.contains(LogicalKeyboardKey.shiftRight);
+              if (isCtrl && isShift && event.logicalKey == LogicalKeyboardKey.keyA) {
+                router.go('/admin/dashboard');
+                return KeyEventResult.handled;
+              }
+            }
+            return KeyEventResult.ignored;
+          },
+          child: child ?? const SizedBox(),
+        );
+      },
     );
   }
 }

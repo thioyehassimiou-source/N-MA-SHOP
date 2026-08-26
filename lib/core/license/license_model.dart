@@ -15,6 +15,9 @@ enum LicenseType {
   /// Période d'essai gratuite (7 jours).
   trial,
 
+  /// Licence mensuelle (expire dans ~30 jours).
+  monthly,
+
   /// Licence annuelle (expire à une date précise).
   annual,
 

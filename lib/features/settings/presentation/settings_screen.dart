@@ -804,15 +804,105 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
                 ),
-                if (isTrial)
                   AppButton(
-                    label: 'Activer',
-                    onPressed: () => context.go('/licence'),
+                    label: isTrial ? 'Activer' : 'Changer la clé',
+                    onPressed: () => _showActivationDialog(context),
                   ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showActivationDialog(BuildContext context) async {
+    final keyCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isActivating = false;
+    String? errorMsg;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            title: const Text('Activer la licence'),
+            content: SizedBox(
+              width: 400,
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Collez ici la clé de licence que vous avez reçue :',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: keyCtrl,
+                      style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold),
+                      decoration: const InputDecoration(
+                        hintText: 'NMAS-...',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) => v!.trim().isEmpty ? 'Requis' : null,
+                    ),
+                    if (errorMsg != null) ...[
+                      const SizedBox(height: 12),
+                      Text(errorMsg!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Annuler'),
+              ),
+              ElevatedButton(
+                onPressed: isActivating
+                    ? null
+                    : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        setDialogState(() {
+                          isActivating = true;
+                          errorMsg = null;
+                        });
+
+                        await Future.delayed(const Duration(milliseconds: 300));
+                        if (!ctx.mounted) return;
+
+                        final res = ref.read(licenseProvider.notifier).activate(keyCtrl.text.trim());
+
+                        if (res.result == LicenseActivationResult.success) {
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('🎉 Licence activée avec succès !')),
+                            );
+                          }
+                        } else {
+                          setDialogState(() {
+                            isActivating = false;
+                            if (res.result == LicenseActivationResult.expiredKey) {
+                              errorMsg = 'Cette clé est expirée.';
+                            } else {
+                              errorMsg = 'Clé invalide ou format incorrect.';
+                            }
+                          });
+                        }
+                      },
+                child: isActivating
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Activer'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

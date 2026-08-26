@@ -8965,6 +8965,1012 @@ class AuditLogsCompanion extends UpdateCompanion<AuditLog> {
   }
 }
 
+class $AdminClientsTable extends AdminClients
+    with TableInfo<$AdminClientsTable, AdminClient> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AdminClientsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _installDateMeta = const VerificationMeta(
+    'installDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> installDate = GeneratedColumn<DateTime>(
+    'install_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    phone,
+    email,
+    installDate,
+    notes,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'admin_clients';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AdminClient> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('install_date')) {
+      context.handle(
+        _installDateMeta,
+        installDate.isAcceptableOrUnknown(
+          data['install_date']!,
+          _installDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AdminClient map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AdminClient(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
+      installDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}install_date'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AdminClientsTable createAlias(String alias) {
+    return $AdminClientsTable(attachedDatabase, alias);
+  }
+}
+
+class AdminClient extends DataClass implements Insertable<AdminClient> {
+  final int id;
+  final String name;
+  final String? phone;
+  final String? email;
+  final DateTime? installDate;
+  final String? notes;
+  final DateTime createdAt;
+  const AdminClient({
+    required this.id,
+    required this.name,
+    this.phone,
+    this.email,
+    this.installDate,
+    this.notes,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
+    }
+    if (!nullToAbsent || installDate != null) {
+      map['install_date'] = Variable<DateTime>(installDate);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AdminClientsCompanion toCompanion(bool nullToAbsent) {
+    return AdminClientsCompanion(
+      id: Value(id),
+      name: Value(name),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
+      installDate: installDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(installDate),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory AdminClient.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AdminClient(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      phone: serializer.fromJson<String?>(json['phone']),
+      email: serializer.fromJson<String?>(json['email']),
+      installDate: serializer.fromJson<DateTime?>(json['installDate']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'phone': serializer.toJson<String?>(phone),
+      'email': serializer.toJson<String?>(email),
+      'installDate': serializer.toJson<DateTime?>(installDate),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  AdminClient copyWith({
+    int? id,
+    String? name,
+    Value<String?> phone = const Value.absent(),
+    Value<String?> email = const Value.absent(),
+    Value<DateTime?> installDate = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+    DateTime? createdAt,
+  }) => AdminClient(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    phone: phone.present ? phone.value : this.phone,
+    email: email.present ? email.value : this.email,
+    installDate: installDate.present ? installDate.value : this.installDate,
+    notes: notes.present ? notes.value : this.notes,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  AdminClient copyWithCompanion(AdminClientsCompanion data) {
+    return AdminClient(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      email: data.email.present ? data.email.value : this.email,
+      installDate: data.installDate.present
+          ? data.installDate.value
+          : this.installDate,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AdminClient(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('installDate: $installDate, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, phone, email, installDate, notes, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AdminClient &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.phone == this.phone &&
+          other.email == this.email &&
+          other.installDate == this.installDate &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt);
+}
+
+class AdminClientsCompanion extends UpdateCompanion<AdminClient> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String?> phone;
+  final Value<String?> email;
+  final Value<DateTime?> installDate;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  const AdminClientsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.installDate = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  AdminClientsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.installDate = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<AdminClient> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? phone,
+    Expression<String>? email,
+    Expression<DateTime>? installDate,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
+      if (installDate != null) 'install_date': installDate,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  AdminClientsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String?>? phone,
+    Value<String?>? email,
+    Value<DateTime?>? installDate,
+    Value<String?>? notes,
+    Value<DateTime>? createdAt,
+  }) {
+    return AdminClientsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      installDate: installDate ?? this.installDate,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (installDate.present) {
+      map['install_date'] = Variable<DateTime>(installDate.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AdminClientsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('installDate: $installDate, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AdminLicensesTable extends AdminLicenses
+    with TableInfo<$AdminLicensesTable, AdminLicense> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AdminLicensesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _adminClientIdMeta = const VerificationMeta(
+    'adminClientId',
+  );
+  @override
+  late final GeneratedColumn<int> adminClientId = GeneratedColumn<int>(
+    'admin_client_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES admin_clients (id)',
+    ),
+  );
+  static const VerificationMeta _licenseKeyMeta = const VerificationMeta(
+    'licenseKey',
+  );
+  @override
+  late final GeneratedColumn<String> licenseKey = GeneratedColumn<String>(
+    'license_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _licenseTypeMeta = const VerificationMeta(
+    'licenseType',
+  );
+  @override
+  late final GeneratedColumn<String> licenseType = GeneratedColumn<String>(
+    'license_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _validFromMeta = const VerificationMeta(
+    'validFrom',
+  );
+  @override
+  late final GeneratedColumn<DateTime> validFrom = GeneratedColumn<DateTime>(
+    'valid_from',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _expiresAtMeta = const VerificationMeta(
+    'expiresAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> expiresAt = GeneratedColumn<DateTime>(
+    'expires_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('active'),
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    adminClientId,
+    licenseKey,
+    licenseType,
+    validFrom,
+    expiresAt,
+    status,
+    notes,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'admin_licenses';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AdminLicense> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('admin_client_id')) {
+      context.handle(
+        _adminClientIdMeta,
+        adminClientId.isAcceptableOrUnknown(
+          data['admin_client_id']!,
+          _adminClientIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_adminClientIdMeta);
+    }
+    if (data.containsKey('license_key')) {
+      context.handle(
+        _licenseKeyMeta,
+        licenseKey.isAcceptableOrUnknown(data['license_key']!, _licenseKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_licenseKeyMeta);
+    }
+    if (data.containsKey('license_type')) {
+      context.handle(
+        _licenseTypeMeta,
+        licenseType.isAcceptableOrUnknown(
+          data['license_type']!,
+          _licenseTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_licenseTypeMeta);
+    }
+    if (data.containsKey('valid_from')) {
+      context.handle(
+        _validFromMeta,
+        validFrom.isAcceptableOrUnknown(data['valid_from']!, _validFromMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_validFromMeta);
+    }
+    if (data.containsKey('expires_at')) {
+      context.handle(
+        _expiresAtMeta,
+        expiresAt.isAcceptableOrUnknown(data['expires_at']!, _expiresAtMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AdminLicense map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AdminLicense(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      adminClientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}admin_client_id'],
+      )!,
+      licenseKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}license_key'],
+      )!,
+      licenseType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}license_type'],
+      )!,
+      validFrom: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}valid_from'],
+      )!,
+      expiresAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}expires_at'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AdminLicensesTable createAlias(String alias) {
+    return $AdminLicensesTable(attachedDatabase, alias);
+  }
+}
+
+class AdminLicense extends DataClass implements Insertable<AdminLicense> {
+  final int id;
+  final int adminClientId;
+  final String licenseKey;
+  final String licenseType;
+  final DateTime validFrom;
+  final DateTime? expiresAt;
+  final String status;
+  final String? notes;
+  final DateTime createdAt;
+  const AdminLicense({
+    required this.id,
+    required this.adminClientId,
+    required this.licenseKey,
+    required this.licenseType,
+    required this.validFrom,
+    this.expiresAt,
+    required this.status,
+    this.notes,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['admin_client_id'] = Variable<int>(adminClientId);
+    map['license_key'] = Variable<String>(licenseKey);
+    map['license_type'] = Variable<String>(licenseType);
+    map['valid_from'] = Variable<DateTime>(validFrom);
+    if (!nullToAbsent || expiresAt != null) {
+      map['expires_at'] = Variable<DateTime>(expiresAt);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AdminLicensesCompanion toCompanion(bool nullToAbsent) {
+    return AdminLicensesCompanion(
+      id: Value(id),
+      adminClientId: Value(adminClientId),
+      licenseKey: Value(licenseKey),
+      licenseType: Value(licenseType),
+      validFrom: Value(validFrom),
+      expiresAt: expiresAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expiresAt),
+      status: Value(status),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory AdminLicense.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AdminLicense(
+      id: serializer.fromJson<int>(json['id']),
+      adminClientId: serializer.fromJson<int>(json['adminClientId']),
+      licenseKey: serializer.fromJson<String>(json['licenseKey']),
+      licenseType: serializer.fromJson<String>(json['licenseType']),
+      validFrom: serializer.fromJson<DateTime>(json['validFrom']),
+      expiresAt: serializer.fromJson<DateTime?>(json['expiresAt']),
+      status: serializer.fromJson<String>(json['status']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'adminClientId': serializer.toJson<int>(adminClientId),
+      'licenseKey': serializer.toJson<String>(licenseKey),
+      'licenseType': serializer.toJson<String>(licenseType),
+      'validFrom': serializer.toJson<DateTime>(validFrom),
+      'expiresAt': serializer.toJson<DateTime?>(expiresAt),
+      'status': serializer.toJson<String>(status),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  AdminLicense copyWith({
+    int? id,
+    int? adminClientId,
+    String? licenseKey,
+    String? licenseType,
+    DateTime? validFrom,
+    Value<DateTime?> expiresAt = const Value.absent(),
+    String? status,
+    Value<String?> notes = const Value.absent(),
+    DateTime? createdAt,
+  }) => AdminLicense(
+    id: id ?? this.id,
+    adminClientId: adminClientId ?? this.adminClientId,
+    licenseKey: licenseKey ?? this.licenseKey,
+    licenseType: licenseType ?? this.licenseType,
+    validFrom: validFrom ?? this.validFrom,
+    expiresAt: expiresAt.present ? expiresAt.value : this.expiresAt,
+    status: status ?? this.status,
+    notes: notes.present ? notes.value : this.notes,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  AdminLicense copyWithCompanion(AdminLicensesCompanion data) {
+    return AdminLicense(
+      id: data.id.present ? data.id.value : this.id,
+      adminClientId: data.adminClientId.present
+          ? data.adminClientId.value
+          : this.adminClientId,
+      licenseKey: data.licenseKey.present
+          ? data.licenseKey.value
+          : this.licenseKey,
+      licenseType: data.licenseType.present
+          ? data.licenseType.value
+          : this.licenseType,
+      validFrom: data.validFrom.present ? data.validFrom.value : this.validFrom,
+      expiresAt: data.expiresAt.present ? data.expiresAt.value : this.expiresAt,
+      status: data.status.present ? data.status.value : this.status,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AdminLicense(')
+          ..write('id: $id, ')
+          ..write('adminClientId: $adminClientId, ')
+          ..write('licenseKey: $licenseKey, ')
+          ..write('licenseType: $licenseType, ')
+          ..write('validFrom: $validFrom, ')
+          ..write('expiresAt: $expiresAt, ')
+          ..write('status: $status, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    adminClientId,
+    licenseKey,
+    licenseType,
+    validFrom,
+    expiresAt,
+    status,
+    notes,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AdminLicense &&
+          other.id == this.id &&
+          other.adminClientId == this.adminClientId &&
+          other.licenseKey == this.licenseKey &&
+          other.licenseType == this.licenseType &&
+          other.validFrom == this.validFrom &&
+          other.expiresAt == this.expiresAt &&
+          other.status == this.status &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt);
+}
+
+class AdminLicensesCompanion extends UpdateCompanion<AdminLicense> {
+  final Value<int> id;
+  final Value<int> adminClientId;
+  final Value<String> licenseKey;
+  final Value<String> licenseType;
+  final Value<DateTime> validFrom;
+  final Value<DateTime?> expiresAt;
+  final Value<String> status;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  const AdminLicensesCompanion({
+    this.id = const Value.absent(),
+    this.adminClientId = const Value.absent(),
+    this.licenseKey = const Value.absent(),
+    this.licenseType = const Value.absent(),
+    this.validFrom = const Value.absent(),
+    this.expiresAt = const Value.absent(),
+    this.status = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  AdminLicensesCompanion.insert({
+    this.id = const Value.absent(),
+    required int adminClientId,
+    required String licenseKey,
+    required String licenseType,
+    required DateTime validFrom,
+    this.expiresAt = const Value.absent(),
+    this.status = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : adminClientId = Value(adminClientId),
+       licenseKey = Value(licenseKey),
+       licenseType = Value(licenseType),
+       validFrom = Value(validFrom);
+  static Insertable<AdminLicense> custom({
+    Expression<int>? id,
+    Expression<int>? adminClientId,
+    Expression<String>? licenseKey,
+    Expression<String>? licenseType,
+    Expression<DateTime>? validFrom,
+    Expression<DateTime>? expiresAt,
+    Expression<String>? status,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (adminClientId != null) 'admin_client_id': adminClientId,
+      if (licenseKey != null) 'license_key': licenseKey,
+      if (licenseType != null) 'license_type': licenseType,
+      if (validFrom != null) 'valid_from': validFrom,
+      if (expiresAt != null) 'expires_at': expiresAt,
+      if (status != null) 'status': status,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  AdminLicensesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? adminClientId,
+    Value<String>? licenseKey,
+    Value<String>? licenseType,
+    Value<DateTime>? validFrom,
+    Value<DateTime?>? expiresAt,
+    Value<String>? status,
+    Value<String?>? notes,
+    Value<DateTime>? createdAt,
+  }) {
+    return AdminLicensesCompanion(
+      id: id ?? this.id,
+      adminClientId: adminClientId ?? this.adminClientId,
+      licenseKey: licenseKey ?? this.licenseKey,
+      licenseType: licenseType ?? this.licenseType,
+      validFrom: validFrom ?? this.validFrom,
+      expiresAt: expiresAt ?? this.expiresAt,
+      status: status ?? this.status,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (adminClientId.present) {
+      map['admin_client_id'] = Variable<int>(adminClientId.value);
+    }
+    if (licenseKey.present) {
+      map['license_key'] = Variable<String>(licenseKey.value);
+    }
+    if (licenseType.present) {
+      map['license_type'] = Variable<String>(licenseType.value);
+    }
+    if (validFrom.present) {
+      map['valid_from'] = Variable<DateTime>(validFrom.value);
+    }
+    if (expiresAt.present) {
+      map['expires_at'] = Variable<DateTime>(expiresAt.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AdminLicensesCompanion(')
+          ..write('id: $id, ')
+          ..write('adminClientId: $adminClientId, ')
+          ..write('licenseKey: $licenseKey, ')
+          ..write('licenseType: $licenseType, ')
+          ..write('validFrom: $validFrom, ')
+          ..write('expiresAt: $expiresAt, ')
+          ..write('status: $status, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8988,6 +9994,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CouriersTable couriers = $CouriersTable(this);
   late final $DeliveriesTable deliveries = $DeliveriesTable(this);
   late final $AuditLogsTable auditLogs = $AuditLogsTable(this);
+  late final $AdminClientsTable adminClients = $AdminClientsTable(this);
+  late final $AdminLicensesTable adminLicenses = $AdminLicensesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -9011,6 +10019,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     couriers,
     deliveries,
     auditLogs,
+    adminClients,
+    adminLicenses,
   ];
 }
 
@@ -16803,6 +17813,741 @@ typedef $$AuditLogsTableProcessedTableManager =
       AuditLog,
       PrefetchHooks Function()
     >;
+typedef $$AdminClientsTableCreateCompanionBuilder =
+    AdminClientsCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<String?> phone,
+      Value<String?> email,
+      Value<DateTime?> installDate,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+    });
+typedef $$AdminClientsTableUpdateCompanionBuilder =
+    AdminClientsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String?> phone,
+      Value<String?> email,
+      Value<DateTime?> installDate,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+    });
+
+final class $$AdminClientsTableReferences
+    extends BaseReferences<_$AppDatabase, $AdminClientsTable, AdminClient> {
+  $$AdminClientsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$AdminLicensesTable, List<AdminLicense>>
+  _adminLicensesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.adminLicenses,
+    aliasName: 'admin_clients__id__admin_licenses__admin_client_id',
+  );
+
+  $$AdminLicensesTableProcessedTableManager get adminLicensesRefs {
+    final manager = $$AdminLicensesTableTableManager(
+      $_db,
+      $_db.adminLicenses,
+    ).filter((f) => f.adminClientId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_adminLicensesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$AdminClientsTableFilterComposer
+    extends Composer<_$AppDatabase, $AdminClientsTable> {
+  $$AdminClientsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get installDate => $composableBuilder(
+    column: $table.installDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> adminLicensesRefs(
+    Expression<bool> Function($$AdminLicensesTableFilterComposer f) f,
+  ) {
+    final $$AdminLicensesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.adminLicenses,
+      getReferencedColumn: (t) => t.adminClientId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminLicensesTableFilterComposer(
+            $db: $db,
+            $table: $db.adminLicenses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$AdminClientsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AdminClientsTable> {
+  $$AdminClientsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get installDate => $composableBuilder(
+    column: $table.installDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AdminClientsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AdminClientsTable> {
+  $$AdminClientsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get installDate => $composableBuilder(
+    column: $table.installDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> adminLicensesRefs<T extends Object>(
+    Expression<T> Function($$AdminLicensesTableAnnotationComposer a) f,
+  ) {
+    final $$AdminLicensesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.adminLicenses,
+      getReferencedColumn: (t) => t.adminClientId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminLicensesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.adminLicenses,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$AdminClientsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AdminClientsTable,
+          AdminClient,
+          $$AdminClientsTableFilterComposer,
+          $$AdminClientsTableOrderingComposer,
+          $$AdminClientsTableAnnotationComposer,
+          $$AdminClientsTableCreateCompanionBuilder,
+          $$AdminClientsTableUpdateCompanionBuilder,
+          (AdminClient, $$AdminClientsTableReferences),
+          AdminClient,
+          PrefetchHooks Function({bool adminLicensesRefs})
+        > {
+  $$AdminClientsTableTableManager(_$AppDatabase db, $AdminClientsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AdminClientsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AdminClientsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AdminClientsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<DateTime?> installDate = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AdminClientsCompanion(
+                id: id,
+                name: name,
+                phone: phone,
+                email: email,
+                installDate: installDate,
+                notes: notes,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<String?> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<DateTime?> installDate = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AdminClientsCompanion.insert(
+                id: id,
+                name: name,
+                phone: phone,
+                email: email,
+                installDate: installDate,
+                notes: notes,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$AdminClientsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({adminLicensesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (adminLicensesRefs) db.adminLicenses,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (adminLicensesRefs)
+                    await $_getPrefetchedData<
+                      AdminClient,
+                      $AdminClientsTable,
+                      AdminLicense
+                    >(
+                      currentTable: table,
+                      referencedTable: $$AdminClientsTableReferences
+                          ._adminLicensesRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$AdminClientsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).adminLicensesRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.adminClientId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$AdminClientsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AdminClientsTable,
+      AdminClient,
+      $$AdminClientsTableFilterComposer,
+      $$AdminClientsTableOrderingComposer,
+      $$AdminClientsTableAnnotationComposer,
+      $$AdminClientsTableCreateCompanionBuilder,
+      $$AdminClientsTableUpdateCompanionBuilder,
+      (AdminClient, $$AdminClientsTableReferences),
+      AdminClient,
+      PrefetchHooks Function({bool adminLicensesRefs})
+    >;
+typedef $$AdminLicensesTableCreateCompanionBuilder =
+    AdminLicensesCompanion Function({
+      Value<int> id,
+      required int adminClientId,
+      required String licenseKey,
+      required String licenseType,
+      required DateTime validFrom,
+      Value<DateTime?> expiresAt,
+      Value<String> status,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+    });
+typedef $$AdminLicensesTableUpdateCompanionBuilder =
+    AdminLicensesCompanion Function({
+      Value<int> id,
+      Value<int> adminClientId,
+      Value<String> licenseKey,
+      Value<String> licenseType,
+      Value<DateTime> validFrom,
+      Value<DateTime?> expiresAt,
+      Value<String> status,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+    });
+
+final class $$AdminLicensesTableReferences
+    extends BaseReferences<_$AppDatabase, $AdminLicensesTable, AdminLicense> {
+  $$AdminLicensesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $AdminClientsTable _adminClientIdTable(_$AppDatabase db) => db
+      .adminClients
+      .createAlias('admin_licenses__admin_client_id__admin_clients__id');
+
+  $$AdminClientsTableProcessedTableManager get adminClientId {
+    final $_column = $_itemColumn<int>('admin_client_id')!;
+
+    final manager = $$AdminClientsTableTableManager(
+      $_db,
+      $_db.adminClients,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_adminClientIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$AdminLicensesTableFilterComposer
+    extends Composer<_$AppDatabase, $AdminLicensesTable> {
+  $$AdminLicensesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get licenseKey => $composableBuilder(
+    column: $table.licenseKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get licenseType => $composableBuilder(
+    column: $table.licenseType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get validFrom => $composableBuilder(
+    column: $table.validFrom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$AdminClientsTableFilterComposer get adminClientId {
+    final $$AdminClientsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.adminClientId,
+      referencedTable: $db.adminClients,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminClientsTableFilterComposer(
+            $db: $db,
+            $table: $db.adminClients,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AdminLicensesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AdminLicensesTable> {
+  $$AdminLicensesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get licenseKey => $composableBuilder(
+    column: $table.licenseKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get licenseType => $composableBuilder(
+    column: $table.licenseType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get validFrom => $composableBuilder(
+    column: $table.validFrom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$AdminClientsTableOrderingComposer get adminClientId {
+    final $$AdminClientsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.adminClientId,
+      referencedTable: $db.adminClients,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminClientsTableOrderingComposer(
+            $db: $db,
+            $table: $db.adminClients,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AdminLicensesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AdminLicensesTable> {
+  $$AdminLicensesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get licenseKey => $composableBuilder(
+    column: $table.licenseKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get licenseType => $composableBuilder(
+    column: $table.licenseType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get validFrom =>
+      $composableBuilder(column: $table.validFrom, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get expiresAt =>
+      $composableBuilder(column: $table.expiresAt, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$AdminClientsTableAnnotationComposer get adminClientId {
+    final $$AdminClientsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.adminClientId,
+      referencedTable: $db.adminClients,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminClientsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.adminClients,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AdminLicensesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AdminLicensesTable,
+          AdminLicense,
+          $$AdminLicensesTableFilterComposer,
+          $$AdminLicensesTableOrderingComposer,
+          $$AdminLicensesTableAnnotationComposer,
+          $$AdminLicensesTableCreateCompanionBuilder,
+          $$AdminLicensesTableUpdateCompanionBuilder,
+          (AdminLicense, $$AdminLicensesTableReferences),
+          AdminLicense,
+          PrefetchHooks Function({bool adminClientId})
+        > {
+  $$AdminLicensesTableTableManager(_$AppDatabase db, $AdminLicensesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AdminLicensesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AdminLicensesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AdminLicensesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> adminClientId = const Value.absent(),
+                Value<String> licenseKey = const Value.absent(),
+                Value<String> licenseType = const Value.absent(),
+                Value<DateTime> validFrom = const Value.absent(),
+                Value<DateTime?> expiresAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AdminLicensesCompanion(
+                id: id,
+                adminClientId: adminClientId,
+                licenseKey: licenseKey,
+                licenseType: licenseType,
+                validFrom: validFrom,
+                expiresAt: expiresAt,
+                status: status,
+                notes: notes,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int adminClientId,
+                required String licenseKey,
+                required String licenseType,
+                required DateTime validFrom,
+                Value<DateTime?> expiresAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AdminLicensesCompanion.insert(
+                id: id,
+                adminClientId: adminClientId,
+                licenseKey: licenseKey,
+                licenseType: licenseType,
+                validFrom: validFrom,
+                expiresAt: expiresAt,
+                status: status,
+                notes: notes,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$AdminLicensesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({adminClientId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (adminClientId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.adminClientId,
+                                referencedTable: $$AdminLicensesTableReferences
+                                    ._adminClientIdTable(db),
+                                referencedColumn: $$AdminLicensesTableReferences
+                                    ._adminClientIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$AdminLicensesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AdminLicensesTable,
+      AdminLicense,
+      $$AdminLicensesTableFilterComposer,
+      $$AdminLicensesTableOrderingComposer,
+      $$AdminLicensesTableAnnotationComposer,
+      $$AdminLicensesTableCreateCompanionBuilder,
+      $$AdminLicensesTableUpdateCompanionBuilder,
+      (AdminLicense, $$AdminLicensesTableReferences),
+      AdminLicense,
+      PrefetchHooks Function({bool adminClientId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -16843,4 +18588,8 @@ class $AppDatabaseManager {
       $$DeliveriesTableTableManager(_db, _db.deliveries);
   $$AuditLogsTableTableManager get auditLogs =>
       $$AuditLogsTableTableManager(_db, _db.auditLogs);
+  $$AdminClientsTableTableManager get adminClients =>
+      $$AdminClientsTableTableManager(_db, _db.adminClients);
+  $$AdminLicensesTableTableManager get adminLicenses =>
+      $$AdminLicensesTableTableManager(_db, _db.adminLicenses);
 }

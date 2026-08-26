@@ -84,6 +84,12 @@ class LicenseCore {
     return 'NMAS-$str-$h';
   }
 
+  /// Génère une clé mensuelle expirant dans 30 jours à partir de [from].
+  static String generateMonthlyKey([DateTime? from]) {
+    final expiry = (from ?? DateTime.now()).add(const Duration(days: 30));
+    return generateAnnualKey(expiry);
+  }
+
   /// Génère une clé à vie (ne s'expire jamais).
   static String generateLifetimeKey() =>
       generateAnnualKey(DateTime(9999, 12, 31));
