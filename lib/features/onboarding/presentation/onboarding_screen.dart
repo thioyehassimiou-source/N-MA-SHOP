@@ -31,7 +31,7 @@ class _OnboardingPage {
 const _pages = [
   _OnboardingPage(
     image: 'assets/images/onboarding_sales.png',
-    tag: '💰 VENTES',
+    tag: 'VENTES',
     title: 'Encaissez en toute confiance',
     description:
         'Enregistrez chaque vente en quelques secondes, générez des reçus et '
@@ -41,7 +41,7 @@ const _pages = [
   ),
   _OnboardingPage(
     image: 'assets/images/onboarding_stock.png',
-    tag: '📦 STOCKS',
+    tag: 'STOCKS',
     title: 'Gardez toujours le contrôle',
     description:
         "Soyez alerté avant d'être en rupture. Gérez vos entrées, suivez vos "
@@ -55,7 +55,7 @@ const _pages = [
   ),
   _OnboardingPage(
     image: 'assets/images/onboarding_bilan.png',
-    tag: '📊 BILAN',
+    tag: 'BILAN',
     title: 'Voyez vos profits clairement',
     description:
         "Accédez à votre bilan en un clin d'œil : ventes du jour, gains nets, "

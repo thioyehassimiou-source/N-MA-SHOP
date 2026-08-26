@@ -196,7 +196,7 @@ class _PeriodSelector extends ConsumerWidget {
         chip(ReportPeriod.year, 'Année'),
         const SizedBox(width: 4),
         ActionChip(
-          label: const Text('📅 Personnalisé', style: TextStyle(fontSize: 12)),
+          label: const Text('Personnalisé', style: TextStyle(fontSize: 12)),
           backgroundColor: context.colors.surfaceContainerHighest,
           side: BorderSide.none,
           onPressed: () async {
@@ -299,7 +299,7 @@ class _KpiGrid extends StatelessWidget {
         _KpiCard(
           label: 'Bénéfice Net',
           value: formatGnfCompact(data.netProfit),
-          subtitle: data.netProfit >= 0 ? 'Rentable ✓' : 'Déficitaire ✗',
+          subtitle: data.netProfit >= 0 ? 'Rentable' : 'Déficitaire',
           icon: Icons.account_balance_rounded,
           color: data.netProfit >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
           bgColor: data.netProfit >= 0 ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),

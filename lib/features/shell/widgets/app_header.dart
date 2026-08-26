@@ -104,7 +104,11 @@ class AppHeader extends ConsumerWidget {
             _HeaderAction(
               icon: Icons.search_rounded,
               tooltip: 'Rechercher',
-              onTap: () {},
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Recherche globale disponible prochainement')),
+                );
+              },
             ),
           ],
           // Avatar utilisateur

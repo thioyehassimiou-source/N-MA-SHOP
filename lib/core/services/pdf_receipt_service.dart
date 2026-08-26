@@ -121,7 +121,7 @@ class PdfReceiptService {
                 for (final line in data.lines)
                   [
                     line.name,
-                    formatAmount(line.unitPrice) + ' / ' + line.unit,
+                    '${formatAmount(line.unitPrice)} / ${line.unit}',
                     '${line.quantity}',
                     formatAmount(line.lineTotal),
                   ]

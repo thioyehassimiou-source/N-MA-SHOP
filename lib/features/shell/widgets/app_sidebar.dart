@@ -6,8 +6,7 @@ import 'dart:io';
 import '../../../core/providers/app_settings_provider.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../stock/application/stock_providers.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
+
 
 // ── Couleurs de marque N'MaShop (Sidebar fixes) ──────────────────────────────
 const _kNavy = Color(0xFF0F1B3D);
@@ -218,7 +217,7 @@ class AppSidebar extends ConsumerWidget {
                           child: Image.asset(
                             'assets/images/nmashop_logo_official.png',
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Center(
+                            errorBuilder: (context, error, stackTrace) => Center(
                               child: Icon(
                                 Icons.storefront_rounded,
                                 color: logoIcon,
@@ -521,7 +520,7 @@ class _LowStockBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(lowStockCountProvider).valueOrNull ?? 0;
+    final count = ref.watch(lowStockCountProvider);
     if (count == 0) return const SizedBox.shrink();
 
     return Container(

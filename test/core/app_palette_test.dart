@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nmashop/core/theme/app_colors.dart';
 import 'package:nmashop/core/theme/app_palette.dart';
 import 'package:nmashop/core/theme/app_theme.dart';
 
@@ -56,8 +57,8 @@ void main() {
         final light = AppTheme.light(palette);
         final dark = AppTheme.dark(palette);
 
-        expect(light.colorScheme.primary, palette.seed);
-        expect(dark.colorScheme.primary, palette.accent);
+        expect(light.colorScheme.primary, AppColors.primary);
+        expect(dark.colorScheme.primary, const Color(0xFFE85D04)); // N'MaShop Orange
         expect(light.colorScheme.brightness, Brightness.light);
         expect(dark.colorScheme.brightness, Brightness.dark);
       }

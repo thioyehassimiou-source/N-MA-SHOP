@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/tables/orders.dart';
+import '../../../core/database/database.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/providers/database_provider.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -82,7 +83,7 @@ class _NewDeliveryDialogState extends ConsumerState<NewDeliveryDialog> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Livraison assignée avec succès'),
+            content: Text('Livraison assignée avec succès'),
             backgroundColor: Colors.green,
           ),
         );
@@ -145,7 +146,7 @@ class _NewDeliveryDialogState extends ConsumerState<NewDeliveryDialog> {
                 );
               }
               return DropdownButtonFormField<String>(
-                value: _selectedOrderId,
+                initialValue: _selectedOrderId,
                 decoration: InputDecoration(
                   hintText: 'Sélectionner une commande…',
                   prefixIcon: Icon(Icons.receipt_outlined, size: 20, color: context.colors.primary),
@@ -191,7 +192,7 @@ class _NewDeliveryDialogState extends ConsumerState<NewDeliveryDialog> {
                 );
               }
               return DropdownButtonFormField<String>(
-                value: _selectedCourierId,
+                initialValue: _selectedCourierId,
                 decoration: InputDecoration(
                   hintText: 'Sélectionner un livreur…',
                   prefixIcon: Icon(Icons.person_outline, size: 20, color: context.colors.primary),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/providers/database_provider.dart';
+import '../../../core/database/database.dart';
 import '../../../core/services/pdf_receipt_service.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:printing/printing.dart';
@@ -400,7 +401,7 @@ class _DevisActionMenu extends ConsumerWidget {
               ref.invalidate(devisDataProvider);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('✅ Facture marquée comme payée'), backgroundColor: Colors.green),
+                  const SnackBar(content: Text('Facture marquée comme payée'), backgroundColor: Colors.green),
                 );
               }
             }

@@ -85,7 +85,7 @@ class _NewCourierDialogState extends ConsumerState<NewCourierDialog> {
     if (mounted) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.existingCourier == null ? 'Livreur ajouté ✓' : 'Livreur modifié ✓')),
+        SnackBar(content: Text(widget.existingCourier == null ? 'Livreur ajouté' : 'Livreur modifié')),
       );
     }
   }

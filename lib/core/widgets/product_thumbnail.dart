@@ -35,7 +35,7 @@ class ProductThumbnail extends StatelessWidget {
                 width: size,
                 height: size,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _fallback(),
+                errorBuilder: (context, error, stackTrace) => _fallback(),
               )
             : _fallback(),
       ),

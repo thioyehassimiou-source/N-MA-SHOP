@@ -40,7 +40,7 @@ class ComingSoonScreen extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Il sera disponible très prochainement 🚀',
+              'Il sera disponible très prochainement.',
               style: TextStyle(fontSize: 14, color: context.colors.onSurfaceVariant),
             ),
           ],

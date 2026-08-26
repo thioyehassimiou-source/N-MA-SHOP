@@ -395,8 +395,8 @@ class _OrderCard extends ConsumerWidget {
                           color: context.colors.surface,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(
-                          '💬 ${order.note}',
+                         child: Text(
+                          order.note!,
                           style: TextStyle(fontSize: 11, color: context.colors.onSurfaceVariant),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,

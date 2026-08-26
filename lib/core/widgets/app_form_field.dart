@@ -112,9 +112,10 @@ class AppFormDropdown<T> extends StatelessWidget {
         const SizedBox(height: 8),
 
         DropdownButtonFormField<T>(
-          value: value,
+          initialValue: value,
           items: items,
           onChanged: onChanged,
+          isExpanded: true,
           icon: Icon(
             Icons.keyboard_arrow_down_rounded,
             color: context.colors.onSurfaceVariant,

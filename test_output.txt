@@ -1,0 +1,57 @@
+00:00 +0: loading /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart
+00:00 +0: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: PasswordHasher un mot de passe correct est vérifié, un mauvais est rejeté
+00:01 +1: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: PasswordHasher deux sels produisent des condensats différents
+00:03 +2: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Compte unique le premier compte est créé et retrouvé
+00:03 +3: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Compte unique on ne peut pas créer un second compte
+00:04 +4: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Compte unique le mot de passe n'est jamais stocké en clair
+00:05 +5: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Déverrouillage un bon mot de passe ouvre et date la dernière ouverture
+00:06 +6: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Déverrouillage un mauvais mot de passe est rejeté
+00:07 +7: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Déverrouillage un mauvais nom complet est rejeté
+00:08 +8: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Changement de mot de passe le nouveau mot de passe remplace bien l'ancien
+00:10 +9: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Changement de mot de passe le nouveau mot de passe remplace bien l'ancien
+00:10 +10: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Changement de mot de passe le nouveau mot de passe remplace bien l'ancien
+00:11 +11: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Changement de mot de passe un mauvais mot de passe actuel est refusé
+00:12 +12: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation le nom du boutiquier peut être modifié
+00:13 +13: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation le nom du boutiquier peut être modifié
+00:13 +14: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation le nom du boutiquier peut être modifié
+00:13 +15: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation le nom du boutiquier peut être modifié
+00:13 +16: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation le nom du boutiquier peut être modifié
+00:13 +17: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation après suppression, un nouveau compte peut être créé
+00:13 +18: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation après suppression, un nouveau compte peut être créé
+00:13 +19: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation après suppression, un nouveau compte peut être créé
+00:13 +20: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation après suppression, un nouveau compte peut être créé
+00:13 +21: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation après suppression, un nouveau compte peut être créé
+00:13 +22: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation après suppression, un nouveau compte peut être créé
+00:13 +22 -1: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation après suppression, un nouveau compte peut être créé
+00:13 +22 -1: /home/thioye/Documents/Projets -réels/nmashop/test/core/app_palette_test.dart: AppTheme chaque template produit un thème clair et sombre distincts [E]
+  Expected: Color:<Color(alpha: 1.0000, red: 0.0000, green: 0.3765, blue: 0.3294, colorSpace: ColorSpace.sRGB)>
+    Actual: Color:<Color(alpha: 1.0000, red: 0.3569, green: 0.3725, blue: 0.7804, colorSpace: ColorSpace.sRGB)>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/core/app_palette_test.dart 59:9                main.<fn>.<fn>
+  
+00:14 +23 -1: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation après suppression, un nouveau compte peut être créé
+00:14 +24 -1: /home/thioye/Documents/Projets -réels/nmashop/test/auth/auth_repository_test.dart: Nom & réinitialisation après suppression, un nouveau compte peut être créé
+00:19 +25 -1: /home/thioye/Documents/Projets -réels/nmashop/test/widget_test.dart: La base de données se crée et se ferme sans erreur
+00:23 +26 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_engine_test.dart: Vente normale en espèces : vente, ligne, stock, encaissement
+00:24 +27 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_engine_test.dart: Bénéfice = total − coût des marchandises (CMP)
+00:24 +28 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_engine_test.dart: Vente multi-produits : totaux, lignes et mouvements corrects
+00:24 +29 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_engine_test.dart: Mouvements de stock : sortie négative, type vente, coût figé
+00:24 +30 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_engine_test.dart: Vente à crédit : amountPaid partiel, creditAmount correct
+00:24 +31 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_engine_test.dart: Crédit sans client : refus (validation), rien enregistré
+00:24 +32 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_engine_test.dart: Stock insuffisant : échec + ROLLBACK complet
+00:24 +33 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_engine_test.dart: Vente vide : refus immédiat
+00:24 +34 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_engine_test.dart: Numérotation continue des ventes
+00:24 +35 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_engine_test.dart: Annulation de vente : restauration des stocks et marquage isCancelled
+00:25 +36 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_cart_controller_test.dart: Panier → moteur : la vente est enregistrée et le panier remis à zéro
+00:25 +37 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_cart_controller_test.dart: Vente à crédit sans nom de client : refus
+00:25 +38 -1: /home/thioye/Documents/Projets -réels/nmashop/test/sales/sale_cart_controller_test.dart: Vente à crédit avec nom : client créé, créance enregistrée
+00:28 +39 -1: /home/thioye/Documents/Projets -réels/nmashop/test/stock/product_use_cases_test.dart: AddProductUseCase crée le produit et aligne le CMP sur le prix d'achat
+00:29 +40 -1: /home/thioye/Documents/Projets -réels/nmashop/test/stock/product_use_cases_test.dart: AddProductUseCase refuse un nom vide
+00:29 +41 -1: /home/thioye/Documents/Projets -réels/nmashop/test/stock/product_use_cases_test.dart: AddProductUseCase refuse un prix négatif
+00:29 +42 -1: /home/thioye/Documents/Projets -réels/nmashop/test/stock/product_use_cases_test.dart: UpdateProductUseCase modifie la fiche sans altérer le CMP
+00:31 +43 -1: /home/thioye/Documents/Projets -réels/nmashop/test/business/drift_business_summary_repository_test.dart: résumé du mois courant
+00:40 +44 -1: /home/thioye/Documents/Projets -réels/nmashop/test/dashboard/drift_dashboard_repository_test.dart: agrégats de l'accueil
+00:41 +45 -1: /home/thioye/Documents/Projets -réels/nmashop/test/dashboard/drift_dashboard_repository_test.dart: bas stock et ventes récentes
+00:41 +46 -1: Some tests failed.

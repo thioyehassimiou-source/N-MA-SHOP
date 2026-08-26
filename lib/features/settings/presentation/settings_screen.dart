@@ -478,13 +478,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     String title, {
     required Widget trailing,
   }) {
-    return InkWell(
-      onTap: () {},
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      hoverColor: context.colors.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        child: Row(
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
@@ -500,7 +499,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             trailing,
           ],
         ),
-      ),
     );
   }
 
@@ -590,7 +588,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onChanged: (value) {
                     ref.read(appSettingsProvider.notifier).updateUseCustomTheme(value);
                   },
-                  activeColor: context.colors.primary,
+                  activeThumbColor: context.colors.primary,
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),

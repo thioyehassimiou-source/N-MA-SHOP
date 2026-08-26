@@ -196,7 +196,7 @@ class _NewInvoiceDialogState extends ConsumerState<NewInvoiceDialog> {
                                               child: Image.file(
                                                 File(p.imageUrl!),
                                                 fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) => Icon(Icons.inventory_2_outlined, size: 18, color: context.colors.primary),
+                                                errorBuilder: (context, error, stackTrace) => Icon(Icons.inventory_2_outlined, size: 18, color: context.colors.primary),
                                               ),
                                             )
                                           : Icon(Icons.inventory_2_outlined,

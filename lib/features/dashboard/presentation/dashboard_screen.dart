@@ -478,7 +478,7 @@ class _AlertsActionsCard extends StatelessWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => context.go('/stock'),
+                    onPressed: () => context.go('/produits'),
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
                       minimumSize: const Size(50, 30),
@@ -503,7 +503,7 @@ class _AlertsActionsCard extends StatelessWidget {
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Tout est en ordre ! Bonnes ventes 👍',
+                      'Tout est en ordre ! Bonnes ventes.',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -665,7 +665,7 @@ class _PageHeader extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  '$greeting, $firstName ! 👋',
+                  '$greeting, $firstName !',
                   style: TextStyle(
                     color: textColor,
                     fontSize: 26,

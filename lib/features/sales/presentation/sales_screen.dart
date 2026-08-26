@@ -17,7 +17,6 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_chip.dart';
-import '../../../core/widgets/app_metric_card.dart';
 import '../../../core/widgets/app_page_header.dart';
 import '../../../core/widgets/barcode_scanner_dialog.dart';
 import '../../../core/widgets/app_form_dialog.dart';
@@ -219,14 +218,13 @@ class _ProductPickerState extends ConsumerState<_ProductPicker> {
                   onTap: () async {
                     final code = await BarcodeScannerDialog.show(context);
                     if (code != null && code.isNotEmpty && context.mounted) {
-                      // Cherche le produit
-                      final products = ref.read(productsStreamProvider).valueOrNull ?? [];
+                      final products = ref.read(productsStreamProvider).value ?? [];
                       final match = products.where((p) => p.isActive && p.barcode == code).firstOrNull;
                       if (match != null) {
                         ref.read(saleCartControllerProvider.notifier).addProduct(match);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('✅ ${match.name} ajouté au panier'),
+                            content: Row(children: [const Icon(Icons.check_circle_outline, color: Colors.white, size: 18), const SizedBox(width: 8), Text('${match.name} ajouté au panier')]),
                             backgroundColor: Colors.green,
                             behavior: SnackBarBehavior.floating,
                             duration: const Duration(seconds: 2),
@@ -235,7 +233,7 @@ class _ProductPickerState extends ConsumerState<_ProductPicker> {
                       } else {
                          ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('❌ Code inconnu : $code'),
+                            content: Row(children: [const Icon(Icons.error_outline, color: Colors.white, size: 18), const SizedBox(width: 8), Text('Code inconnu : $code')]),
                             backgroundColor: theme.colorScheme.error,
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -692,8 +690,8 @@ class _SubmitButton extends ConsumerWidget {
             ),
             content: Text(
               sale.isCredit
-                  ? '✅ Vente (${sale.reference}) — crédit de ${formatGnf(sale.creditAmount)} noté.'
-                  : '✅ Vente enregistrée (${sale.reference}).',
+                  ? 'Vente (${sale.reference}) — crédit de ${formatGnf(sale.creditAmount)} noté.'
+                  : 'Vente enregistrée (${sale.reference}).',
               style: AppTypography.bodySm.copyWith(
                 color: context.colors.onPrimaryContainer,
               ),
@@ -824,7 +822,7 @@ class _CartLineTile extends ConsumerWidget {
                     child: Image.file(
                       File(line.imageUrl!),
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(
+                      errorBuilder: (context, error, stackTrace) => Icon(
                         Icons.inventory_2_outlined,
                         size: 16,
                         color: hasIssue ? theme.colorScheme.error : theme.colorScheme.primary,

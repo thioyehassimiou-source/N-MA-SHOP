@@ -13,6 +13,8 @@ import 'package:nmashop/features/sales/domain/errors.dart';
 import 'package:nmashop/features/sales/domain/usecases/record_sale.dart';
 import 'package:nmashop/features/security/domain/services/audit_log_service.dart';
 import 'package:nmashop/core/database/tables/audit_logs.dart';
+import 'package:nmashop/features/auth/domain/app_user.dart';
+import 'package:nmashop/core/database/tables/users.dart';
 
 class FakeAuditLogService implements AuditLogService {
   @override
@@ -39,7 +41,13 @@ class _Engine {
       products: DriftProductRepository(db),
       stock: DriftStockRepository(db, idGenerator: nextId),
       sales: DriftSaleRepository(db),
-      currentUser: null,
+      currentUser: AppUser(
+        id: 'admin-1',
+        fullName: 'Admin Test',
+        createdAt: fixedClock,
+        role: UserRole.admin,
+        isActive: true,
+      ),
       auditLog: FakeAuditLogService(),
       idGenerator: nextId,
       clock: () => fixedClock,

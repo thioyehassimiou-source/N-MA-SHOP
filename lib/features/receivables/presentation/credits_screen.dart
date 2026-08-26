@@ -250,7 +250,7 @@ class _CreditTile extends StatelessWidget {
     if (!phone.startsWith('224') && phone.length == 9) phone = '224$phone';
 
     final message = Uri.encodeComponent(
-      "Bonjour ${summary.customerName} 👋,\n\n"
+      "Bonjour ${summary.customerName},\n\n"
       "Petit rappel amical de N'MaShop : il vous reste un solde dû de "
       "${formatGnf(summary.balance)} à régler pour vos achats.\n"
       "Merci de votre confiance et à bientôt !",
@@ -601,7 +601,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           Text(
-            'Aucun impayé en cours ! 🎉',
+            'Aucun impayé en cours !',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,

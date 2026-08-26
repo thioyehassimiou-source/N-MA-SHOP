@@ -256,25 +256,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 ),
               ),
             ),
-            Positioned(
-              right: AppSpacing.lg,
-              bottom: AppSpacing.lg,
-              child: FloatingActionButton.extended(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Scanner de code-barres : branchez un lecteur USB ou activez l\'option depuis les paramètres.'),
-                      backgroundColor: context.colors.secondary,
-                      duration: const Duration(seconds: 4),
-                    ),
-                  );
-                },
-                backgroundColor: context.colors.primary,
-                foregroundColor: context.colors.onPrimary,
-                icon: const Icon(Icons.barcode_reader, size: 22),
-                label: const Text('Scanner'),
-              ),
-            ),
           ],
         );
       },

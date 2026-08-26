@@ -52,7 +52,7 @@ class _AssignDeliveryDialogState extends ConsumerState<AssignDeliveryDialog> {
     if (mounted) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Livreur assigné et expédition créée ✓')),
+        const SnackBar(content: Text('Livreur assigné et expédition créée')),
       );
     }
   }

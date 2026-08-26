@@ -5,7 +5,6 @@ import '../../../../core/format/formatters.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_form_field.dart';
 import '../../../../core/widgets/product_thumbnail.dart';
 
@@ -118,7 +117,7 @@ class _NewOrderDialogState extends ConsumerState<NewOrderDialog> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Commande enregistrée ✓'),
+            content: Text('Commande enregistrée'),
             backgroundColor: AppColors.brandEmerald,
           ),
         );

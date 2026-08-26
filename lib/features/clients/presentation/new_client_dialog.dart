@@ -84,7 +84,7 @@ class _NewClientDialogState extends ConsumerState<NewClientDialog> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_isEdit ? 'Client modifié ✓' : 'Client ajouté ✓')),
+          SnackBar(content: Text(_isEdit ? 'Client modifié' : 'Client ajouté')),
         );
       }
     } catch (e) {
