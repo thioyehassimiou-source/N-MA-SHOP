@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +14,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/animated_backdrop.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_form_dialog.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/repositories/auth_repository.dart';
 import '../../auth/presentation/widgets/auth_layout.dart' show kMinPasswordLength;
@@ -64,9 +66,17 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   String? _logoPath;
   bool _saving = false;
   bool _acceptedTerms = false;
+  late final TapGestureRecognizer _termsRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _termsRecognizer = TapGestureRecognizer()..onTap = () => _showTermsDialog(context);
+  }
 
   @override
   void dispose() {
+    _termsRecognizer.dispose();
     _nameController.dispose();
     _ownerNameController.dispose();
     _passwordController.dispose();
@@ -180,6 +190,41 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         );
       }
     }
+  }
+
+  void _showTermsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AppFormDialog(
+        title: 'Conditions d\'utilisation',
+        subtitle: 'Contrat de licence et politique de confidentialité N\'MaShop.',
+        icon: Icons.shield_rounded,
+        gradientColors: const [Color(0xFF1a2e5a), Color(0xFF2d4a86)],
+        width: 600,
+        body: const SizedBox(
+          height: 350,
+          child: SingleChildScrollView(
+            child: Text(
+              "CONTRAT DE LICENCE UTILISATEUR FINAL ET POLITIQUE DE CONFIDENTIALITÉ\nLOGICIEL N'MASHOP\n\n"
+              "1. ACCEPTATION DES CONDITIONS\n"
+              "En installant et en utilisant l'application N'MaShop, vous acceptez d'être lié par les termes de ce contrat.\n\n"
+              "2. LICENCE D'UTILISATION\n"
+              "L'équipe N'MaShop vous accorde une licence non exclusive et non transférable pour utiliser ce Logiciel dans le cadre de la gestion de votre point de vente. Vous ne pouvez pas distribuer, louer, vendre ou sous-licencier ce Logiciel.\n\n"
+              "3. CONFIDENTIALITÉ ET SÉCURITÉ DES DONNÉES\n"
+              "a. Données Locales : Le Logiciel fonctionne hors-ligne. Toutes vos données sont stockées localement sur votre ordinateur.\n"
+              "b. Responsabilité : Vous êtes seul responsable de la sécurité de vos données.\n"
+              "c. Traitement des données : N'MaShop n'a pas accès à vos données commerciales, ne les collecte pas et ne les transmet à aucun serveur distant.\n\n"
+              "4. LIMITATION DE RESPONSABILITÉ\n"
+              "N'MaShop ne saurait être tenu responsable de toute perte de profits, perte de données, ou dommages indirects découlant de l'utilisation du Logiciel.\n",
+              style: TextStyle(fontSize: 13, height: 1.5),
+            ),
+          ),
+        ),
+        primaryLabel: 'Fermer',
+        primaryIcon: Icons.close_rounded,
+        onPrimary: () => Navigator.pop(context),
+      ),
+    );
   }
 
   @override
@@ -698,7 +743,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                           style: TextStyle(
                             color: context.colors.primary,
                             fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
                           ),
+                          recognizer: _termsRecognizer,
                         ),
                         const TextSpan(text: ' et la '),
                         TextSpan(
@@ -706,7 +753,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                           style: TextStyle(
                             color: context.colors.primary,
                             fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
                           ),
+                          recognizer: _termsRecognizer,
                         ),
                         const TextSpan(text: ' de N\'MaShop.'),
                       ],
