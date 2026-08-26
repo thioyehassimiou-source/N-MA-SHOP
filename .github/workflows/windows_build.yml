@@ -1,0 +1,43 @@
+name: Build Windows Release
+
+on:
+  # Permet de lancer le build manuellement depuis l'interface GitHub
+  workflow_dispatch:
+  # Lance automatiquement un build quand on pousse un tag de version (ex: v1.0.0)
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    name: Build Windows Executable
+    runs-on: windows-latest
+
+    steps:
+      - name: Clone du code source
+        uses: actions/checkout@v4
+
+      - name: Installation de Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Téléchargement des dépendances
+        run: flutter pub get
+
+      - name: Compilation Windows (Release)
+        run: flutter build windows --release
+
+      - name: Création de l'archive ZIP
+        run: |
+          cd build\windows\x64\runner\Release
+          Compress-Archive -Path * -DestinationPath NMaShop_Windows_v1.0.0.zip
+        shell: powershell
+
+      - name: Sauvegarde de l'artefact (Téléchargement)
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMaShop-Windows-Executable
+          path: build\windows\x64\runner\Release\NMaShop_Windows_v1.0.0.zip
+          retention-days: 7

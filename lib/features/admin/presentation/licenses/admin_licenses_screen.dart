@@ -753,7 +753,7 @@ class AdminLicensesScreen extends ConsumerWidget {
                     Text('Statut', style: TextStyle(color: textSecondary, fontSize: 13)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: selectedStatus,
+                      initialValue: selectedStatus,
                       dropdownColor: surfaceColor,
                       style: TextStyle(color: textPrimary),
                       items: const [

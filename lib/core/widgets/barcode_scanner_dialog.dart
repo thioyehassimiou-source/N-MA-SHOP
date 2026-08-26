@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/scanner_server.dart';
 import '../theme/app_colors.dart';
@@ -40,6 +42,12 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
   bool _serverStarting = true;
 
   bool _detected = false;
+  int _currentTabIndex = 0;
+  
+  // Variables pour scanner USB (Douchette)
+  String _usbBarcodeBuffer = '';
+  Timer? _usbDebounceTimer;
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -55,8 +63,10 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
   }
 
   void _onTabChanged() {
-    if (!_tabController.indexIsChanging) return;
-    if (_tabController.index == 0) {
+    if (_tabController.index == _currentTabIndex) return;
+    _currentTabIndex = _tabController.index;
+    
+    if (_currentTabIndex == 0) {
       // Passer à l'onglet Webcam → initialiser la caméra si pas encore fait
       _initCamera();
     } else {
@@ -76,18 +86,41 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
   }
 
   void _disposeCamera() {
-    _cameraController?.dispose();
-    _cameraController = null;
+    setState(() {
+      _cameraController?.dispose();
+      _cameraController = null;
+    });
   }
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _serverSubscription?.cancel();
     _scannerServer.stop();
     _cameraController?.dispose();
     super.dispose();
+  }
+
+  void _onKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+
+    if (event.logicalKey == LogicalKeyboardKey.enter) {
+      if (_usbBarcodeBuffer.isNotEmpty) {
+        _onCodeDetected(_usbBarcodeBuffer);
+        _usbBarcodeBuffer = '';
+      }
+      return;
+    }
+
+    if (event.character != null && event.character!.isNotEmpty) {
+      _usbBarcodeBuffer += event.character!;
+      _usbDebounceTimer?.cancel();
+      _usbDebounceTimer = Timer(const Duration(milliseconds: 100), () {
+        _usbBarcodeBuffer = ''; // Réinitialiser si pas d'entrée rapide
+      });
+    }
   }
 
   void _onCameraDetect(BarcodeCapture capture) {
@@ -114,29 +147,37 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        width: 460,
-        height: dialogH,
-        child: Column(
-          children: [
-            // ─── En-tête ──────────────────────────────────────────────
-            _buildHeader(),
+      child: Focus(
+        focusNode: _focusNode,
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          _onKeyEvent(event);
+          return KeyEventResult.ignored;
+        },
+        child: SizedBox(
+          width: 460,
+          height: dialogH,
+          child: Column(
+            children: [
+              // ─── En-tête ──────────────────────────────────────────────
+              _buildHeader(),
 
-            // ─── Contenu (Onglets) ────────────────────────────────────
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildWebcamTab(),
-                  _buildSmartphoneTab(),
-                ],
+              // ─── Contenu (Onglets) ────────────────────────────────────
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _buildWebcamTab(),
+                    _buildSmartphoneTab(),
+                  ],
+                ),
               ),
-            ),
 
-            // ─── Pied ─────────────────────────────────────────────────
-            _buildFooter(),
-          ],
+              // ─── Pied ─────────────────────────────────────────────────
+              _buildFooter(),
+            ],
+          ),
         ),
       ),
     );
@@ -203,41 +244,63 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
     if (_cameraController == null) {
       // Proposer d'activer la caméra
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.videocam_outlined, color: AppColors.primary, size: 36),
               ),
-              child: const Icon(Icons.videocam_outlined, color: AppColors.primary, size: 36),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Activer la caméra',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Cliquez sur le bouton pour démarrer\nla caméra de votre PC.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: _initCamera,
-              icon: const Icon(Icons.play_circle_outline),
-              label: const Text('Démarrer la caméra'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              const SizedBox(height: 16),
+              const Text(
+                'Activer la caméra',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              const Text(
+                'Cliquez sur le bouton pour démarrer\nla caméra de votre PC.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: _initCamera,
+                icon: const Icon(Icons.play_circle_outline),
+                label: const Text('Démarrer la caméra'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Si la caméra reste noire ou ne fonctionne pas, utilisez la version navigateur :',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  if (_scannerServer.serverUrl != null) {
+                    final uri = Uri.parse(_scannerServer.serverUrl!).replace(host: '127.0.0.1');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  }
+                },
+                icon: const Icon(Icons.open_in_browser),
+                label: const Text('Ouvrir dans le navigateur'),
+              ),
+            ],
+          ),
         ),
       );
     }

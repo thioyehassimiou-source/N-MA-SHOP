@@ -1,126 +1,9 @@
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:flutter/services.dart';
-
-import 'package:network_info_plus/network_info_plus.dart';
-
-class ScannerServer {
-  HttpServer? _server;
-  String? _localIp;
-  int? _port;
-  final _barcodeController = StreamController<String>.broadcast();
-
-  Stream<String> get onBarcodeScanned => _barcodeController.stream;
-
-  String? get serverUrl {
-    if (_localIp == null || _port == null) return null;
-    return 'http://$_localIp:$_port';
-  }
-
-  Future<void> start() async {
-    if (_server != null) return;
-
-    // Récupérer l'IP locale du réseau
-    try {
-      final info = NetworkInfo();
-      _localIp = await info.getWifiIP();
-    } catch (e) {
-      _localIp = null;
-    }
-
-    if (_localIp == null || _localIp == '127.0.0.1' || _localIp == '0.0.0.0') {
-      // Fallback robuste pour Linux/Windows — ignorer les interfaces virtuelles
-      final interfaces = await NetworkInterface.list(
-          type: InternetAddressType.IPv4, includeLoopback: false);
-      for (var interface in interfaces) {
-        if (interface.name.startsWith('docker') ||
-            interface.name.startsWith('veth') ||
-            interface.name.startsWith('br-')) {
-          continue;
-        }
-        if (interface.addresses.isNotEmpty) {
-          _localIp = interface.addresses.first.address;
-          break;
-        }
-      }
-    }
-
-    // Démarrer le serveur HTTP sur un port fixe
-    const fixedPort = 8765;
-    for (var tryPort = fixedPort; tryPort < fixedPort + 10; tryPort++) {
-      try {
-        _server = await HttpServer.bind(InternetAddress.anyIPv4, tryPort);
-        _port = _server!.port;
-        break;
-      } catch (_) {
-        continue;
-      }
-    }
-
-    if (_server == null) return; // Aucun port disponible
-
-    _server!.listen((HttpRequest request) async {
-      // Headers CORS universels
-      request.response.headers.add('Access-Control-Allow-Origin', '*');
-      request.response.headers
-          .add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      request.response.headers
-          .add('Access-Control-Allow-Headers', 'Origin, Content-Type');
-      request.response.headers
-          .add('Access-Control-Allow-Private-Network', 'true');
-
-      if (request.method == 'OPTIONS') {
-        request.response.statusCode = HttpStatus.ok;
-        await request.response.close();
-        return;
-      }
-
-      if (request.method == 'GET' && request.uri.path == '/') {
-        _serveHtml(request);
-      } else if (request.method == 'POST' && request.uri.path == '/scan') {
-        final code = await utf8.decoder.bind(request).join();
-        if (code.isNotEmpty) {
-          _barcodeController.add(code.trim());
-        }
-
-        request.response
-          ..statusCode = HttpStatus.ok
-          ..headers.contentType = ContentType.text
-          ..write('OK');
-        await request.response.close();
-      } else if (request.method == 'GET' && request.uri.path == '/html5-qrcode.min.js') {
-        try {
-          final js = await rootBundle.loadString('assets/web/html5-qrcode.min.js');
-          request.response
-            ..statusCode = HttpStatus.ok
-            ..headers.contentType = ContentType.parse('application/javascript')
-            ..write(js);
-        } catch (e) {
-          request.response.statusCode = HttpStatus.notFound;
-        }
-        await request.response.close();
-      } else {
-        request.response
-          ..statusCode = HttpStatus.notFound
-          ..write('Not found');
-        await request.response.close();
-      }
-    });
-  }
-
-  void _serveHtml(HttpRequest request) {
-    // ZERO external dependencies — works fully offline on local Wi-Fi.
-    // Uses native BarcodeDetector (Android Chrome 83+) for photo scanning.
-    const html = '''
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>N'MaShop Scanner</title>
-  <script src="/html5-qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -253,17 +136,7 @@ class ScannerServer {
       document.getElementById('main-view').style.display = 'block';
     }
 
-    var html5QrcodeScanner = null;
-
     function stopVideo() {
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.stop().then(function() {
-          html5QrcodeScanner.clear();
-          html5QrcodeScanner = null;
-        }).catch(function(err) {
-          console.error('Erreur stop: ', err);
-        });
-      }
       if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
       if (videoStream) {
         videoStream.getTracks().forEach(function(track) { track.stop(); });
@@ -291,9 +164,9 @@ class ScannerServer {
 
     // Bouton envoyer
     document.getElementById('send-btn').addEventListener('click', function() {
-      var val = document.getElementById('manual-input').value.replace(/\\s/g, '');
+      var val = document.getElementById('manual-input').value.replace(/\s/g, '');
       if (val.length === 0) {
-        setStatus('Saisissez un code avant d\\'envoyer.');
+        setStatus('Saisissez un code avant d\'envoyer.');
         return;
       }
       sendToPC(val);
@@ -312,8 +185,8 @@ class ScannerServer {
 
     // Live Webcam
     document.getElementById('live-btn').addEventListener('click', function() {
-      if (typeof Html5Qrcode === 'undefined') {
-        setStatus('La librairie de scan est en cours de chargement. Veuillez patienter ou vérifier votre connexion.');
+      if (typeof BarcodeDetector === 'undefined') {
+        setStatus('Le scan en direct n\'est pas supporté par ce navigateur. Utilisez la photo ou la saisie manuelle.');
         return;
       }
       
@@ -321,37 +194,33 @@ class ScannerServer {
       document.getElementById('video-view').style.display = 'flex';
       document.getElementById('video-status').textContent = 'Initialisation de la caméra...';
       
-      // On cache la vidéo par défaut car Html5Qrcode va injecter sa propre vidéo.
-      videoEl.style.display = 'none';
-      // Mais on a besoin d'un div conteneur !
-      if (!document.getElementById('reader')) {
-        var readerDiv = document.createElement('div');
-        readerDiv.id = 'reader';
-        readerDiv.style.width = '100%';
-        readerDiv.style.maxWidth = '400px';
-        videoEl.parentNode.insertBefore(readerDiv, videoEl);
-      }
-      
-      try {
-        html5QrcodeScanner = new Html5Qrcode("reader");
-        html5QrcodeScanner.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: {width: 250, height: 250} },
-          function(decodedText, decodedResult) {
-            stopVideo();
-            sendToPC(decodedText);
-          },
-          function(errorMessage) {
-            // parse errors are normal (frame with no barcode)
-          }
-        ).catch(function(err) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(function(stream) {
+          videoStream = stream;
+          videoEl.srcObject = stream;
+          videoEl.play();
+          
+          var detector = new BarcodeDetector({
+            formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf', 'codabar']
+          });
+          
+          scanInterval = setInterval(function() {
+            if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
+              detector.detect(videoEl).then(function(codes) {
+                if (codes.length > 0) {
+                  stopVideo();
+                  sendToPC(codes[0].rawValue);
+                }
+              }).catch(function(e) {
+                console.error(e);
+              });
+            }
+          }, 500); // scan 2 times per second
+        })
+        .catch(function(err) {
           reset();
-          setStatus('Erreur caméra (Permission refusée ou non sécurisé): ' + err);
+          setStatus('Impossible d\'accéder à la caméra: ' + err.message);
         });
-      } catch (e) {
-        reset();
-        setStatus('Erreur interne: ' + e);
-      }
     });
 
     // Photo avec BarcodeDetector natif (Android Chrome 83+)
@@ -373,20 +242,33 @@ class ScannerServer {
       img.onload = function() {
         URL.revokeObjectURL(objectUrl);
         
-        if (typeof Html5Qrcode === 'undefined') {
-           setStatus('Librairie non chargée.');
-           return;
+        // Limiter à 1280px max pour économiser la mémoire
+        var maxDim = 1280;
+        var w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
         }
-
-        var html5QrCode = new Html5Qrcode("main-view"); // on utilise un élément existant quelconque
-        html5QrCode.scanFileV2(file, true)
-        .then(function(decodedText) {
+        
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        
+        var detector = new BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf', 'codabar']
+        });
+        detector.detect(canvas).then(function(codes) {
           document.getElementById('photo-input').value = '';
-          sendToPC(decodedText);
-        })
-        .catch(function(err) {
+          if (codes.length === 0) {
+            setStatus('Aucun code détecté. Rapprochez-vous et re-prenez la photo, ou saisissez manuellement.');
+          } else {
+            sendToPC(codes[0].rawValue);
+          }
+        }).catch(function() {
           document.getElementById('photo-input').value = '';
-          setStatus('Erreur d\\'analyse ou aucun code trouvé. Saisissez manuellement.');
+          setStatus('Erreur d'analyse. Saisissez le code manuellement.');
         });
       };
       img.onerror = function() {
@@ -399,19 +281,3 @@ class ScannerServer {
   </script>
 </body>
 </html>
-''';
-
-    request.response
-      ..statusCode = HttpStatus.ok
-      ..headers.contentType = ContentType.html
-      ..write(html);
-    request.response.close();
-  }
-
-  Future<void> stop() async {
-    await _server?.close(force: true);
-    _server = null;
-    _localIp = null;
-    _port = null;
-  }
-}

@@ -28,6 +28,7 @@ import '../domain/entities/product.dart';
 import '../domain/entities/product_draft.dart';
 import '../domain/usecases/save_product_result.dart';
 import '../../../core/database/tables/users.dart';
+import '../../../core/services/barcode_printer_service.dart';
 
 enum StockStatus { inStock, reorder, critical, out }
 
@@ -462,9 +463,20 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     ),
                     if (isAdmin)
                       DataCell(
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 20),
-                          onPressed: () => _openDialog(p),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.print_outlined, size: 20),
+                              tooltip: 'Imprimer code-barres',
+                              onPressed: () => BarcodePrinterService.printProductLabel(p),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 20),
+                              tooltip: 'Modifier',
+                              onPressed: () => _openDialog(p),
+                            ),
+                          ],
                         ),
                       ),
                   ],
