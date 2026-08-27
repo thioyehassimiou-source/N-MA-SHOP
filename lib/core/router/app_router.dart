@@ -84,13 +84,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
+      // ── DEMO OVERRIDE: Forcer l'onboarding si isSetupCompleted = false ──
+      if (!ref.read(appSettingsProvider).isSetupCompleted) {
+        if (location == '/onboarding') return null;
+        if (location == '/connexion') return null;
+        return '/onboarding';
+      }
+
       // ── 1. Aucune boutique configurée ─────────────────────────────────────
       final shopExists =
           ref.read(accountExistsProvider) ||
           ref.read(appSettingsProvider).isSetupCompleted;
       final isSignedIn = ref.read(authProvider) != null;
-
-      const setupRoutes = {'/onboarding', '/setup'};
 
       if (!shopExists) {
         const allowedRoutes = {'/onboarding', '/setup', '/connexion'};
@@ -99,11 +104,12 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // ── 2. Boutique existante mais verrouillée ────────────────────────────
       if (!isSignedIn) {
-        return location == '/connexion' ? null : '/connexion';
+        const allowedUnauth = {'/connexion', '/onboarding', '/setup'};
+        return allowedUnauth.contains(location) ? null : '/connexion';
       }
 
-      // ── 3. Déverrouillé : écrans d'accueil inutiles ───────────────────────
-      if (setupRoutes.contains(location) || location == '/connexion') {
+      // ── 3. Déverrouillé : écran de connexion inutile ──────────────────────
+      if (location == '/connexion') {
         return '/';
       }
 

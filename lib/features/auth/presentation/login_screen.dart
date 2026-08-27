@@ -194,19 +194,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-              Center(
-              child: TextButton.icon(
-                onPressed: _confirmReset,
-                icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text('Reconfigurer / Nouvelle boutique'),
-                style: TextButton.styleFrom(
-                  foregroundColor: context.colors.onSurfaceVariant,
-                  textStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: () => context.go('/onboarding'),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                  label: const Text("Revoir la présentation"),
+                  style: TextButton.styleFrom(
+                    foregroundColor: context.colors.primary,
+                    textStyle: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: AppSpacing.sm),
+                TextButton.icon(
+                  onPressed: _confirmReset,
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Reconfigurer'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: context.colors.onSurfaceVariant,
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

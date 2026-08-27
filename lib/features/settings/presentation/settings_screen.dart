@@ -412,6 +412,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               Divider(color: context.colors.outlineVariant),
+              _buildSecurityItem(
+                Icons.auto_stories_outlined,
+                'Revoir la présentation (Onboarding)',
+                trailing: AppButton.secondary(
+                  label: 'Revoir',
+                  onPressed: () => context.go('/onboarding'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _buildSecurityItem(
+                Icons.tune_rounded,
+                'Assistant de configuration boutique',
+                trailing: AppButton.secondary(
+                  label: 'Lancer',
+                  onPressed: () => context.go('/setup'),
+                ),
+              ),
+              Divider(color: context.colors.outlineVariant),
               const SizedBox(height: AppSpacing.xs),
               _buildSecurityItem(
                 Icons.history,

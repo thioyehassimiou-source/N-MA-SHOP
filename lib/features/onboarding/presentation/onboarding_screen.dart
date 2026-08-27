@@ -105,6 +105,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _fadeController.forward();
   }
 
+  void _previous() {
+    if (_currentPage > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   void _next() {
     if (_currentPage < _pages.length - 1) {
       _pageController.nextPage(
@@ -112,7 +121,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         curve: Curves.easeInOut,
       );
     } else {
-      context.go('/setup');
+      context.go('/connexion');
     }
   }
 
@@ -242,33 +251,19 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
         ),
-        // Dégradé bas : lisibilité de la barre de commandes.
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.transparent,
-                context.colors.surface.withValues(alpha: 0.7),
-              ],
-              stops: const [0.5, 1.0],
-            ),
-          ),
-        ),
-        // Voile haut, uniquement pour détacher le logo de l'illustration.
+        // Voile haut discret pour détacher le logo sans altérer l'illustration.
         Positioned(
           top: 0,
           left: 0,
           right: 0,
-          height: 140,
+          height: 100,
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  context.colors.surface.withValues(alpha: 0.55),
+                  Colors.black.withValues(alpha: 0.4),
                   Colors.transparent,
                 ],
               ),
@@ -425,6 +420,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
           const Spacer(),
+          if (_currentPage > 0) ...[
+            OutlinedButton.icon(
+              onPressed: _previous,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+              ),
+              icon: const Icon(Icons.arrow_back_rounded, size: 16),
+              label: const Text('Précédent'),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+          ],
           if (!isLast)
             OutlinedButton(
               onPressed: () => context.go('/setup'),

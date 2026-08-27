@@ -375,13 +375,13 @@ class _ProductTile extends ConsumerWidget {
             children: [
               if (product.imageUrl != null && File(product.imageUrl!).existsSync())
                 Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.xs),
+                  padding: const EdgeInsets.only(right: AppSpacing.sm),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                     child: Image.file(
                       File(product.imageUrl!),
-                      width: 36,
-                      height: 36,
+                      width: 44,
+                      height: 44,
                       fit: BoxFit.cover,
                     ),
                   ),
