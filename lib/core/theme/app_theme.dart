@@ -11,18 +11,18 @@ import 'app_typography.dart';
 class AppTheme {
   /// Thème clair dérivé du template choisi par le commerçant.
   static ThemeData light([AppPalette palette = AppPalette.fallback]) {
-    // Use the design-system primary (indigo) instead of the palette seed
-    // so that the sidebar active state, buttons, etc. are always consistent
-    const scheme = ColorScheme(
+    final primaryColor = palette.primaryColor;
+
+    final scheme = ColorScheme(
       brightness: Brightness.light,
-      primary: AppColors.primary,
-      onPrimary: AppColors.onPrimary,
-      primaryContainer: AppColors.primaryContainer,
-      onPrimaryContainer: AppColors.onPrimaryContainer,
-      secondary: AppColors.secondary,
-      onSecondary: AppColors.onSecondary,
-      secondaryContainer: AppColors.secondaryContainer,
-      onSecondaryContainer: AppColors.onSecondaryContainer,
+      primary: primaryColor,
+      onPrimary: Colors.white,
+      primaryContainer: primaryColor.withValues(alpha: 0.12),
+      onPrimaryContainer: primaryColor,
+      secondary: primaryColor,
+      onSecondary: Colors.white,
+      secondaryContainer: primaryColor.withValues(alpha: 0.12),
+      onSecondaryContainer: primaryColor,
       error: AppColors.error,
       onError: AppColors.onError,
       errorContainer: AppColors.errorContainer,
@@ -41,32 +41,34 @@ class AppTheme {
     return _base(scheme, palette);
   }
 
-  /// Thème sombre
+  /// Thème sombre dérivé du template choisi par le commerçant.
   static ThemeData dark([AppPalette palette = AppPalette.fallback]) {
-    const scheme = ColorScheme(
+    final primaryColor = palette.primaryColor;
+
+    final scheme = ColorScheme(
       brightness: Brightness.dark,
-      primary: Color(0xFFE85D04), // Orange N'MaShop
-      onPrimary: Color(0xFFFFFFFF),
-      primaryContainer: Color(0xFF9D3C00), // Darker Orange
-      onPrimaryContainer: Color(0xFFFFDBC7),
-      secondary: Color(0xFF8899BB),
-      onSecondary: Color(0xFF020617),
-      secondaryContainer: Color(0xFF1E293B),
-      onSecondaryContainer: Color(0xFFF1F5F9),
-      error: Color(0xFFF87171),
-      onError: Color(0xFF450A0A),
-      errorContainer: Color(0xFF7F1D1D),
-      onErrorContainer: Color(0xFFFEE2E2),
-      surface: Color(0xFF0F1B3D), // N'MaShop Navy
-      onSurface: Color(0xFFF8FAFC),
-      surfaceContainerLowest: Color(0xFF0A1229), // Deeper Navy
-      surfaceContainerLow: Color(0xFF0F1B3D),
-      surfaceContainer: Color(0xFF16254E), // Cards in dark mode
-      surfaceContainerHigh: Color(0xFF1E3163),
-      surfaceContainerHighest: Color(0xFF2A427E),
-      onSurfaceVariant: Color(0xFFAABBCC), // Muted blue-grey
-      outline: Color(0xFF334155),
-      outlineVariant: Color(0xFF1E3163),
+      primary: primaryColor,
+      onPrimary: Colors.white,
+      primaryContainer: primaryColor.withValues(alpha: 0.25),
+      onPrimaryContainer: Colors.white,
+      secondary: primaryColor,
+      onSecondary: Colors.white,
+      secondaryContainer: primaryColor.withValues(alpha: 0.2),
+      onSecondaryContainer: Colors.white,
+      error: const Color(0xFFF87171),
+      onError: const Color(0xFF450A0A),
+      errorContainer: const Color(0xFF7F1D1D),
+      onErrorContainer: const Color(0xFFFEE2E2),
+      surface: palette.darkSidebarTop,
+      onSurface: const Color(0xFFF8FAFC),
+      surfaceContainerLowest: palette.darkSidebarBottom,
+      surfaceContainerLow: palette.darkSidebarTop,
+      surfaceContainer: const Color(0xFF16254E),
+      surfaceContainerHigh: const Color(0xFF1E3163),
+      surfaceContainerHighest: const Color(0xFF2A427E),
+      onSurfaceVariant: const Color(0xFFAABBCC),
+      outline: const Color(0xFF334155),
+      outlineVariant: const Color(0xFF1E3163),
     );
     return _base(scheme, palette);
   }

@@ -164,8 +164,9 @@ class AdminLicensesScreen extends ConsumerWidget {
                                         icon: const Icon(Icons.computer_rounded, size: 18, color: Color(0xFF10B981)),
                                         tooltip: 'Activer sur cette instance',
                                         splashRadius: 20,
-                                        onPressed: () {
-                                          final res = ref.read(licenseProvider.notifier).activate(lic.licenseKey);
+                                        onPressed: () async {
+                                          final res = await ref.read(licenseProvider.notifier).activate(lic.licenseKey);
+                                          if (!context.mounted) return;
                                           if (res.result == LicenseActivationResult.success) {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(content: Text('🎉 Boutique locale activée avec succès !')),

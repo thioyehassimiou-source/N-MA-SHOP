@@ -5,12 +5,21 @@ import 'package:flutter/material.dart';
 /// Inspiré du design de référence : sidebar blanche, icônes colorées,
 /// fond gris très clair, cartes blanches épurées.
 abstract final class AppColors {
-  // ── Primaire (Violet/Indigo — item actif sidebar) ──
-  static const primary = Color(0xFF5B5FC7);
+  // ── Marque Officielle N'MaShop ──
+  static const brandNavy = Color(0xFF0F1B3D);
+  static const brandNavyLight = Color(0xFF1A2B52);
+  static const brandNavyDark = Color(0xFF080E24);
+  static const brandOrange = Color(0xFFE85D04);
+  static const brandOrangeLight = Color(0xFFFF7A2A);
+  static const brandEmerald = Color(0xFF10B981);
+  static const brandRed = Color(0xFFEF4444);
+
+  // ── Primaire (Orange N'MaShop officiel — Marque & Actions) ──
+  static const primary = Color(0xFFE85D04);
   static const onPrimary = Color(0xFFFFFFFF);
-  static const primaryContainer = Color(0xFFE8E8FF);
-  static const onPrimaryContainer = Color(0xFF3F3FA8);
-  static const primaryFixed = Color(0xFFEEEEFF);
+  static const primaryContainer = Color(0xFFFFE8D6);
+  static const onPrimaryContainer = Color(0xFF9D3C00);
+  static const primaryFixed = Color(0xFFFFF0E6);
 
   // ── Secondaire (Bleu-gris neutre) ──
   static const secondary = Color(0xFF64748B);
@@ -104,12 +113,5 @@ abstract final class AppColors {
 
   static const iconAmber = Color(0xFFD97706);
   static const iconAmberBg = Color(0xFFFEF3C7);
-
-  // ── Marque N'MaShop ──
-  static const brandNavy = Color(0xFF0F1B3D);
-  static const brandNavyLight = Color(0xFF1A2B52);
-  static const brandOrange = Color(0xFFE85D04);
-  static const brandOrangeLight = Color(0xFFFF7A2A);
-  static const brandEmerald = Color(0xFF10B981);
   static const brandEmeraldLight = Color(0xFF6EE7B7);
 }

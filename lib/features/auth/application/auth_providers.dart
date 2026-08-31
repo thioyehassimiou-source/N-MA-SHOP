@@ -45,24 +45,37 @@ class AuthNotifier extends Notifier<AppUser?> {
 
   /// Restaure la session enregistrée au démarrage de l'application.
   ///
-  /// Retourne `true` si le compte est toujours là. Si le compte a été supprimé
-  /// entre-temps (réinitialisation), la session est purgée.
+  /// Restaure l'utilisateur via son ID de session ou, à défaut (ex. si les préférences
+  /// ont été réinitialisées), via le compte principal existant en base de données.
   Future<bool> restoreSession() async {
     final prefs = ref.read(sharedPreferencesProvider);
-    final id = prefs.getString(_kSessionUserId);
-    if (id == null) return false;
+    var id = prefs.getString(_kSessionUserId);
+    AppUser? user;
 
-    final user = await _repo.findById(id);
+    if (id != null) {
+      user = await _repo.findById(id);
+    }
+
+    // Fallback : si aucun ID de session n'est enregistré ou valide, mais qu'un compte
+    // existe en base de données (mono-utilisateur/admin), on restaure la session.
     if (user == null) {
+      user = await _repo.currentAccount();
+      if (user != null && user.isActive) {
+        await prefs.setString(_kSessionUserId, user.id);
+      }
+    }
+
+    if (user == null || !user.isActive) {
       await prefs.remove(_kSessionUserId);
+      state = null;
       return false;
     }
+
     state = user;
     return true;
   }
 
-  /// Crée le compte du boutiquier. N'ouvre pas la session : il déverrouille
-  /// ensuite avec le mot de passe qu'il vient de choisir.
+  /// Crée le compte du boutiquier et ouvre immédiatement la session.
   ///
   /// Lève [AuthException] si un compte existe déjà.
   Future<AppUser> defineAccount({
@@ -73,6 +86,11 @@ class AuthNotifier extends Notifier<AppUser?> {
       fullName: fullName,
       password: password,
     );
+    await ref
+        .read(sharedPreferencesProvider)
+        .setString(_kSessionUserId, user.id);
+    ref.read(accountExistsProvider.notifier).set(true);
+    state = user;
     return user;
   }
 
@@ -106,6 +124,12 @@ class AuthNotifier extends Notifier<AppUser?> {
   Future<void> updateName(String fullName) async {
     if (state == null) throw StateError('Not logged in');
     state = await _repo.updateName(state!.id, fullName);
+  }
+
+  /// Met à jour l'avatar du boutiquier et rafraîchit la session.
+  Future<void> updateAvatar(String? avatarPath) async {
+    if (state == null) throw StateError('Not logged in');
+    state = await _repo.updateAvatar(state!.id, avatarPath);
   }
 
   /// Verrouille l'application. La boutique reste configurée.

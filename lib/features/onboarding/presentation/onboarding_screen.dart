@@ -46,7 +46,7 @@ const _pages = [
     description:
         "Soyez alerté avant d'être en rupture. Gérez vos entrées, suivez vos "
         'produits et évitez les mauvaises surprises.',
-    accent: AppColors.brandEmeraldLight,
+    accent: AppColors.brandEmerald,
     features: [
       'Alertes de rupture',
       'Suivi en temps réel',
@@ -121,7 +121,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         curve: Curves.easeInOut,
       );
     } else {
-      context.go('/connexion');
+      context.go('/setup');
     }
   }
 
@@ -142,11 +142,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               return isWide ? _buildWidePage(page) : _buildNarrowPage(page);
             },
           ),
-          Positioned(bottom: 0, left: 0, right: 0, child: _buildBottomBar()),
 
-          // Bandeau « Reprendre ma boutique » : n'apparaît que si des données
-          // métier existent déjà sur cet appareil (boutique dont le compte ou
-          // la config a été perdu).
+          // Bandeau « Se connecter / Accéder à la boutique existante » :
+          // n'apparaît que si une boutique est déjà configurée sur cet appareil.
           Positioned(
             top: 0,
             left: 0,
@@ -179,11 +177,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             borderRadius: BorderRadius.circular(AppRadius.full),
             child: Ink(
               decoration: BoxDecoration(
-                color: context.colors.tertiary,
+                color: AppColors.brandNavy,
                 borderRadius: BorderRadius.circular(AppRadius.full),
+                border: Border.all(
+                  color: AppColors.brandOrange.withValues(alpha: 0.6),
+                  width: 1.5,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: context.colors.tertiary.withValues(alpha: 0.4),
+                    color: Colors.black.withValues(alpha: 0.35),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
@@ -196,20 +198,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.lock_open_rounded, size: 16, color: Colors.white),
+                  Icon(Icons.storefront_rounded, size: 18, color: AppColors.brandOrange),
                   SizedBox(width: AppSpacing.sm),
-                  Flexible(
-                    child: Text(
-                      'Une boutique existe déjà — Reprendre',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13.5,
-                      ),
+                  Text(
+                    'Accéder à ma boutique existante',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5,
                     ),
                   ),
-                  SizedBox(width: 4),
-                  Icon(Icons.arrow_forward_rounded, size: 15, color: Colors.white),
+                  SizedBox(width: 8),
+                  Icon(Icons.arrow_forward_rounded, size: 15, color: AppColors.brandOrange),
                 ],
               ),
             ),
@@ -222,8 +222,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Widget _buildWidePage(_OnboardingPage page) {
     return Row(
       children: [
-        Expanded(flex: 6, child: _buildImagePanel(page)),
-        Expanded(flex: 4, child: _buildInfoPanel(page)),
+        Expanded(flex: 5, child: _buildImagePanel(page)),
+        Expanded(flex: 5, child: _buildInfoPanel(page)),
       ],
     );
   }
@@ -251,7 +251,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
         ),
-        // Voile haut discret pour détacher le logo sans altérer l'illustration.
+        // Voile haut discret
         Positioned(
           top: 0,
           left: 0,
@@ -263,17 +263,26 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withValues(alpha: 0.4),
+                  Colors.black.withValues(alpha: 0.45),
                   Colors.transparent,
                 ],
               ),
             ),
           ),
         ),
-        const Positioned(
+        // Logo N'MaShop avec conteneur stylisé sur la photo
+        Positioned(
           top: AppSpacing.lg,
           left: AppSpacing.lg,
-          child: BrandLogo(height: 36),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.brandNavy.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            ),
+            child: const BrandLogo(height: 32, onDark: true),
+          ),
         ),
       ],
     );
@@ -284,77 +293,79 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       opacity: _fadeAnimation,
       child: Container(
         color: context.colors.surface,
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xl,
-          AppSpacing.xl,
-          AppSpacing.xl,
-          120, // espace réservé à la barre de commandes
-        ),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.xs,
-              ),
-              decoration: BoxDecoration(
-                color: page.accent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(AppRadius.full),
-                border: Border.all(color: page.accent.withValues(alpha: 0.4)),
-              ),
-              child: Text(
-                page.tag,
-                style: TextStyle(
-                  color: page.accent,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Text(
-              page.title,
-              style: AppTypography.headlineLg.copyWith(
-                color: context.colors.onSurface,
-                fontWeight: FontWeight.w800,
-                height: 1.1,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              page.description,
-              style: AppTypography.bodyLg.copyWith(
-                color: context.colors.onSurfaceVariant,
-                height: 1.6,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: page.features.asMap().entries.map((e) {
-                // Animation de glissement décalée pour chaque puce
-                final label = e.value;
-                return TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, val, child) {
-                    return Transform.translate(
-                      offset: Offset(20 * (1 - val), 0),
-                      child: Opacity(
-                        opacity: val,
-                        child: child,
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: page.accent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      border: Border.all(color: page.accent.withValues(alpha: 0.4)),
+                    ),
+                    child: Text(
+                      page.tag,
+                      style: TextStyle(
+                        color: page.accent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
                       ),
-                    );
-                  },
-                  child: _chip(label, context),
-                );
-              }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Text(
+                    page.title,
+                    style: AppTypography.headlineLg.copyWith(
+                      color: context.colors.onSurface,
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
+                    page.description,
+                    style: AppTypography.bodyLg.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                      height: 1.6,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: page.features.asMap().entries.map((e) {
+                      final label = e.value;
+                      return TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, val, child) {
+                          return Transform.translate(
+                            offset: Offset(20 * (1 - val), 0),
+                            child: Opacity(
+                              opacity: val,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _chip(label, context),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
             ),
+            // Navigation intégrée proprement dans le panneau blanc de droite
+            _buildInfoPanelNavigation(),
           ],
         ),
       ),
@@ -380,28 +391,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  Widget _buildBottomBar() {
+  Widget _buildInfoPanelNavigation() {
     final isLast = _currentPage == _pages.length - 1;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.lg,
-        AppSpacing.xl,
-        AppSpacing.xl,
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.transparent,
-            AppColors.brandNavy.withValues(alpha: 0.95),
-          ],
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
       child: Row(
         children: [
+          // Points de progression
           Row(
             children: List.generate(
               _pages.length,
@@ -412,58 +409,66 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 height: 8,
                 decoration: BoxDecoration(
                   color: i == _currentPage
-                      ? context.colors.primary
-                      : Colors.white.withValues(alpha: 0.2),
+                      ? AppColors.brandOrange
+                      : context.colors.outlineVariant,
                   borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
               ),
             ),
           ),
-          const Spacer(),
-          if (_currentPage > 0) ...[
-            OutlinedButton.icon(
-              onPressed: _previous,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-              ),
-              icon: const Icon(Icons.arrow_back_rounded, size: 16),
-              label: const Text('Précédent'),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-          ],
-          if (!isLast)
-            OutlinedButton(
-              onPressed: () => context.go('/setup'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: context.colors.onSurfaceVariant,
-                side: BorderSide(color: context.colors.outlineVariant),
-              ),
-              child: const Text('Passer'),
-            ),
-          const SizedBox(width: AppSpacing.md),
-          FilledButton.icon(
-            onPressed: _next,
-            style: FilledButton.styleFrom(
-              backgroundColor: context.colors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.xl,
-                vertical: AppSpacing.md,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-            ),
-            icon: Icon(
-              isLast
-                  ? Icons.rocket_launch_rounded
-                  : Icons.arrow_forward_rounded,
-              size: 18,
-            ),
-            label: Text(
-              isLast ? 'Configurer ma boutique' : 'Suivant',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (_currentPage > 0) ...[
+                  TextButton.icon(
+                    onPressed: _previous,
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.colors.onSurfaceVariant,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                    label: const Text('Précédent'),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                if (!isLast) ...[
+                  TextButton(
+                    onPressed: () => context.go('/setup'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.colors.onSurfaceVariant,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                    child: const Text('Passer'),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                FilledButton.icon(
+                  onPressed: _next,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.brandOrange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                  ),
+                  icon: Icon(
+                    isLast
+                        ? Icons.rocket_launch_rounded
+                        : Icons.arrow_forward_rounded,
+                    size: 16,
+                  ),
+                  label: Text(
+                    isLast ? 'Configurer ma boutique' : 'Suivant',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

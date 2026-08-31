@@ -29,7 +29,7 @@ class DeliveriesScreen extends ConsumerWidget {
             title: 'Livraisons en cours',
             subtitle: 'Suivez les colis assignés à vos livreurs',
             icon: Icons.local_shipping_outlined,
-            gradientColors: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+            gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
             actions: [
               FilledButton.icon(
                 onPressed: () => NewDeliveryDialog.show(context),

@@ -24,20 +24,21 @@ jobs:
           cache: true
 
       - name: Téléchargement des dépendances
-        run: flutter pub get
+        run: |
+          flutter clean
+          flutter pub get
 
       - name: Compilation Windows (Release)
         run: flutter build windows --release
 
       - name: Création de l'archive ZIP
         run: |
-          cd build\windows\x64\runner\Release
-          Compress-Archive -Path * -DestinationPath NMaShop_Windows_v1.0.0.zip
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "build\windows\NMaShop_Windows_v1.0.0.zip" -Force
         shell: powershell
 
       - name: Sauvegarde de l'artefact (Téléchargement)
         uses: actions/upload-artifact@v4
         with:
           name: NMaShop-Windows-Executable
-          path: build\windows\x64\runner\Release\NMaShop_Windows_v1.0.0.zip
+          path: build\windows\NMaShop_Windows_v1.0.0.zip
           retention-days: 7

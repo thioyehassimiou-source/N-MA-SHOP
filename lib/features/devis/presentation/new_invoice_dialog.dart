@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 
-import 'dart:io';
 
 import '../../../core/format/formatters.dart';
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/services/pdf_receipt_service.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/product_thumbnail.dart';
 import '../../stock/application/stock_providers.dart';
 import '../../stock/domain/entities/product.dart';
 
@@ -183,24 +183,11 @@ class _NewInvoiceDialogState extends ConsumerState<NewInvoiceDialog> {
                                   final p = visible[i];
                                   return ListTile(
                                     dense: true,
-                                    leading: Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: context.colors.primaryContainer,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: p.imageUrl != null
-                                          ? ClipRRect(
-                                              borderRadius: BorderRadius.circular(8),
-                                              child: Image.file(
-                                                File(p.imageUrl!),
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) => Icon(Icons.inventory_2_outlined, size: 18, color: context.colors.primary),
-                                              ),
-                                            )
-                                          : Icon(Icons.inventory_2_outlined,
-                                              size: 18, color: context.colors.primary),
+                                    leading: ProductThumbnail(
+                                      imageUrl: p.imageUrl,
+                                      size: 36,
+                                      borderRadius: 8,
+                                      fallbackColor: context.colors.primary,
                                     ),
                                     title: Text(p.name, style: AppTypography.labelSm),
                                     subtitle: Text(formatGnf(p.salePrice),

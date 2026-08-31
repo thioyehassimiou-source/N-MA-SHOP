@@ -1,20 +1,19 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_settings_provider.dart';
-import '../../../core/providers/startup_flags.dart';
+import '../../../core/providers/database_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/app_image_picker.dart';
 import '../../../core/widgets/animated_backdrop.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_form_dialog.dart';
+import '../../../core/widgets/app_image.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/domain/repositories/auth_repository.dart';
 import '../../auth/presentation/widgets/auth_layout.dart' show kMinPasswordLength;
@@ -33,11 +32,6 @@ const kDomaines = [
   'Autre',
 ];
 
-
-
-/// N'MaShop cible les commerçants guinéens : le franc guinéen est la seule
-/// devise gérée. Elle n'est ni affichée ni modifiable à la configuration,
-/// simplement appliquée par défaut.
 const kDeviseCode = 'GNF';
 
 class SetupScreen extends ConsumerStatefulWidget {
@@ -48,7 +42,7 @@ class SetupScreen extends ConsumerStatefulWidget {
 }
 
 class _SetupScreenState extends ConsumerState<SetupScreen> {
-  int _currentStep = 0; // 0 = Fiche Boutique, 1 = Compte Administrateur
+  int _currentStep = 0; // 0 = Boutique, 1 = Compte Admin
 
   final _shopFormKey = GlobalKey<FormState>();
   final _accountFormKey = GlobalKey<FormState>();
@@ -64,8 +58,10 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   bool _obscure = true;
   String? _selectedDomain;
   String? _logoPath;
+
   bool _saving = false;
-  bool _acceptedTerms = false;
+  bool _acceptedTerms = true;
+
   late final TapGestureRecognizer _termsRecognizer;
 
   @override
@@ -88,105 +84,84 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   }
 
   Future<void> _pickLogo() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) setState(() => _logoPath = picked.path);
-  }
-
-  bool get _isResuming => ref.watch(businessDataExistsProvider);
-
-  void _goToAccountStep() {
-    if (_shopFormKey.currentState!.validate()) {
-      setState(() => _currentStep = 1);
+    try {
+      final savedPath = await AppImagePicker.pickLogoImage();
+      if (savedPath != null && mounted) {
+        setState(() => _logoPath = savedPath);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur sélection logo: $e')),
+        );
+      }
     }
   }
 
-  void _goToShopStep() {
-    setState(() => _currentStep = 0);
+  void _nextStep() {
+    if (_currentStep == 0) {
+      if (_shopFormKey.currentState!.validate()) {
+        setState(() => _currentStep = 1);
+      }
+    } else if (_currentStep == 1) {
+      if (_accountFormKey.currentState!.validate()) {
+        if (!_acceptedTerms) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: context.colors.error,
+              content: const Text('Vous devez accepter les conditions d\'utilisation.'),
+            ),
+          );
+          return;
+        }
+        _submit();
+      }
+    }
   }
 
-  Widget _buildResumeBanner() {
-    final counts = ref.watch(orphanDataCountsProvider);
-    return Container(
-      margin: const EdgeInsets.only(top: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: context.colors.primary.withValues(alpha: 0.08),
-        border: Border.all(color: context.colors.primary.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.inventory_2_rounded,
-              color: context.colors.primary, size: 22),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              counts.when(
-                loading: () => 'Vos données existantes seront conservées.',
-                error: (error, stack) =>
-                    'Vos données existantes seront conservées.',
-                data: (c) =>
-                    'Vos données sont là : ${c.products} produit(s) et '
-                    '${c.sales} vente(s) seront conservés.',
-              ),
-              style: const TextStyle(
-                fontSize: 13,
-                height: 1.4,
-                color: Color(0xFF1a2e5a),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  void _prevStep() {
+    if (_currentStep > 0 && !_saving) {
+      setState(() => _currentStep--);
+    }
   }
 
   Future<void> _submit() async {
-    if (!_accountFormKey.currentState!.validate()) return;
-    if (!_acceptedTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: context.colors.error,
-          content: const Text('Vous devez accepter les conditions d\'utilisation et la politique de confidentialité.'),
-        ),
-      );
-      return;
-    }
+    if (_saving) return;
     setState(() => _saving = true);
-    try {
-      await ref
-          .read(authProvider.notifier)
-          .defineAccount(
-            fullName: _ownerNameController.text,
-            password: _passwordController.text,
-          );
 
-      await ref
-          .read(appSettingsProvider.notifier)
-          .completeSetup(
-            businessName: _nameController.text.trim(),
-            currency: kDeviseCode,
-            logoPath: _logoPath,
-            businessDomain: _selectedDomain,
-            businessPhone: _phoneController.text.trim(),
-          );
-    } on AuthException catch (e) {
-      setState(() => _saving = false);
+    try {
+      final db = ref.read(databaseProvider);
+      await db.purgeAllData();
+
+      await ref.read(authProvider.notifier).defineAccount(
+        fullName: _ownerNameController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      await ref.read(appSettingsProvider.notifier).completeSetup(
+        businessName: _nameController.text.trim(),
+        currency: kDeviseCode,
+        logoPath: _logoPath,
+        businessDomain: _selectedDomain,
+        businessPhone: _phoneController.text.trim(),
+        paletteId: AppPalette.fallback.id,
+      );
+
       if (mounted) {
+        context.go('/');
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(backgroundColor: context.colors.error, content: Text(e.message)),
         );
       }
     } catch (e) {
-      setState(() => _saving = false);
       if (mounted) {
+        setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: context.colors.error,
-            content: Text('Erreur: $e'),
-          ),
+          SnackBar(backgroundColor: context.colors.error, content: Text('Erreur: $e')),
         );
       }
     }
@@ -199,7 +174,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         title: 'Conditions d\'utilisation',
         subtitle: 'Contrat de licence et politique de confidentialité N\'MaShop.',
         icon: Icons.shield_rounded,
-        gradientColors: const [Color(0xFF1a2e5a), Color(0xFF2d4a86)],
+        gradientColors: const [AppColors.brandNavy, AppColors.brandNavyLight],
         width: 600,
         body: const SizedBox(
           height: 350,
@@ -209,13 +184,9 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
               "1. ACCEPTATION DES CONDITIONS\n"
               "En installant et en utilisant l'application N'MaShop, vous acceptez d'être lié par les termes de ce contrat.\n\n"
               "2. LICENCE D'UTILISATION\n"
-              "L'équipe N'MaShop vous accorde une licence non exclusive et non transférable pour utiliser ce Logiciel dans le cadre de la gestion de votre point de vente. Vous ne pouvez pas distribuer, louer, vendre ou sous-licencier ce Logiciel.\n\n"
+              "L'équipe N'MaShop vous accorde une licence non exclusive et non transférable pour utiliser ce Logiciel dans le cadre de la gestion de votre point de vente.\n\n"
               "3. CONFIDENTIALITÉ ET SÉCURITÉ DES DONNÉES\n"
-              "a. Données Locales : Le Logiciel fonctionne hors-ligne. Toutes vos données sont stockées localement sur votre ordinateur.\n"
-              "b. Responsabilité : Vous êtes seul responsable de la sécurité de vos données.\n"
-              "c. Traitement des données : N'MaShop n'a pas accès à vos données commerciales, ne les collecte pas et ne les transmet à aucun serveur distant.\n\n"
-              "4. LIMITATION DE RESPONSABILITÉ\n"
-              "N'MaShop ne saurait être tenu responsable de toute perte de profits, perte de données, ou dommages indirects découlant de l'utilisation du Logiciel.\n",
+              "Le Logiciel fonctionne hors-ligne. Toutes vos données sont stockées localement sur votre ordinateur.\n",
               style: TextStyle(fontSize: 13, height: 1.5),
             ),
           ),
@@ -230,7 +201,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final isWide = size.width > 800;
+    final isWide = size.width > 850;
 
     return Scaffold(
       backgroundColor: AppColors.brandNavy,
@@ -251,7 +222,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          SizedBox(height: 260, child: _buildBrandPanel(compact: true)),
+          SizedBox(height: 240, child: _buildBrandPanel(compact: true)),
           _buildFormPanel(),
         ],
       ),
@@ -259,12 +230,10 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   }
 
   Widget _buildBrandPanel({bool compact = false}) {
-    final isStep0 = _currentStep == 0;
-
     return Stack(
       fit: StackFit.expand,
       children: [
-        const AnimatedBackdrop(scrimOpacity: 0.78),
+        const AnimatedBackdrop(scrimOpacity: 0.82),
         Padding(
           padding: EdgeInsets.all(compact ? AppSpacing.lg : AppSpacing.xl),
           child: Column(
@@ -272,47 +241,77 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               BrandLogo(height: compact ? 32 : 44),
-              SizedBox(height: compact ? AppSpacing.md : AppSpacing.xl),
-              Text(
-                isStep0
-                    ? 'Bienvenue dans\nvotre espace boutique'
-                    : 'Sécurisez votre\naccès administrateur',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: compact ? 24 : 30,
-                  fontWeight: FontWeight.w800,
-                  height: 1.15,
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: const Text(
+                  'ASSISTANT DE CONFIGURATION',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.1,
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
+              SizedBox(height: compact ? AppSpacing.md : AppSpacing.xl),
               Text(
-                isStep0
-                    ? 'Étape 1 sur 2 : Renseignez les informations de votre commerce.'
-                    : 'Étape 2 sur 2 : Créez vos identifiants administrateur confidentiels.',
+                _getStepHeadingTitle(),
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.65),
-                  fontSize: 15,
-                  height: 1.55,
+                  color: Colors.white,
+                  fontSize: compact ? 22 : 28,
+                  fontWeight: FontWeight.w800,
+                  height: 1.18,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                _getStepHeadingSubtitle(),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 14,
+                  height: 1.5,
                 ),
               ),
               if (!compact) const SizedBox(height: AppSpacing.xl),
               if (!compact) ...[
-                _featureLine(Icons.point_of_sale_rounded, 'Caisse & ventes'),
-                _featureLine(Icons.inventory_2_rounded, 'Stocks en temps réel'),
-                _featureLine(
-                  Icons.analytics_rounded,
-                  'Bilan & rapport financier',
-                ),
-                _featureLine(
-                  Icons.groups_rounded,
-                  'Gestion des crédits clients',
-                ),
+                _featureLine(Icons.verified_user_rounded, 'Architecture Desktop Hors-ligne'),
+                _featureLine(Icons.point_of_sale_rounded, 'Caisse & Ventes ultra-rapides'),
+                _featureLine(Icons.inventory_2_rounded, 'Gestion de Stock en temps réel'),
+                _featureLine(Icons.security_rounded, 'Protection Administrateur Sécurisée'),
               ],
             ],
           ),
         ),
       ],
     );
+  }
+
+  String _getStepHeadingTitle() {
+    switch (_currentStep) {
+      case 0:
+        return 'Fiche de votre\nBoutique';
+      case 1:
+        return 'Compte Administrateur\nMaître';
+      default:
+        return 'Configuration N\'MaShop';
+    }
+  }
+
+  String _getStepHeadingSubtitle() {
+    switch (_currentStep) {
+      case 0:
+        return 'Renseignez l\'identité commerciale qui figurera sur vos reçus.';
+      case 1:
+        return 'Définissez le mot de passe maître protégeant l\'accès administrateur.';
+      default:
+        return '';
+    }
   }
 
   Widget _featureLine(IconData icon, String label) {
@@ -323,17 +322,17 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: AppPalette.fallback.accent.withValues(alpha: 0.22),
+              color: AppPalette.fallback.seed.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 16, color: AppPalette.fallback.accent),
+            child: Icon(icon, size: 16, color: AppPalette.fallback.seed),
           ),
           const SizedBox(width: AppSpacing.sm),
           Text(
             label,
             style: const TextStyle(
               color: Colors.white70,
-              fontSize: 14,
+              fontSize: 13.5,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -347,236 +346,319 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       data: AppTheme.light(AppPalette.fallback),
       child: Container(
         color: const Color(0xFFF8FAFC),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildStepIndicator(),
-                  const SizedBox(height: AppSpacing.lg),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: _currentStep == 0
-                        ? _buildShopForm()
-                        : _buildAccountForm(),
+        child: Column(
+          children: [
+            // ── Header d'étapes (Stepper Header) ──
+            _buildStepperHeader(),
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.md),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _buildCurrentStepContent(),
+                    ),
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => context.go('/connexion'),
-                      child: Text(
-                        'Vous avez déjà un compte ? Se connecter',
-                        style: TextStyle(
-                          color: context.colors.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13.5,
-                        ),
+                ),
+              ),
+            ),
+            // ── Footer de navigation ──
+            _buildNavigationFooter(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepperHeader() {
+    final steps = ['Boutique', 'Administrateur'];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+      ),
+      child: Row(
+        children: List.generate(steps.length, (index) {
+          final isDone = index < _currentStep;
+          final isCurrent = index == _currentStep;
+
+          return Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: isDone
+                        ? AppPalette.fallback.seed
+                        : (isCurrent ? AppPalette.fallback.seed : Colors.grey[200]),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: isDone
+                        ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                        : Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isCurrent ? Colors.white : Colors.grey[600],
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    steps[index],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                      color: isCurrent ? AppColors.brandNavy : Colors.grey[500],
+                    ),
+                  ),
+                ),
+                if (index < steps.length - 1)
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      color: isDone ? AppPalette.fallback.seed : Colors.grey[200],
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildCurrentStepContent() {
+    switch (_currentStep) {
+      case 0:
+        return _buildStep1Shop();
+      case 1:
+        return _buildStep3Account();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  // ── ÉTAPE 1 : Fiche Boutique ──────────────────────────────────────────────
+  Widget _buildStep1Shop() {
+    return Form(
+      key: _shopFormKey,
+      child: Column(
+        key: const ValueKey('step_shop'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Information de la Boutique',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.brandNavy,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Ces coordonnées figureront sur les reçus de vente.',
+            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Center(
+            child: GestureDetector(
+              onTap: _pickLogo,
+              child: Stack(
+                children: [
+                  Container(
+                    width: 84,
+                    height: 84,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.grey[300]!, width: 2),
+                    ),
+                    child: ClipOval(
+                      child: AppImage(
+                        imagePath: _logoPath,
+                        fit: BoxFit.cover,
+                        fallbackIcon: Icons.storefront_rounded,
+                        fallbackColor: AppPalette.fallback.seed,
+                        enableZoomOnTap: false,
                       ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppPalette.fallback.seed,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-        ),
+          const SizedBox(height: AppSpacing.md),
+          _buildLabel('Nom de la boutique *'),
+          TextFormField(
+            controller: _nameController,
+            decoration: _inputDeco('Ex: Boutique Hassan & Frères', Icons.storefront_rounded),
+            validator: (v) => v == null || v.trim().isEmpty ? 'Le nom est obligatoire' : null,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildLabel('Domaine d\'activité *'),
+          _buildDropdown(
+            value: _selectedDomain,
+            hint: 'Sélectionnez un domaine',
+            items: kDomaines,
+            icon: Icons.category_rounded,
+            onChanged: (val) => setState(() => _selectedDomain = val),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('Téléphone'),
+                    TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: _inputDeco('Ex: +224 620 00 00 00', Icons.phone_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('NIF / Numéro Fiscal (Optionnel)'),
+                    TextFormField(
+                      controller: _nifController,
+                      decoration: _inputDeco('NIF ou RCCM', Icons.receipt_long_rounded),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildLabel('Adresse / Ville'),
+          TextFormField(
+            controller: _addressController,
+            decoration: _inputDeco('Ex: Madina, Conakry', Icons.location_on_rounded),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStepIndicator() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                height: 4,
-                decoration: BoxDecoration(
-                  color: context.colors.primary,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Expanded(
-              child: Container(
-                height: 4,
-                decoration: BoxDecoration(
-                  color: _currentStep == 1
-                      ? context.colors.primary
-                      : Colors.grey[300],
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          _currentStep == 0
-              ? 'Étape 1 / 2 : Fiche de la boutique'
-              : 'Étape 2 / 2 : Compte administrateur',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: context.colors.primary,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildShopForm() {
+  // ── ÉTAPE 2 : Compte Administrateur ───────────────────────────────────────
+  Widget _buildStep3Account() {
     return Form(
-      key: _shopFormKey,
+      key: _accountFormKey,
       child: Column(
-        key: const ValueKey('shop_form'),
+        key: const ValueKey('step_account'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            _isResuming ? 'Reprenez votre boutique' : 'Créer votre boutique',
-            style: const TextStyle(
-              fontSize: 26,
+          const Text(
+            'Compte Administrateur Sécurisé',
+            style: TextStyle(
+              fontSize: 22,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF1a2e5a),
+              color: AppColors.brandNavy,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            _isResuming
-                ? 'Vérifiez les informations de votre commerce.'
-                : 'Ces informations apparaîtront sur vos reçus et factures.',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
-              height: 1.4,
-            ),
+            'Créez l\'accès maître pour protéger les paramètres de votre boutique.',
+            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
           ),
-          if (_isResuming) _buildResumeBanner(),
+          const SizedBox(height: AppSpacing.lg),
+          _buildLabel('Nom complet du propriétaire *'),
+          TextFormField(
+            controller: _ownerNameController,
+            decoration: _inputDeco('Ex: Hassimiou Thioye', Icons.person_rounded),
+            validator: (v) => v == null || v.trim().isEmpty ? 'Le nom est obligatoire' : null,
+          ),
           const SizedBox(height: AppSpacing.md),
-
-          // ── Logo picker ────────────────────────────────
-          Center(
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                GestureDetector(
-                  onTap: _pickLogo,
-                  child: CircleAvatar(
-                    radius: 46,
-                    backgroundColor: const Color(
-                      0xFF1a2e5a,
-                    ).withValues(alpha: 0.08),
-                    backgroundImage: _logoPath != null
-                        ? FileImage(File(_logoPath!))
-                        : null,
-                    child: _logoPath == null
-                        ? const Icon(
-                            Icons.storefront_rounded,
-                            size: 44,
-                            color: Color(0xFF1a2e5a),
-                          )
-                        : null,
-                  ),
+          _buildLabel('Mot de passe administrateur *'),
+          TextFormField(
+            controller: _passwordController,
+            obscureText: _obscure,
+            decoration: _inputDeco(
+              'Mot de passe maître',
+              Icons.lock_rounded,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                  color: Colors.grey[500],
+                  size: 20,
                 ),
-                GestureDetector(
-                  onTap: _pickLogo,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
+                onPressed: () => setState(() => _obscure = !_obscure),
+              ),
+            ),
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Le mot de passe est obligatoire';
+              if (v.length < kMinPasswordLength) {
+                return 'Au moins $kMinPasswordLength caractères requis';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildLabel('Confirmer le mot de passe *'),
+          TextFormField(
+            controller: _confirmController,
+            obscureText: _obscure,
+            decoration: _inputDeco('Confirmation du mot de passe', Icons.lock_outline_rounded),
+            validator: (v) {
+              if (v != _passwordController.text) {
+                return 'Les mots de passe ne correspondent pas';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          CheckboxListTile(
+            value: _acceptedTerms,
+            onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            activeColor: AppPalette.fallback.seed,
+            title: Text.rich(
+              TextSpan(
+                style: TextStyle(fontSize: 12.5, color: Colors.grey[700]),
+                children: [
+                  const TextSpan(text: 'J\'accepte les '),
+                  TextSpan(
+                    text: 'Conditions Générales & Licence Utilisateur',
+                    style: TextStyle(
                       color: AppPalette.fallback.seed,
-                      shape: BoxShape.circle,
+                      fontWeight: FontWeight.bold,
+                      decoration: TextDecoration.underline,
                     ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: 16,
-                    ),
+                    recognizer: _termsRecognizer,
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // ── Nom ──────────────────────────────────────
-          _buildLabel('Nom de votre commerce *'),
-          TextFormField(
-            controller: _nameController,
-            decoration: _inputDeco(
-              'Ex: Boutique Diallo & Fils',
-              Icons.store_rounded,
-            ),
-            validator: (v) => (v == null || v.trim().isEmpty)
-                ? 'Ce champ est obligatoire'
-                : null,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // ── Domaine ───────────────────────────────────
-          _buildLabel("Domaine d'activité"),
-          _buildDropdown(
-            value: _selectedDomain,
-            hint: 'Choisissez un domaine',
-            items: kDomaines,
-            icon: Icons.category_rounded,
-            onChanged: (v) => setState(() {
-              _selectedDomain = v;
-              // Le choix du thème appartient au propriétaire — aucune suggestion automatique.
-            }),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-
-          // ── Téléphone ─────────────────────────────────
-          _buildLabel('Téléphone du commerce *'),
-          TextFormField(
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            decoration: _inputDeco(
-              'Ex: 622 00 00 00',
-              Icons.phone_outlined,
-            ),
-            validator: (v) => (v == null || v.trim().isEmpty)
-                ? 'Ce numéro figurera sur vos reçus'
-                : null,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // ── Adresse ───────────────────────────────────
-          _buildLabel('Adresse précise'),
-          TextFormField(
-            controller: _addressController,
-            decoration: _inputDeco(
-              'Ex: Marché Madina, allée 3, face pharmacie',
-              Icons.place_outlined,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // ── NIF ───────────────────────────────────────
-          _buildLabel('NIF (numéro d\'identification fiscale)'),
-          TextFormField(
-            controller: _nifController,
-            decoration: _inputDeco(
-              'Facultatif — pour vos factures officielles',
-              Icons.badge_outlined,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // ── Bouton Étape Suivante ─────────────────────
-          SizedBox(
-            height: 52,
-            child: AppButton(
-              label: 'Continuer — Créer mon compte',
-              icon: Icons.arrow_forward_rounded,
-              onPressed: _goToAccountStep,
+                ],
+              ),
             ),
           ),
         ],
@@ -584,227 +666,59 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     );
   }
 
-  Widget _buildAccountForm() {
-    return Form(
-      key: _accountFormKey,
-      child: Column(
-        key: const ValueKey('account_form'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _buildNavigationFooter() {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+      ),
+      child: Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Text(
-            'Créer votre compte',
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1a2e5a),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Un seul compte administre la boutique. Ce mot de passe protégera son ouverture.',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // Carte récapitulatif de la boutique créée à l'étape 1
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.storefront_rounded,
-                    color: context.colors.primary, size: 24),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Commerce',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        _nameController.text.trim().isEmpty
-                            ? 'Boutique'
-                            : _nameController.text.trim(),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1a2e5a),
-                        ),
-                      ),
-                    ],
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_currentStep > 0)
+                OutlinedButton.icon(
+                  onPressed: _saving ? null : _prevStep,
+                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                  label: const Text('Précédent'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: () => context.go('/onboarding'),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                  label: const Text('Retour Onboarding'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: _goToShopStep,
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text('Modifier'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // ── Nom de l'administrateur ──────────────────
-          _buildLabel('Votre nom complet *'),
-          TextFormField(
-            controller: _ownerNameController,
-            textCapitalization: TextCapitalization.words,
-            decoration: _inputDeco(
-              'Ex: Mamadou Diallo',
-              Icons.person_outline_rounded,
-            ),
-            validator: (v) => (v == null || v.trim().isEmpty)
-                ? 'Indiquez votre nom'
-                : null,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // ── Mot de passe ────────────────────────────
-          _buildLabel('Mot de passe *'),
-          TextFormField(
-            controller: _passwordController,
-            obscureText: _obscure,
-            decoration: _inputDeco(
-              'Au moins $kMinPasswordLength caractères',
-              Icons.lock_outline_rounded,
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscure
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  size: 20,
-                  color: Colors.grey[500],
-                ),
-                onPressed: () => setState(() => _obscure = !_obscure),
-              ),
-            ),
-            validator: (v) => (v == null || v.length < kMinPasswordLength)
-                ? '$kMinPasswordLength caractères minimum'
-                : null,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // ── Confirmation mot de passe ───────────────
-          _buildLabel('Confirmer le mot de passe *'),
-          TextFormField(
-            controller: _confirmController,
-            obscureText: _obscure,
-            decoration: _inputDeco(
-              'Ressaisissez le mot de passe',
-              Icons.lock_reset_rounded,
-            ),
-            validator: (v) => v != _passwordController.text
-                ? 'Les mots de passe ne correspondent pas'
-                : null,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // ── Conditions d'utilisation ─────────────────
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                height: 24,
-                width: 24,
-                child: Checkbox(
-                  value: _acceptedTerms,
-                  onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
-                  activeColor: context.colors.primary,
-                ),
-              ),
               const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _acceptedTerms = !_acceptedTerms),
-                  child: Text.rich(
-                    TextSpan(
-                      text: 'En créant ce compte, j\'accepte les ',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: context.colors.onSurfaceVariant,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: 'Conditions d\'utilisation',
-                          style: TextStyle(
-                            color: context.colors.primary,
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
-                          ),
-                          recognizer: _termsRecognizer,
-                        ),
-                        const TextSpan(text: ' et la '),
-                        TextSpan(
-                          text: 'Politique de confidentialité',
-                          style: TextStyle(
-                            color: context.colors.primary,
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
-                          ),
-                          recognizer: _termsRecognizer,
-                        ),
-                        const TextSpan(text: ' de N\'MaShop.'),
-                      ],
-                    ),
-                  ),
-                ),
+              TextButton.icon(
+                onPressed: () => context.go('/connexion'),
+                icon: const Icon(Icons.login_rounded, size: 16),
+                label: const Text('Déjà un compte ? Se connecter'),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // ── Actions finale & Retour ─────────────────
-          Row(
-            children: [
-              Expanded(
-                flex: 4,
-                child: SizedBox(
-                  height: 52,
-                  child: OutlinedButton.icon(
-                    onPressed: _saving ? null : _goToShopStep,
-                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                    label: const Text('Retour'),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                flex: 6,
-                child: SizedBox(
-                  height: 52,
-                  child: AppButton(
-                    label: _saving
-                        ? (_isResuming ? 'Ouverture...' : 'Création...')
-                        : (_isResuming
-                              ? 'Reprendre'
-                              : 'Finaliser'),
-                    icon: _isResuming
-                        ? Icons.lock_open_rounded
-                        : Icons.rocket_launch_rounded,
-                    onPressed: _saving ? null : _submit,
-                  ),
-                ),
-              ),
-            ],
+          SizedBox(
+            height: 46,
+            child: AppButton(
+              label: _saving
+                  ? 'Création...'
+                  : (_currentStep == 1 ? 'Finaliser & Démarrer' : 'Continuer'),
+              icon: _currentStep == 1
+                  ? Icons.check_circle_rounded
+                  : Icons.arrow_forward_rounded,
+              onPressed: _saving ? null : _nextStep,
+            ),
           ),
         ],
       ),

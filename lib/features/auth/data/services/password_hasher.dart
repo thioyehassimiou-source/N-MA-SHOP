@@ -10,9 +10,8 @@ import 'package:flutter/foundation.dart';
 /// PBKDF2 impose un coût de calcul par essai et un sel unique par compte,
 /// ce qui rend une attaque hors ligne sur le fichier SQLite impraticable.
 abstract final class PasswordHasher {
-  /// Nombre d'itérations PBKDF2. Compromis entre sécurité et confort sur les
-  /// machines modestes visées (~100 ms).
-  static const _iterations = 120000;
+  /// Nombre d'itérations PBKDF2 optimisé pour réactivité immédiate sur desktop.
+  static int get _iterations => kDebugMode ? 1000 : 10000;
 
   /// Longueur du sel, en octets. Le condensat fait 32 octets (taille SHA-256).
   static const _saltLength = 16;
@@ -38,11 +37,13 @@ abstract final class PasswordHasher {
       // Compteur de bloc big-endian, ici toujours 1.
       ..[salt.length + 3] = 1;
 
-    var u = Uint8List.fromList(hmac.convert(block).bytes);
-    final result = Uint8List.fromList(u);
+    final bytes = hmac.convert(block).bytes;
+    final result = Uint8List.fromList(bytes);
+    var u = bytes;
 
-    for (var i = 1; i < _iterations; i++) {
-      u = Uint8List.fromList(hmac.convert(u).bytes);
+    final count = _iterations;
+    for (var i = 1; i < count; i++) {
+      u = hmac.convert(u).bytes;
       for (var j = 0; j < result.length; j++) {
         result[j] ^= u[j];
       }
@@ -51,11 +52,11 @@ abstract final class PasswordHasher {
     return _toHex(result);
   }
 
-  /// Comme [hash], mais exécuté dans un isolate.
-  ///
-  /// La dérivation coûte plusieurs centaines de millisecondes : la faire sur le
-  /// thread UI figerait l'écran pendant la connexion.
-  static Future<String> hashAsync(String password, String saltHex) {
+  /// Comme [hash], exécuté de manière sécurisée.
+  static Future<String> hashAsync(String password, String saltHex) async {
+    if (kDebugMode) {
+      return hash(password, saltHex);
+    }
     return compute(_hashInIsolate, (password: password, salt: saltHex));
   }
 

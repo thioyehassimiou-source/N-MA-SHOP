@@ -56,7 +56,7 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
 
     if (!mounted) return;
 
-    final res = ref.read(licenseProvider.notifier).activate(_keyCtrl.text.trim());
+    final res = await ref.read(licenseProvider.notifier).activate(_keyCtrl.text.trim());
 
     switch (res.result) {
       case LicenseActivationResult.success:
@@ -66,6 +66,8 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
         setState(() => _errorMsg = 'Cette clé a expiré. Contactez votre revendeur.');
       case LicenseActivationResult.invalidKey:
         setState(() => _errorMsg = 'Clé invalide. Vérifiez la saisie.');
+      case LicenseActivationResult.deviceMismatch:
+        setState(() => _errorMsg = 'Clé déjà activée sur une autre machine.');
     }
 
     if (mounted) setState(() => _isActivating = false);

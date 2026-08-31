@@ -122,7 +122,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           title: 'Rapports & Analytiques',
           subtitle: 'Pilotez la rentabilit\u00e9 de votre commerce',
           icon: Icons.bar_chart_rounded,
-          gradientColors: const [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+          gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
           actions: [
             asyncData.whenOrNull(
               data: (data) => _isExporting

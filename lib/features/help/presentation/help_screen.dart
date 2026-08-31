@@ -31,7 +31,7 @@ class _HelpScreenState extends State<HelpScreen> {
                 title: 'Centre d\'Aide',
                 subtitle: 'Apprenez à maîtriser N\'MaShop en quelques minutes',
                 icon: Icons.help_outline_rounded,
-                gradientColors: const [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+                gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
               ),
               const SizedBox(height: AppSpacing.xl),
 

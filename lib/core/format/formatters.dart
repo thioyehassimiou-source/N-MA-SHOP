@@ -11,24 +11,12 @@ String formatGnf(num amount) => '${_gnf.format(amount)} GNF';
 /// Formatage court sans suffixe (pour tableaux denses).
 String formatAmount(num amount) => _gnf.format(amount);
 
-/// Formatage compact pour les cartes de synthèse : 12 500 000 → « 12,5 M GNF ».
+/// Formatage des montants pour les cartes de synthèse (montants complets lisibles sans K/M/Md).
 String formatGnfCompact(num amount) {
   final abs = amount.abs();
   final sign = amount < 0 ? '-' : '';
-  String body;
-  if (abs >= 1000000000) {
-    body = '${_compact.format(abs / 1000000000)} Md';
-  } else if (abs >= 1000000) {
-    body = '${_compact.format(abs / 1000000)} M';
-  } else if (abs >= 1000) {
-    body = '${_compact.format(abs / 1000)} k';
-  } else {
-    body = _gnf.format(abs);
-  }
-  return '$sign$body GNF';
+  return '$sign${_gnf.format(abs)} GNF';
 }
-
-final NumberFormat _compact = NumberFormat('#,##0.#', 'fr');
 
 /// Formatage d'une quantité (toujours entière depuis le retrait du vrac).
 String formatQuantity(num qty) => qty.toInt().toString();

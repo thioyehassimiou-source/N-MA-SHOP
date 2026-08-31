@@ -1,9 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+import 'app_image.dart';
+
 /// Vignette produit réutilisable.
-/// Affiche l'image locale si elle existe, sinon une icône de fallback.
+/// Affiche l'image locale, asset ou réseau si elle existe, sinon une icône de fallback.
 class ProductThumbnail extends StatelessWidget {
   const ProductThumbnail({
     super.key,
@@ -11,41 +12,28 @@ class ProductThumbnail extends StatelessWidget {
     this.size = 40,
     this.borderRadius = 8,
     this.fallbackIcon = Icons.inventory_2_outlined,
-    this.fallbackColor = const Color(0xFF6366F1),
+    this.fallbackColor,
+    this.enableZoomOnTap = false,
   });
 
   final String? imageUrl;
   final double size;
   final double borderRadius;
   final IconData fallbackIcon;
-  final Color fallbackColor;
+  final Color? fallbackColor;
+  final bool enableZoomOnTap;
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = imageUrl != null && imageUrl!.isNotEmpty && File(imageUrl!).existsSync();
-
-    return ClipRRect(
+    return AppImage(
+      imagePath: imageUrl,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
       borderRadius: BorderRadius.circular(borderRadius),
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: hasImage
-            ? Image.file(
-                File(imageUrl!),
-                width: size,
-                height: size,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _fallback(),
-              )
-            : _fallback(),
-      ),
-    );
-  }
-
-  Widget _fallback() {
-    return Container(
-      color: fallbackColor.withValues(alpha: 0.1),
-      child: Icon(fallbackIcon, color: fallbackColor, size: size * 0.45),
+      fallbackIcon: fallbackIcon,
+      fallbackColor: fallbackColor ?? AppColors.primary,
+      enableZoomOnTap: enableZoomOnTap,
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../license/license_provider.dart';
 import '../theme/app_palette.dart';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
@@ -162,6 +163,12 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     String? businessPhone,
     String? paletteId,
   }) async {
+    // Si c'est un nouveau paramétrage (isSetupCompleted était false),
+    // réinitialiser la licence pour démarrer la nouvelle boutique à neuf.
+    if (!state.isSetupCompleted) {
+      await ref.read(licenseProvider.notifier).resetLicense();
+    }
+
     await _prefs.setBool(_kIsSetupCompleted, true);
     await _prefs.setString(_kBusinessName, businessName);
     await _prefs.setString(_kCurrency, currency);
@@ -187,10 +194,15 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     );
   }
 
-  /// Permet de changer uniquement la palette après la configuration initiale.
+  /// Permet de changer de template visuel global.
   Future<void> updatePalette(String paletteId) async {
     await _prefs.setString(_kPaletteId, paletteId);
-    state = state.copyWith(paletteId: paletteId);
+    final useCustom = paletteId != AppPalette.nmashop.id;
+    await _prefs.setBool(_kUseCustomTheme, useCustom);
+    state = state.copyWith(
+      paletteId: paletteId,
+      useCustomTheme: useCustom,
+    );
   }
 
   /// Active ou désactive le thème personnalisé (licence requise).
@@ -200,6 +212,8 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   }
 
   Future<void> resetSetup() async {
+    await ref.read(licenseProvider.notifier).resetLicense();
+
     await _prefs.remove(_kIsSetupCompleted);
     await _prefs.remove(_kBusinessName);
     await _prefs.remove(_kCurrency);

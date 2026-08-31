@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_page_header.dart';
@@ -26,17 +27,12 @@ class ClientsScreen extends ConsumerWidget {
             title: 'Carnet Clients',
             subtitle: 'Gérez votre base de données clients et contacts',
             icon: Icons.people_outline_rounded,
-            gradientColors: const [Color(0xFF3B82F6), Color(0xFF2563EB)],
+            gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
             actions: [
               FilledButton.icon(
                 onPressed: () => NewClientDialog.show(context),
                 icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
                 label: const Text('Nouveau Client'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B82F6),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
               ),
             ],
           ),
@@ -73,14 +69,14 @@ class ClientsScreen extends ConsumerWidget {
                             width: 50,
                             height: 50,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                              color: context.colors.primaryContainer,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Center(
                               child: Text(
                                 c.name.substring(0, 1).toUpperCase(),
-                                style: const TextStyle(
-                                  color: Color(0xFF3B82F6),
+                                style: TextStyle(
+                                  color: context.colors.primary,
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -116,12 +112,12 @@ class ClientsScreen extends ConsumerWidget {
                           if (c.phone != null) ...[
                             IconButton(
                               tooltip: 'Appeler',
-                              icon: const Icon(Icons.phone_outlined, color: Colors.green),
+                              icon: const Icon(Icons.phone_outlined, color: AppColors.brandEmerald),
                               onPressed: () => launchUrl(Uri.parse('tel:${c.phone}')),
                             ),
                             IconButton(
                               tooltip: 'WhatsApp',
-                              icon: const Icon(Icons.chat_outlined, color: Colors.teal),
+                              icon: const Icon(Icons.chat_outlined, color: AppColors.brandEmerald),
                               onPressed: () => launchUrl(Uri.parse('https://wa.me/${c.phone}')),
                             ),
                           ],

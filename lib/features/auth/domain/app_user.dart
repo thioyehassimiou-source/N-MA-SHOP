@@ -12,6 +12,7 @@ class AppUser {
     required this.role,
     required this.isActive,
     this.lastLoginAt,
+    this.avatarPath,
   });
 
   final String id;
@@ -20,6 +21,7 @@ class AppUser {
   final DateTime? lastLoginAt;
   final UserRole role;
   final bool isActive;
+  final String? avatarPath;
 
   /// Initiales affichées dans l'avatar (« Mamadou Diallo » → « MD »).
   String get initials {

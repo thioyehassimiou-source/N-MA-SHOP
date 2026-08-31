@@ -18,20 +18,20 @@ class DriftAuthRepository implements AuthRepository {
     required String fullName,
     required String password,
   }) async {
-    return _db.transaction(() async {
-      final count = await _db.users.count().getSingle();
-      if (count > 0) {
-        throw const AuthException(AuthFailure.accountAlreadyExists);
-      }
+    final salt = PasswordHasher.generateSalt();
+    final passwordHash = await PasswordHasher.hashAsync(password, salt);
 
-      final salt = PasswordHasher.generateSalt();
+    return _db.transaction(() async {
+      // Purge de tout compte existant pour la création/réinitialisation de la boutique
+      await _db.delete(_db.users).go();
+
       final row = await _db
           .into(_db.users)
           .insertReturning(
             UsersCompanion.insert(
               id: _uuid.v4(),
               fullName: fullName.trim(),
-              passwordHash: await PasswordHasher.hashAsync(password, salt),
+              passwordHash: passwordHash,
               passwordSalt: salt,
               role: const Value(UserRole.admin),
               isActive: const Value(true),
@@ -153,6 +153,18 @@ class DriftAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AppUser> updateAvatar(String userId, String? avatarPath) async {
+    final row = await (_db.select(_db.users)..where((u) => u.id.equals(userId))).getSingleOrNull();
+    if (row == null) {
+      throw const AuthException(AuthFailure.wrongPassword);
+    }
+    await (_db.update(_db.users)..where((u) => u.id.equals(row.id))).write(
+      UsersCompanion(avatarPath: Value(avatarPath)),
+    );
+    return _toDomain(row.copyWith(avatarPath: Value(avatarPath)));
+  }
+
+  @override
   Future<AppUser?> findById(String id) async {
     final row = await (_db.select(
       _db.users,
@@ -185,5 +197,6 @@ class DriftAuthRepository implements AuthRepository {
     lastLoginAt: row.lastLoginAt,
     role: row.role,
     isActive: row.isActive,
+    avatarPath: row.avatarPath,
   );
 }

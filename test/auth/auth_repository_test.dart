@@ -47,19 +47,10 @@ void main() {
       expect((await repo.currentAccount())?.id, owner.id);
     });
 
-    test('on ne peut pas créer un second compte', () async {
+    test('la redéfinition d\'un compte remplace l\'ancien', () async {
       await repo.defineAccount(fullName: 'Mamadou', password: 'secret123');
-
-      expect(
-        () => repo.defineAccount(fullName: 'Autre', password: 'secret123'),
-        throwsA(
-          isA<AuthException>().having(
-            (e) => e.failure,
-            'failure',
-            AuthFailure.accountAlreadyExists,
-          ),
-        ),
-      );
+      final newOwner = await repo.defineAccount(fullName: 'Autre', password: 'secret123');
+      expect(newOwner.fullName, 'Autre');
     });
 
     test("le mot de passe n'est jamais stocké en clair", () async {

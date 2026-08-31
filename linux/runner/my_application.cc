@@ -52,7 +52,17 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_title(window, "nmashop");
   }
 
-  gtk_window_set_default_size(window, 1280, 720);
+  gtk_window_set_default_size(window, 1280, 768);
+  gtk_widget_set_size_request(GTK_WIDGET(window), 1024, 680);
+
+  GdkGeometry geometry;
+  geometry.min_width = 1024;
+  geometry.min_height = 680;
+  gtk_window_set_geometry_hints(
+      window,
+      GTK_WIDGET(window),
+      &geometry,
+      GDK_HINT_MIN_SIZE);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(

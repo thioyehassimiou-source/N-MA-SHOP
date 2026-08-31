@@ -73,6 +73,9 @@ abstract interface class AuthRepository {
   /// Met à jour le nom du compte courant.
   Future<AppUser> updateName(String userId, String fullName);
 
+  /// Met à jour la photo d'avatar du compte utilisateur.
+  Future<AppUser> updateAvatar(String userId, String? avatarPath);
+
   /// Retrouve le compte par son identifiant, `null` s'il a été supprimé.
   Future<AppUser?> findById(String id);
 

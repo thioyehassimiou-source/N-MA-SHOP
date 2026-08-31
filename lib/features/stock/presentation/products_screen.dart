@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../core/format/formatters.dart';
 import '../../../core/theme/app_colors.dart';
@@ -19,7 +18,8 @@ import '../../../core/widgets/app_form_dialog.dart';
 import '../../../core/widgets/app_form_field.dart';
 import '../../../core/widgets/app_metric_card.dart';
 import '../../../core/widgets/app_page_header.dart';
-import 'package:path_provider/path_provider.dart';
+import '../../../core/utils/app_image_picker.dart';
+import '../../../core/widgets/app_image.dart';
 import '../../../core/widgets/barcode_scanner_dialog.dart';
 import '../../../core/widgets/product_thumbnail.dart';
 import '../../auth/application/auth_providers.dart';
@@ -268,7 +268,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       title: 'Inventaire Produits',
       subtitle: 'Catalogue & niveaux de stock — ${allProducts.length} articles actifs',
       icon: Icons.inventory_2_outlined,
-      gradientColors: const [Color(0xFF0F7B6C), Color(0xFF10B981)],
+      gradientColors: const [AppColors.brandNavy, AppColors.brandNavyLight],
       actions: [
         AppButton.secondary(
           icon: Icons.file_upload_outlined,
@@ -419,7 +419,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                               imageUrl: p.imageUrl,
                               size: 40,
                               borderRadius: 8,
-                              fallbackColor: Colors.indigo,
+                              fallbackColor: AppColors.brandNavy,
+                              enableZoomOnTap: true,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
@@ -627,24 +628,9 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
 
   Future<void> _pickImage() async {
     try {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 85,
-      );
-      if (picked != null) {
-        // Copier dans le répertoire permanent de l'app
-        final appDir = await getApplicationDocumentsDirectory();
-        final imagesDir = Directory('${appDir.path}/product_images');
-        if (!imagesDir.existsSync()) {
-          imagesDir.createSync(recursive: true);
-        }
-        final ext = picked.path.split('.').last;
-        final fileName = 'product_${DateTime.now().millisecondsSinceEpoch}.$ext';
-        final permanentFile = await File(picked.path).copy('${imagesDir.path}/$fileName');
-        setState(() => _imageUrl = permanentFile.path);
+      final savedPath = await AppImagePicker.pickProductImage();
+      if (savedPath != null && mounted) {
+        setState(() => _imageUrl = savedPath);
       }
     } catch (e) {
       if (mounted) {
@@ -694,7 +680,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = _imageUrl != null && File(_imageUrl!).existsSync();
+    final hasImage = _imageUrl != null && _imageUrl!.isNotEmpty;
 
     return AppFormDialog(
       title: _isEdit ? 'Modifier Produit' : 'Ajouter Produit',
@@ -702,7 +688,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
           ? 'Mise à jour des informations du produit'
           : 'Nouveau produit dans votre catalogue',
       icon: Icons.inventory_2_outlined,
-      gradientColors: const [Color(0xFF0F7B6C), Color(0xFF10B981)],
+      gradientColors: const [AppColors.brandNavy, AppColors.brandNavyLight],
       width: 520,
       primaryLabel: 'Enregistrer',
       primaryIcon: Icons.check_circle_outline,
@@ -737,8 +723,8 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                         ),
                         child: hasImage
                             ? ClipOval(
-                                child: Image.file(
-                                  File(_imageUrl!),
+                                child: AppImage(
+                                  imagePath: _imageUrl,
                                   fit: BoxFit.cover,
                                   width: 100,
                                   height: 100,
@@ -862,7 +848,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                   icon: Icons.shopping_cart_outlined,
                   isRequired: true,
                   keyboardType: TextInputType.number,
-                  iconColor: const Color(0xFFF59E0B),
+                  iconColor: AppColors.warning,
                 ),
                 right: AppFormField(
                   label: 'Prix de vente (GNF)',
@@ -871,7 +857,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                   icon: Icons.sell_outlined,
                   isRequired: true,
                   keyboardType: TextInputType.number,
-                  iconColor: const Color(0xFF10B981),
+                  iconColor: AppColors.brandEmerald,
                 ),
               ),
             ),
@@ -897,7 +883,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                   icon: Icons.warning_amber_outlined,
                   isRequired: true,
                   keyboardType: TextInputType.number,
-                  iconColor: const Color(0xFFEF4444),
+                  iconColor: AppColors.error,
                 ),
               ),
             ),
@@ -1019,14 +1005,14 @@ class _LowStockAlertBannerState extends State<_LowStockAlertBanner> {
       margin: const EdgeInsets.only(top: AppSpacing.md),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
+        color: AppColors.errorContainer,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFCA5A5)),
+        border: Border.all(color: AppColors.errorContainer),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 20),
+          const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1037,7 +1023,7 @@ class _LowStockAlertBannerState extends State<_LowStockAlertBanner> {
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
-                    color: Color(0xFFB91C1C),
+                    color: AppColors.onErrorContainer,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1049,7 +1035,7 @@ class _LowStockAlertBannerState extends State<_LowStockAlertBanner> {
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: isOut ? const Color(0xFFEF4444) : const Color(0xFFF97316),
+                        color: isOut ? AppColors.error : AppColors.warning,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -1063,7 +1049,7 @@ class _LowStockAlertBannerState extends State<_LowStockAlertBanner> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close, size: 18, color: Color(0xFFEF4444)),
+            icon: const Icon(Icons.close, size: 18, color: AppColors.error),
             onPressed: () => setState(() => _dismissed = true),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),

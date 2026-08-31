@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "N'MaShop (Linux Desktop)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "linux",
+      "env": {
+        "NINJAFLAGS": "-j2",
+        "MAKEFLAGS": "-j2"
+      }
+    },
+    {
+      "name": "N'MaShop (Android)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "android"
+    }
+  ]
+}

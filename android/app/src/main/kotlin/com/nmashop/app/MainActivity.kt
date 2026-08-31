@@ -1,4 +1,4 @@
-package com.example.nmashop
+package com.nmashop.app
 
 import io.flutter.embedding.android.FlutterActivity
 

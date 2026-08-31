@@ -103,7 +103,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                 title: 'Commandes',
                 subtitle: 'Gérez les commandes reçues par WhatsApp, téléphone ou en direct',
                 icon: Icons.shopping_bag_outlined,
-                gradientColors: const [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
                 actions: [
                   FilledButton.icon(
                     onPressed: () => NewOrderDialog.show(context),

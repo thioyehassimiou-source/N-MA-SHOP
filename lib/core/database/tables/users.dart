@@ -34,6 +34,9 @@ class Users extends Table {
   /// Dernière ouverture réussie.
   DateTimeColumn get lastLoginAt => dateTime().nullable()();
 
+  /// Chemin du fichier d'image d'avatar local.
+  TextColumn get avatarPath => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

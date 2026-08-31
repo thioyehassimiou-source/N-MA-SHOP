@@ -65,7 +65,7 @@ class _DevisScreenState extends ConsumerState<DevisScreen> {
                   title: 'Devis & Factures Proforma',
                   subtitle: 'Émission et suivi des documents commerciaux professionnels',
                   icon: Icons.description_outlined,
-                  gradientColors: const [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                  gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 // Métriques

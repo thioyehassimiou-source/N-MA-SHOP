@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/license/license_provider.dart';
 import '../../features/auth/application/auth_providers.dart';
-import '../../features/admin/application/admin_auth_provider.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/business/presentation/business_summary_screen.dart';
 import '../../features/caisse/presentation/caisse_screen.dart';
@@ -31,14 +30,6 @@ import '../../features/help/presentation/help_screen.dart';
 import '../../features/license/presentation/license_gate_screen.dart';
 import '../providers/app_settings_provider.dart';
 
-// Imports Admin
-import '../../features/admin/presentation/admin_login_screen.dart';
-import '../../features/admin/presentation/admin_shell.dart';
-import '../../features/admin/presentation/dashboard/admin_dashboard_screen.dart';
-import '../../features/admin/presentation/clients/admin_clients_screen.dart';
-import '../../features/admin/presentation/licenses/admin_licenses_screen.dart';
-import '../../features/admin/presentation/maintenance/admin_maintenance_screen.dart';
-
 final routerProvider = Provider<GoRouter>((ref) {
   // Le routeur se rafraîchit à chaque changement de configuration boutique
   // ou de session (connexion / déconnexion).
@@ -53,9 +44,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     notifier.value = !notifier.value;
   });
   ref.listen(licenseProvider, (previous, next) {
-    notifier.value = !notifier.value;
-  });
-  ref.listen(adminAuthProvider, (previous, next) {
     notifier.value = !notifier.value;
   });
 
@@ -73,20 +61,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Si la licence est OK et qu'on est sur /licence, rediriger
       if (location == '/licence' && !license.isExpired) return '/';
       
-      // ── Admin Routes Protection ──────────────────────────────────────────
+      // ── Sécurité : Le Backoffice Admin est strictement retiré du client ────
       if (location.startsWith('/admin')) {
-        final isAdminAuth = ref.read(adminAuthProvider);
-        if (!isAdminAuth) {
-          return location == '/admin/login' ? null : '/admin/login';
-        } else if (location == '/admin/login') {
-          return '/admin/dashboard';
-        }
-        return null;
+        return '/licence';
       }
 
-      // ── DEMO OVERRIDE: Forcer l'onboarding si isSetupCompleted = false ──
+      // ── Forcer l'onboarding au premier démarrage si isSetupCompleted = false ──
       if (!ref.read(appSettingsProvider).isSetupCompleted) {
         if (location == '/onboarding') return null;
+        if (location == '/setup') return null;
         if (location == '/connexion') return null;
         return '/onboarding';
       }
@@ -108,8 +91,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return allowedUnauth.contains(location) ? null : '/connexion';
       }
 
-      // ── 3. Déverrouillé : écran de connexion inutile ──────────────────────
-      if (location == '/connexion') {
+      // ── 3. Déverrouillé : écrans d'onboarding, setup et connexion inutiles ──────
+      if (location == '/connexion' || location == '/onboarding' || location == '/setup') {
         return '/';
       }
 
@@ -122,32 +105,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // ── Admin Routes ──────────────────────────────────────────
-      GoRoute(
-        path: '/admin/login',
-        pageBuilder: (context, state) => const NoTransitionPage(child: AdminLoginScreen()),
-      ),
-      ShellRoute(
-        builder: (context, state, child) => AdminShell(child: child),
-        routes: [
-          GoRoute(
-            path: '/admin/dashboard',
-            pageBuilder: (c, s) => const NoTransitionPage(child: AdminDashboardScreen()),
-          ),
-          GoRoute(
-            path: '/admin/clients',
-            pageBuilder: (c, s) => const NoTransitionPage(child: AdminClientsScreen()),
-          ),
-          GoRoute(
-            path: '/admin/licenses',
-            pageBuilder: (c, s) => const NoTransitionPage(child: AdminLicensesScreen()),
-          ),
-          GoRoute(
-            path: '/admin/maintenance',
-            pageBuilder: (c, s) => const NoTransitionPage(child: AdminMaintenanceScreen()),
-          ),
-        ],
-      ),
       // ── Main App Routes ────────────────────────────────────────
       GoRoute(
         path: '/licence',
@@ -257,7 +214,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/reglages',
             pageBuilder: (c, s) =>
-                const NoTransitionPage(child: SettingsScreen()),
+                const NoTransitionPage(child: SettingsScreen(initialTabIndex: 0)),
+          ),
+          GoRoute(
+            path: '/reglages/securite',
+            pageBuilder: (c, s) =>
+                const NoTransitionPage(child: SettingsScreen(initialTabIndex: 2)),
           ),
           GoRoute(
             path: '/settings/audit',

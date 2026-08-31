@@ -72,7 +72,7 @@ class _SuppliersBody extends StatelessWidget {
           title: 'Achats & Fournisseurs',
           subtitle: 'Gestion des approvisionnements et dettes fournisseurs',
           icon: Icons.local_shipping_outlined,
-          gradientColors: const [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+          gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
           actions: [
             ElevatedButton.icon(
               onPressed: () => context.go('/nouvel-achat'),

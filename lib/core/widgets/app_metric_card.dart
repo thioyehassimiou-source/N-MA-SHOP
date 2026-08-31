@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'app_card.dart';
 
 /// Carte de métrique principale — design inspiré du dashboard de référence.
@@ -41,10 +42,10 @@ class AppMetricCard extends StatelessWidget {
     
     if (badgeText.startsWith('+')) {
       trendIcon = Icons.trending_up_rounded;
-      effectiveBadgeColor = const Color(0xFF10B981); // Vert
+      effectiveBadgeColor = AppColors.brandEmerald; // Vert
     } else if (badgeText.startsWith('-')) {
       trendIcon = Icons.trending_down_rounded;
-      effectiveBadgeColor = const Color(0xFFEF4444); // Rouge
+      effectiveBadgeColor = AppColors.brandRed; // Rouge
     }
 
     return TweenAnimationBuilder<double>(

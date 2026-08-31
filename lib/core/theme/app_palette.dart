@@ -8,47 +8,61 @@ import 'package:flutter/material.dart';
 ///
 /// [id] est persisté dans les préférences : ne jamais le renommer.
 enum AppPalette {
+  nmashop(
+    id: 'nmashop',
+    label: 'N\'MaShop Officiel',
+    trade: 'Charte officielle Orange & Navy',
+    seed: Color(0xFFE85D04),
+    accent: Color(0xFF0F1B3D),
+  ),
   emeraude(
     id: 'emeraude',
     label: 'Émeraude',
-    trade: 'Commerce général',
-    seed: Color(0xFF006054),
-    accent: Color(0xFF10B981),
+    trade: 'Commerce général & Supérette',
+    seed: Color(0xFF10B981),
+    accent: Color(0xFF062E28),
   ),
   clinique(
     id: 'clinique',
-    label: 'Clinique',
-    trade: 'Pharmacie, santé',
-    seed: Color(0xFF0369A1),
-    accent: Color(0xFF06B6D4),
+    label: 'Clinique & Santé',
+    trade: 'Pharmacie, santé & cosmétique',
+    seed: Color(0xFF06B6D4),
+    accent: Color(0xFF083344),
   ),
   prune(
     id: 'prune',
-    label: 'Prune',
-    trade: 'Mode, cosmétique',
-    seed: Color(0xFF7C3AED),
-    accent: Color(0xFFC026D3),
+    label: 'Prune Prestige',
+    trade: 'Mode, vêtements & beauté',
+    seed: Color(0xFFC026D3),
+    accent: Color(0xFF3B0764),
   ),
   safran(
     id: 'safran',
-    label: 'Safran',
-    trade: 'Alimentation, restauration',
-    seed: Color(0xFFEA580C),
-    accent: Color(0xFFF59E0B),
+    label: 'Safran & Ambre',
+    trade: 'Alimentation, resto & boulangerie',
+    seed: Color(0xFFF59E0B),
+    accent: Color(0xFF451A03),
   ),
   indigo(
     id: 'indigo',
-    label: 'Indigo',
-    trade: 'Électronique, téléphonie',
-    seed: Color(0xFF1D4ED8),
-    accent: Color(0xFF3B82F6),
+    label: 'Indigo High-Tech',
+    trade: 'Électronique, téléphonie & IT',
+    seed: Color(0xFF6366F1),
+    accent: Color(0xFF1E1B4B),
   ),
   ardoise(
     id: 'ardoise',
-    label: 'Ardoise',
-    trade: 'Quincaillerie, matériaux',
-    seed: Color(0xFF334155),
-    accent: Color(0xFFB45309),
+    label: 'Ardoise & Cuivre',
+    trade: 'Quincaillerie, BTP & matériaux',
+    seed: Color(0xFF64748B),
+    accent: Color(0xFF0F172A),
+  ),
+  afrique(
+    id: 'afrique',
+    label: 'Terre d\'Afrique',
+    trade: 'Artisanat, culture & textile',
+    seed: Color(0xFFC2410C),
+    accent: Color(0xFF431407),
   );
 
   const AppPalette({
@@ -68,14 +82,14 @@ enum AppPalette {
   /// Métiers auxquels ce template s'adresse.
   final String trade;
 
-  /// Couleur mère dont dérive tout le nuancier.
+  /// Couleur mère maîtresse (boutons, éléments actifs, icônes).
   final Color seed;
 
-  /// Couleur d'accent, pour les mises en avant et les graphiques.
+  /// Couleur d'accentuation sombre pour les dégradés et arrière-plans sombres.
   final Color accent;
 
   /// Template appliqué par défaut, avant tout choix du commerçant.
-  static const fallback = AppPalette.emeraude;
+  static const fallback = AppPalette.nmashop;
 
   /// Retrouve un template par son [id]. Retombe sur [fallback] si l'id est
   /// inconnu (template supprimé lors d'une mise à jour, préférence corrompue).
@@ -85,6 +99,18 @@ enum AppPalette {
       orElse: () => fallback,
     );
   }
+
+  /// Couleur primaire principale pour les boutons et éléments actifs.
+  Color get primaryColor => seed;
+
+  /// Couleur d'accentuation / mise en valeur.
+  Color get highlightColor => seed;
+
+  /// Couleur sombre supérieure pour la barre latérale et les bannières premium.
+  Color get darkSidebarTop => accent;
+
+  /// Couleur sombre inférieure pour la barre latérale et les bannières premium.
+  Color get darkSidebarBottom => Color.alphaBlend(Colors.black.withValues(alpha: 0.35), accent);
 
   /// Template suggéré pour un domaine d'activité choisi à la configuration.
   ///

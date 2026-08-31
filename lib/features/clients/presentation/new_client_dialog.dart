@@ -109,7 +109,7 @@ class _NewClientDialogState extends ConsumerState<NewClientDialog> {
           ? 'Mise à jour des informations client'
           : 'Ajouter un nouveau client à votre répertoire',
       icon: Icons.person_add_outlined,
-      gradientColors: const [Color(0xFF3B82F6), Color(0xFF6366F1)],
+      gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
       primaryLabel: 'Enregistrer',
       primaryIcon: Icons.check_circle_outline,
       onPrimary: _saving ? null : _save,

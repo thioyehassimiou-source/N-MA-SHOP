@@ -27,7 +27,7 @@ class CouriersScreen extends ConsumerWidget {
             title: 'Livreurs',
             subtitle: 'Gérez votre flotte de coursiers et livreurs',
             icon: Icons.sports_motorsports_outlined,
-            gradientColors: const [Color(0xFFF59E0B), Color(0xFFD97706)],
+            gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
             actions: [
               FilledButton.icon(
                 onPressed: () => NewCourierDialog.show(context),

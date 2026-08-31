@@ -14,7 +14,7 @@ class AppShell extends StatelessWidget {
     
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 800;
+        final isMobile = constraints.maxWidth < 1100;
         
         if (isMobile) {
           return Scaffold(

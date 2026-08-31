@@ -1,13 +1,13 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import '../../../core/utils/app_image_picker.dart';
+import '../../../core/widgets/app_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/license/license_model.dart';
 import '../../../core/license/license_provider.dart';
 import '../../../core/providers/app_settings_provider.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -19,9 +19,12 @@ import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/palette_picker.dart';
 import '../../../core/widgets/app_form_dialog.dart';
 import '../../../core/widgets/app_form_field.dart';
+import '../../../core/widgets/user_avatar.dart';
+import '../../../core/services/update_service.dart';
 import 'package:intl/intl.dart';
 
 import '../../auth/application/auth_providers.dart';
+import '../../auth/presentation/widgets/user_profile_dialog.dart';
 import '../../auth/domain/repositories/auth_repository.dart';
 import '../../auth/domain/app_user.dart';
 import '../../auth/presentation/widgets/auth_layout.dart' show kMinPasswordLength, PasswordStrengthIndicator;
@@ -29,9 +32,13 @@ import '../../../core/database/tables/users.dart';
 import '../../onboarding/presentation/setup_screen.dart';
 import '../../../core/providers/database_provider.dart';
 import '../../../core/services/export_service.dart';
+import '../../../core/services/demo_data_seeder.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.initialTabIndex = 0});
+
+  final int initialTabIndex;
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
@@ -74,12 +81,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _pickLogo() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _logoPath = pickedFile.path;
-      });
+    try {
+      final savedPath = await AppImagePicker.pickLogoImage();
+      if (savedPath != null && mounted) {
+        setState(() {
+          _logoPath = savedPath;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur sélection logo: $e'),
+            backgroundColor: context.colors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -127,6 +144,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 4,
+      initialIndex: widget.initialTabIndex,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Padding(
@@ -168,7 +186,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           title: 'Paramètres',
           subtitle: 'Configurez votre boutique',
           icon: Icons.settings_outlined,
-          gradientColors: const [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+          gradientColors: const [AppColors.brandNavy, AppColors.brandNavyLight],
         ),
         TabBar(
           tabs: const [
@@ -212,9 +230,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ],
               ),
-              AppButton(
-                label: _isSaving ? 'Enregistrement...' : 'Enregistrer',
-                onPressed: _isSaving ? null : _saveProfile,
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => context.go('/setup'),
+                    icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+                    label: const Text('Assistant de configuration'),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  AppButton(
+                    label: _isSaving ? 'Enregistrement...' : 'Enregistrer',
+                    onPressed: _isSaving ? null : _saveProfile,
+                  ),
+                ],
               ),
             ],
           ),
@@ -224,19 +252,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               GestureDetector(
                 onTap: _pickLogo,
-                child: CircleAvatar(
-                  radius: 40,
-                  backgroundColor: context.colors.primaryContainer,
-                  backgroundImage: _logoPath != null
-                      ? FileImage(File(_logoPath!))
-                      : null,
-                  child: _logoPath == null
-                      ? Icon(
-                          Icons.storefront_outlined,
-                          size: 30,
-                          color: context.colors.primary,
-                        )
-                      : null,
+                child: ClipOval(
+                  child: AppImage(
+                    imagePath: _logoPath,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    fallbackIcon: Icons.storefront_outlined,
+                    fallbackColor: context.colors.primary,
+                    enableZoomOnTap: false,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -448,7 +473,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onPressed: () => _changePassword(),
                 ),
               ),
-              Divider(color: context.colors.outlineVariant),
+              const SizedBox(height: AppSpacing.xs),
+              _buildSecurityItem(
+                Icons.delete_sweep_rounded,
+                'Vider l\'application (Effacer toutes les données métier)',
+                trailing: AppButton.secondary(
+                  label: 'Vider l\'appli',
+                  onPressed: _clearAppData,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _buildSecurityItem(
+                Icons.movie_creation_outlined,
+                'Remplir la boutique avec des données de démo (Vidéo)',
+                trailing: AppButton.secondary(
+                  label: 'Remplir (Démo)',
+                  onPressed: _seedDemoData,
+                ),
+              ),
+               Divider(color: context.colors.outlineVariant),
+              const SizedBox(height: AppSpacing.xs),
+              _buildSecurityItem(
+                Icons.system_update_rounded,
+                'Vérifier les mises à jour (v${UpdateService.currentVersion})',
+                trailing: AppButton.secondary(
+                  label: 'Vérifier',
+                  onPressed: _checkAppUpdate,
+                ),
+              ),
               const SizedBox(height: AppSpacing.xs),
               _buildSecurityItem(
                 Icons.delete_forever,
@@ -465,6 +517,124 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  /// Purge l'ensemble des données métier de la boutique (produits, ventes, créances...).
+  Future<void> _clearAppData() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AppFormDialog(
+        title: 'Vider toutes les données métier ?',
+        subtitle:
+            'Cette action va vider entièrement la boutique : tous les produits, ventes, créances, dépenses et historiques de caisse seront définitivement effacés.\n\nVotre compte utilisateur et votre licence restent conservés.',
+        icon: Icons.delete_sweep_rounded,
+        gradientColors: const [Color(0xFFDC2626), AppColors.error],
+        width: 480,
+        primaryLabel: 'Vider l\'application',
+        primaryIcon: Icons.delete_forever_rounded,
+        onCancel: () => Navigator.pop(dialogContext, false),
+        onPrimary: () => Navigator.pop(dialogContext, true),
+        body: const SizedBox.shrink(),
+      ),
+    );
+    if (!(confirmed ?? false)) return;
+
+    final db = ref.read(databaseProvider);
+    await DemoDataSeeder.clearDatabase(db);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('🧹 Application vidée avec succès ! Base de données propre pour la production.'),
+          backgroundColor: context.colors.primary,
+        ),
+      );
+    }
+  }
+
+  /// Injecte des données fictives complètes pour la démonstration vidéo.
+  Future<void> _seedDemoData() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AppFormDialog(
+        title: 'Injecter les données de démo ?',
+        subtitle:
+            'Cette action va remplir la boutique avec un catalogue de produits (Riz 50kg, Huile, Sucre, Lait...), des clients (Ibrahima Bah...), des ventes récentes, créances et dépenses pour votre tournage vidéo.\n\nToutes les données actuelles seront remplacées.',
+        icon: Icons.movie_creation_rounded,
+        gradientColors: const [Color(0xFF2563EB), Color(0xFF3B82F6)],
+        width: 480,
+        primaryLabel: 'Remplir la boutique',
+        primaryIcon: Icons.bolt_rounded,
+        onCancel: () => Navigator.pop(dialogContext, false),
+        onPrimary: () => Navigator.pop(dialogContext, true),
+        body: const SizedBox.shrink(),
+      ),
+    );
+    if (!(confirmed ?? false)) return;
+
+    final db = ref.read(databaseProvider);
+    await DemoDataSeeder.seedDatabase(db);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('🎉 Base de données remplie avec succès pour votre tournage !'),
+          backgroundColor: context.colors.primary,
+        ),
+      );
+    }
+  }
+
+  /// Vérifie si une nouvelle mise à jour de N'MaShop est disponible sans bloquer l'application.
+  Future<void> _checkAppUpdate() async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final info = await UpdateService.checkForUpdates();
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AppFormDialog(
+          title: 'Mise à jour N\'MaShop',
+          subtitle: 'Version installée : v${info.currentVersion} (Build ${info.buildNumber})\n'
+              'Date de publication : ${UpdateService.releaseDate}\n\n'
+              '${info.hasUpdate ? "🎉 Une nouvelle version (v${info.latestVersion}) est disponible !" : "✅ Votre application est parfaitement à jour !"}\n\n'
+              '${info.releaseNotes}',
+          icon: Icons.system_update_rounded,
+          gradientColors: const [AppColors.brandOrange, AppColors.brandOrangeLight],
+          width: 500,
+          primaryLabel: info.hasUpdate ? 'Télécharger' : 'D\'accord',
+          primaryIcon: info.hasUpdate ? Icons.download_rounded : Icons.check_circle_outline,
+          onCancel: () => Navigator.pop(dialogContext),
+          onPrimary: () async {
+            Navigator.pop(dialogContext);
+            if (info.hasUpdate) {
+              final uri = Uri.parse(info.downloadUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            }
+          },
+          body: const SizedBox.shrink(),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Vérification terminée : vous utilisez la dernière version (v${UpdateService.currentVersion}).'),
+            backgroundColor: context.colors.primary,
+          ),
+        );
+      }
+    }
+  }
+
   /// Réinitialise la configuration : la boutique et les comptes repartent à
   /// zéro, mais les ventes et le stock déjà saisis sont conservés.
   Future<void> _confirmReset() async {
@@ -474,7 +644,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         title: 'Réinitialiser la configuration ?',
         subtitle: 'La fiche boutique et TOUS les comptes utilisateurs seront supprimés, et vous repasserez par l\'écran de bienvenue.\n\nVos ventes, produits et écritures comptables sont conservés.',
         icon: Icons.warning_amber_rounded,
-        gradientColors: const [Color(0xFFDC2626), Color(0xFFEF4444)],
+        gradientColors: const [Color(0xFFDC2626), AppColors.error],
         width: 450,
         primaryLabel: 'Réinitialiser',
         primaryIcon: Icons.delete_forever,
@@ -520,142 +690,312 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  /// Choix du template visuel : réservé aux utilisateurs avec licence.
+  /// Section d'Apparence : sélection directe de templates visuels prédéfinis prêts à l'emploi.
   Widget _buildAppearanceTab() {
     final selected = ref.watch(paletteProvider);
-    final settings = ref.watch(appSettingsProvider);
     final license = ref.watch(licenseProvider);
-    
+    final currentThemeMode = ref.watch(themeProvider);
     final bool hasLicense = license.isLicensed;
-    final bool useCustom = settings.useCustomTheme;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      child: AppCard(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Carte 1 : Templates Visuels Prédéfinis ──
+          AppCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Apparence de la boutique',
-                      style: AppTypography.labelMd.copyWith(
-                        color: context.colors.primary,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: selected.seed.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.style_rounded, color: selected.seed, size: 22),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Templates Visuels Prédéfinis',
+                              style: AppTypography.labelMd.copyWith(
+                                color: context.colors.onSurface,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              'Choisissez un thème graphique prêt à l\'emploi adapté à votre secteur.',
+                              style: AppTypography.bodySm.copyWith(
+                                color: context.colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      "Personnalisez les couleurs de votre espace de travail.",
-                      style: AppTypography.bodySm.copyWith(
-                        color: context.colors.onSurfaceVariant,
+                    if (!hasLicense)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: context.colors.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: context.colors.outlineVariant),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.lock_rounded, size: 14, color: context.colors.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              'PRO',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: context.colors.onSurfaceVariant,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
+
+                const SizedBox(height: AppSpacing.lg),
+
+                // Bannière indiquant le template actif
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: selected.seed.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: selected.seed.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: selected.seed,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: selected.accent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            text: 'Template Actif : ',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            children: [
+                              TextSpan(
+                                text: '${selected.label} (${selected.trade})',
+                                style: TextStyle(color: selected.seed, fontWeight: FontWeight.w700),
+                              ),
+                              const TextSpan(
+                                text: ' — Appliqué sur l\'ensemble de l\'application.',
+                                style: TextStyle(fontWeight: FontWeight.normal),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.xl),
+
                 if (!hasLicense)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
-                      color: context.colors.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: context.colors.outlineVariant),
+                      color: AppColors.warningContainer,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.warningContainer),
                     ),
-                    child: Row(
+                    child: const Row(
                       children: [
-                        Icon(Icons.lock_rounded, size: 14, color: context.colors.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Text(
-                          'PRO',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: context.colors.onSurfaceVariant,
-                            letterSpacing: 1,
+                        Icon(Icons.workspace_premium_rounded, color: AppColors.warning),
+                        SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Text(
+                            'Les templates personnalisés sont disponibles pour les abonnés licenciés. Vous utilisez actuellement le template officiel N\'MaShop.',
+                            style: TextStyle(color: AppColors.onWarningContainer, fontSize: 13),
                           ),
                         ),
                       ],
                     ),
                   ),
+
+                // Galerie de choix direct des templates visuels
+                Opacity(
+                  opacity: hasLicense ? 1.0 : 0.5,
+                  child: IgnorePointer(
+                    ignoring: !hasLicense,
+                    child: PalettePicker(
+                      selected: selected,
+                      onSelected: (palette) {
+                        ref.read(appSettingsProvider.notifier).updatePalette(palette.id);
+                      },
+                    ),
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: AppSpacing.lg),
-            
-            // Toggle Theme Personnalisé (seulement si licence)
-            if (hasLicense) ...[
-              Container(
-                decoration: BoxDecoration(
-                  color: context.colors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: context.colors.outlineVariant),
-                ),
-                child: SwitchListTile(
-                  title: Text(
-                    'Utiliser un thème personnalisé',
-                    style: AppTypography.bodyMd.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text(
-                    'Remplace la charte graphique bleue et orange par défaut de N\'MaShop.',
-                    style: AppTypography.bodySm.copyWith(color: context.colors.onSurfaceVariant),
-                  ),
-                  value: useCustom,
-                  onChanged: (value) {
-                    ref.read(appSettingsProvider.notifier).updateUseCustomTheme(value);
-                  },
-                  activeThumbColor: context.colors.primary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-            ],
+          ),
 
-            if (!hasLicense)
-              Container(
-                margin: const EdgeInsets.only(bottom: AppSpacing.xl),
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFFDE68A)),
-                ),
-                child: Row(
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── Carte 2 : Mode d'Affichage (Clair / Sombre / Système) ──
+          AppCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    const Icon(Icons.workspace_premium_rounded, color: Color(0xFFD97706)),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.brandOrange.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.contrast_rounded, color: AppColors.brandOrange, size: 20),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mode d\'Affichage',
+                          style: AppTypography.labelMd.copyWith(
+                            color: context.colors.onSurface,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Ajustez le contraste lumineux selon vos conditions de travail.',
+                          style: AppTypography.bodySm.copyWith(
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildThemeModeTile(
+                        title: 'Mode Clair',
+                        subtitle: 'Journée & Caisse',
+                        icon: Icons.light_mode_rounded,
+                        mode: ThemeMode.light,
+                        currentMode: currentThemeMode,
+                        activeColor: AppColors.brandOrange,
+                      ),
+                    ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: Text(
-                        'La personnalisation du thème est réservée aux utilisateurs disposant d\'une licence active. Actuellement, vous utilisez le thème N\'MaShop par défaut.',
-                        style: const TextStyle(color: Color(0xFFB45309), fontSize: 13),
+                      child: _buildThemeModeTile(
+                        title: 'Mode Sombre',
+                        subtitle: 'Confort visuel nocturne',
+                        icon: Icons.dark_mode_rounded,
+                        mode: ThemeMode.dark,
+                        currentMode: currentThemeMode,
+                        activeColor: const Color(0xFF8B5CF6),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: _buildThemeModeTile(
+                        title: 'Système',
+                        subtitle: 'Automatique selon l\'OS',
+                        icon: Icons.brightness_auto_rounded,
+                        mode: ThemeMode.system,
+                        currentMode: currentThemeMode,
+                        activeColor: AppColors.brandNavy,
                       ),
                     ),
                   ],
                 ),
-              ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Sélecteur de palettes (actif uniquement si licence + useCustom)
-            Opacity(
-              opacity: (hasLicense && useCustom) ? 1.0 : 0.4,
-              child: IgnorePointer(
-                ignoring: !(hasLicense && useCustom),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Palettes disponibles',
-                      style: AppTypography.labelSm.copyWith(color: context.colors.onSurface),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    PalettePicker(
-                      selected: selected,
-                      onSelected: (palette) {
-                        ref.read(appSettingsProvider.notifier).updateSettings(paletteId: palette.id);
-                      },
-                    ),
-                  ],
-                ),
+  Widget _buildThemeModeTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required ThemeMode mode,
+    required ThemeMode currentMode,
+    required Color activeColor,
+  }) {
+    final isSelected = currentMode == mode;
+    return InkWell(
+      onTap: () => ref.read(themeProvider.notifier).setMode(mode),
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? activeColor.withValues(alpha: 0.08)
+              : context.colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? activeColor : context.colors.outlineVariant,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 28,
+              color: isSelected ? activeColor : context.colors.onSurfaceVariant,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: isSelected ? activeColor : context.colors.onSurface,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: context.colors.onSurfaceVariant,
               ),
             ),
           ],
@@ -686,14 +1026,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: context.colors.primaryFixed,
-                  foregroundColor: context.colors.primary,
-                  child: Text(
-                    user?.initials ?? '?',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
+                UserAvatar(
+                  user: user,
+                  size: 48,
+                  fontSize: 16,
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
@@ -811,21 +1147,74 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isTrial 
-                            ? 'L\'application sera bloquée à la fin de l\'essai.' 
-                            : 'Votre licence est active et valide.',
+                        license.detailedDescription,
                         style: TextStyle(
                           fontSize: 12,
                           color: isTrial ? const Color(0xFFB45309) : const Color(0xFF047857),
                         ),
                       ),
+                      if (license.maskedKey != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Clé active : ${license.maskedKey}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
-                  AppButton(
-                    label: isTrial ? 'Activer' : 'Changer la clé',
-                    onPressed: () => _showActivationDialog(context),
-                  ),
+                Row(
+                  children: [
+                    if (!isTrial) ...[
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Effacer la licence ?'),
+                              content: const Text('Cela réinitialisera l\'application PC en mode essai gratuit de 7 jours.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Annuler'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('Réinitialiser', style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await ref.read(licenseProvider.notifier).resetLicense();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Licence effacée — Mode essai réinitialisé !')),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.refresh_rounded, size: 16),
+                        label: const Text('Effacer'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.redAccent,
+                          side: const BorderSide(color: Colors.redAccent),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                    ],
+                    AppButton(
+                      label: isTrial ? 'Activer' : 'Changer la clé',
+                      onPressed: () => _showActivationDialog(context),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -894,7 +1283,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         await Future.delayed(const Duration(milliseconds: 300));
                         if (!ctx.mounted) return;
 
-                        final res = ref.read(licenseProvider.notifier).activate(keyCtrl.text.trim());
+                        final res = await ref.read(licenseProvider.notifier).activate(keyCtrl.text.trim());
 
                         if (res.result == LicenseActivationResult.success) {
                           if (ctx.mounted) {
@@ -908,6 +1297,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             isActivating = false;
                             if (res.result == LicenseActivationResult.expiredKey) {
                               errorMsg = 'Cette clé est expirée.';
+                            } else if (res.result == LicenseActivationResult.deviceMismatch) {
+                              errorMsg = 'Cette clé est dédiée à un autre ordinateur !';
                             } else {
                               errorMsg = 'Clé invalide ou format incorrect.';
                             }
@@ -941,7 +1332,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: 'Changer le mot de passe',
             subtitle: 'Mettez à jour vos informations de connexion',
             icon: Icons.lock_reset_rounded,
-            gradientColors: const [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+            gradientColors: const [AppColors.tertiary, Color(0xFF6D28D9)],
             width: 450,
             primaryLabel: 'Enregistrer',
             primaryIcon: Icons.save_outlined,
@@ -1031,70 +1422,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _editProfile(AppUser? user) async {
     if (user == null) return;
-
-    final nameCtrl = TextEditingController(text: user.fullName);
-    final formKey = GlobalKey<FormState>();
-
-    final changed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AppFormDialog(
-        title: 'Éditer le profil',
-        subtitle: 'Modifiez vos informations personnelles',
-        icon: Icons.person_outline,
-        gradientColors: const [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
-        width: 400,
-        primaryLabel: 'Enregistrer',
-        primaryIcon: Icons.save_outlined,
-        onCancel: () => Navigator.pop(dialogContext, false),
-        onPrimary: () async {
-          if (!formKey.currentState!.validate()) return;
-          final errorColor = Theme.of(context).colorScheme.error;
-          try {
-            await ref
-                .read(authProvider.notifier)
-                .updateName(nameCtrl.text);
-            if (dialogContext.mounted) Navigator.pop(dialogContext, true);
-          } catch (e) {
-            if (dialogContext.mounted) {
-              ScaffoldMessenger.of(dialogContext).showSnackBar(
-                SnackBar(
-                  backgroundColor: errorColor,
-                  content: Text('Erreur: $e'),
-                ),
-              );
-            }
-          }
-        },
-        body: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AppFormField(
-                label: 'Nom complet',
-                controller: nameCtrl,
-                icon: Icons.person_outline,
-                isRequired: true,
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Champ requis' : null,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    nameCtrl.dispose();
-
-    if ((changed ?? false) && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: context.colors.primary,
-          content: Text('Profil mis à jour.'),
-        ),
-      );
-    }
+    await UserProfileDialog.show(context);
   }
 }
 

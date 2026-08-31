@@ -56,6 +56,9 @@ dependencies:
   mobile_scanner: ^6.0.5
   qr_flutter: ^4.1.0
   network_info_plus: ^8.2.1
+  window_manager: ^0.5.2
+  http: ^1.6.0
+  postgres: ^3.5.12
 
 dev_dependencies:
   flutter_test:

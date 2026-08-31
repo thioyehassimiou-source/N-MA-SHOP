@@ -38,33 +38,40 @@ jobs:
       - name: 🔍 Vérifier Flutter
         run: flutter doctor -v
 
-      # ── 4. Installer les dépendances ──────────────────────────────────────
-      - name: 📦 Installer les dépendances (flutter pub get)
-        run: flutter pub get
+      # ── 4. Nettoyer et installer les dépendances ──────────────────────────
+      - name: 📦 Nettoyage et dépendances (flutter pub get)
+        run: |
+          flutter clean
+          flutter pub get
 
       # ── 5. Compiler l'application pour Windows ────────────────────────────
       - name: 🔨 Compiler N'MaShop (Windows Release)
         run: flutter build windows --release --build-name=${{ github.event.inputs.version || '1.0.0' }}
 
-      # ── 6. Compiler l'installeur avec Inno Setup ──────────────────────────
+      # ── 6. Créer l'archive Portable ZIP propre ────────────────────────────
+      - name: 📦 Créer l'archive Portable (ZIP)
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "build\windows\NMaShop_Windows_Portable_v${{ github.event.inputs.version || '1.0.0' }}.zip" -Force
+        shell: powershell
+
+      # ── 7. Compiler l'installeur avec Inno Setup ──────────────────────────
       # Inno Setup est pré-installé sur les runners GitHub Windows
       - name: 📦 Créer l'installeur avec Inno Setup
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows\setup.iss"
         shell: pwsh
 
-      # ── 7. Uploader le fichier .exe d'installation ────────────────────────
-      - name: ⬆️ Publier l'installeur en artefact
+      # ── 8. Uploader les artefacts ─────────────────────────────────────────
+      - name: ⬆️ Publier l'installeur d'installation (.exe)
         uses: actions/upload-artifact@v4
         with:
           name: NMaShop-Windows-Setup-v${{ github.event.inputs.version || '1.0.0' }}
           path: build\windows\NMaShop_Setup_v1.0.0.exe
           retention-days: 30
 
-      # ── 8. Uploader aussi les fichiers bruts pour les développeurs ─────────
-      - name: ⬆️ Publier les binaires bruts (optionnel)
+      - name: ⬆️ Publier l'archive portable (.zip)
         uses: actions/upload-artifact@v4
         with:
-          name: NMaShop-Windows-Binaries-v${{ github.event.inputs.version || '1.0.0' }}
-          path: build\windows\x64\runner\Release\
-          retention-days: 7
+          name: NMaShop-Windows-Portable-v${{ github.event.inputs.version || '1.0.0' }}
+          path: build\windows\NMaShop_Windows_Portable_v${{ github.event.inputs.version || '1.0.0' }}.zip
+          retention-days: 30

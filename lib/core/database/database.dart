@@ -51,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -146,12 +146,42 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(adminClients);
             await m.createTable(adminLicenses);
           }
+          if (from < 17) {
+            await m.addColumn(users, users.avatarPath);
+          }
         },
         beforeOpen: (details) async {
-          // Intégrité référentielle.
+          // Intégrité référentielle et optimisations de performance SQLite (pour PC modestes / HDD).
           await customStatement('PRAGMA foreign_keys = ON');
+          await customStatement('PRAGMA journal_mode = WAL');
+          await customStatement('PRAGMA synchronous = NORMAL');
+          await customStatement('PRAGMA cache_size = -64000');
         },
       );
+
+  /// Purge complète de toutes les tables de la base de données SQLite local.
+  Future<void> purgeAllData() async {
+    await transaction(() async {
+      await delete(saleItems).go();
+      await delete(sales).go();
+      await delete(creditPayments).go();
+      await delete(purchaseItems).go();
+      await delete(purchases).go();
+      await delete(supplierPayments).go();
+      await delete(stockMovements).go();
+      await delete(products).go();
+      await delete(customers).go();
+      await delete(suppliers).go();
+      await delete(cashMovements).go();
+      await delete(expenses).go();
+      await delete(orderItems).go();
+      await delete(orders).go();
+      await delete(deliveries).go();
+      await delete(couriers).go();
+      await delete(auditLogs).go();
+      await delete(users).go();
+    });
+  }
 }
 
 LazyDatabase _openConnection() {
@@ -162,3 +192,4 @@ LazyDatabase _openConnection() {
     return NativeDatabase.createInBackground(file);
   });
 }
+

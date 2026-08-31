@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +19,8 @@ import '../../../core/widgets/app_page_header.dart';
 import '../../../core/widgets/barcode_scanner_dialog.dart';
 import '../../../core/widgets/app_form_dialog.dart';
 import '../../../core/widgets/app_form_field.dart';
+import '../../../core/widgets/product_thumbnail.dart';
+import '../../../core/widgets/app_image.dart';
 import '../../stock/application/stock_providers.dart';
 import '../../stock/domain/entities/product.dart';
 import '../application/sale_cart_controller.dart';
@@ -225,7 +225,7 @@ class _ProductPickerState extends ConsumerState<_ProductPicker> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Row(children: [const Icon(Icons.check_circle_outline, color: Colors.white, size: 18), const SizedBox(width: 8), Text('${match.name} ajouté au panier')]),
-                            backgroundColor: Colors.green,
+                            backgroundColor: AppColors.brandEmerald,
                             behavior: SnackBarBehavior.floating,
                             duration: const Duration(seconds: 2),
                           ),
@@ -373,19 +373,15 @@ class _ProductTile extends ConsumerWidget {
         children: [
           Row(
             children: [
-              if (product.imageUrl != null && File(product.imageUrl!).existsSync())
-                Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.sm),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    child: Image.file(
-                      File(product.imageUrl!),
-                      width: 44,
-                      height: 44,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                child: ProductThumbnail(
+                  imageUrl: product.imageUrl,
+                  size: 44,
+                  borderRadius: AppRadius.md,
+                  enableZoomOnTap: false,
                 ),
+              ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,7 +740,7 @@ class _SubmitButton extends ConsumerWidget {
           title: 'Vente enregistrée !',
           subtitle: 'Souhaitez-vous imprimer ou exporter le reçu PDF ?',
           icon: Icons.check_circle_outline,
-          gradientColors: const [Color(0xFF10B981), Color(0xFF059669)],
+          gradientColors: const [AppColors.brandEmerald, Color(0xFF059669)],
           width: 400,
           primaryLabel: 'Imprimer / PDF',
           primaryIcon: Icons.print_outlined,
@@ -808,32 +804,15 @@ class _CartLineTile extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          // Icône produit
-          Container(
+          // Icône / Photo produit
+          AppImage(
+            imagePath: line.imageUrl,
             width: 36,
             height: 36,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainer,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-            ),
-            child: line.imageUrl != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    child: Image.file(
-                      File(line.imageUrl!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.inventory_2_outlined,
-                        size: 16,
-                        color: hasIssue ? theme.colorScheme.error : theme.colorScheme.primary,
-                      ),
-                    ),
-                  )
-                : Icon(
-                    Icons.inventory_2_outlined,
-                    size: 16,
-                    color: hasIssue ? theme.colorScheme.error : theme.colorScheme.primary,
-                  ),
+            fit: BoxFit.cover,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            fallbackIcon: Icons.inventory_2_outlined,
+            fallbackColor: hasIssue ? theme.colorScheme.error : theme.colorScheme.primary,
           ),
           const SizedBox(width: AppSpacing.base),
 

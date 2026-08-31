@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:io';
 
 import '../../../core/providers/app_settings_provider.dart';
+import '../../../core/providers/theme_provider.dart';
+import '../../../core/widgets/app_image.dart';
+import '../../../core/widgets/user_avatar.dart';
 import '../../auth/application/auth_providers.dart';
+import '../../auth/presentation/widgets/user_profile_dialog.dart';
 import '../../stock/application/stock_providers.dart';
 
 
-// ── Couleurs de marque N'MaShop (Sidebar fixes) ──────────────────────────────
-const _kNavy = Color(0xFF0F1B3D);
-const _kNavyDark = Color(0xFF0D1830);
-const _kOrange = Color(0xFFE85D04);
-const _kOrangeLight = Color(0xFFFF7A2A);
+// ── Couleurs de marque et sous-éléments ──────────────────────────────
 const _kBlueText = Color(0xFF8899BB);
 const _kSectionLabel = Color(0xFF5570A0);
 
@@ -131,17 +130,12 @@ class AppSidebar extends ConsumerWidget {
     final location = GoRouterState.of(context).matchedLocation;
     final settings = ref.watch(appSettingsProvider);
     final user = ref.watch(authProvider);
-    final useCustom = settings.useCustomTheme;
-    final colors = Theme.of(context).colorScheme;
+    final palette = ref.watch(paletteProvider);
 
-    // Définition des couleurs selon le mode
-    final sidebarBg = useCustom ? colors.surface : null;
-    final sidebarBorder = useCustom ? colors.outlineVariant : Colors.white.withValues(alpha: 0.08);
-    final logoBg = useCustom ? colors.primaryContainer : _kOrange;
-    final logoShadow = useCustom ? colors.primary.withValues(alpha: 0.2) : _kOrange.withValues(alpha: 0.4);
-    final logoIcon = useCustom ? colors.primary : Colors.white;
-    final titleColor = useCustom ? colors.onSurface : Colors.white;
-    final subtitleColor = useCustom ? colors.onSurfaceVariant : _kBlueText;
+    // Définition des couleurs thématiques selon la palette active
+    final logoIcon = palette.highlightColor;
+    const titleColor = Colors.white;
+    const subtitleColor = _kBlueText;
 
     bool isActive(String path) =>
         path == '/' ? location == '/' : location.startsWith(path);
@@ -155,25 +149,20 @@ class AppSidebar extends ConsumerWidget {
 
     return Container(
       width: 240,
-      decoration: useCustom
-          ? BoxDecoration(
-              color: sidebarBg,
-              border: Border(right: BorderSide(color: sidebarBorder, width: 1)),
-            )
-          : const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [_kNavy, _kNavyDark],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x50000000),
-                  blurRadius: 20,
-                  offset: Offset(4, 0),
-                ),
-              ],
-            ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [palette.darkSidebarTop, palette.darkSidebarBottom],
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x50000000),
+            blurRadius: 20,
+            offset: Offset(4, 0),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           // ── Logo & Marque ───────────────────────────────────────────────
@@ -182,51 +171,25 @@ class AppSidebar extends ConsumerWidget {
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color: sidebarBorder,
+                  color: Colors.white.withValues(alpha: 0.08),
                   width: 1,
                 ),
               ),
             ),
             child: Row(
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: settings.logoPath != null ? logoBg : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    image: settings.logoPath != null
-                        ? DecorationImage(
-                            image: FileImage(File(settings.logoPath!)),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                    boxShadow: settings.logoPath != null
-                        ? [
-                            BoxShadow(
-                              color: logoShadow,
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
-                        : null,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: AppImage(
+                    imagePath: settings.logoPath != null && settings.logoPath!.isNotEmpty
+                        ? settings.logoPath
+                        : 'assets/images/nmashop_logo_official.png',
+                    width: 42,
+                    height: 42,
+                    fit: BoxFit.cover,
+                    fallbackIcon: Icons.storefront_rounded,
+                    fallbackColor: logoIcon,
                   ),
-                  child: settings.logoPath == null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            'assets/images/nmashop_logo_official.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => Center(
-                              child: Icon(
-                                Icons.storefront_rounded,
-                                color: logoIcon,
-                                size: 22,
-                              ),
-                            ),
-                          ),
-                        )
-                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -310,17 +273,12 @@ class _SectionLabel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final useCustom = ref.watch(appSettingsProvider).useCustomTheme;
-    final color = useCustom
-        ? Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8)
-        : _kSectionLabel;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
+        style: const TextStyle(
+          color: _kSectionLabel,
           fontSize: 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.4,
@@ -336,48 +294,33 @@ class _SidebarProfile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider);
-    final settings = ref.watch(appSettingsProvider);
-    final useCustom = settings.useCustomTheme;
-    final colors = Theme.of(context).colorScheme;
+    final palette = ref.watch(paletteProvider);
+    final highlight = palette.highlightColor;
 
-    final bgColor = useCustom ? colors.primaryContainer : _kOrange.withValues(alpha: 0.2);
-    final borderColor = useCustom ? colors.primary.withValues(alpha: 0.3) : _kOrange.withValues(alpha: 0.5);
-    final initialColor = useCustom ? colors.primary : _kOrangeLight;
-    final nameColor = useCustom ? colors.onSurface : Colors.white;
-    final roleColor = useCustom ? colors.onSurfaceVariant : _kBlueText;
-    final logoutColor = useCustom ? colors.onSurfaceVariant : Colors.white.withValues(alpha: 0.4);
+    final bgColor = highlight.withValues(alpha: 0.2);
+    final borderColor = highlight.withValues(alpha: 0.5);
+    final initialColor = highlight == const Color(0xFF1E293B) ? const Color(0xFFFFDBC7) : highlight;
+    const nameColor = Colors.white;
+    const roleColor = _kBlueText;
+    final logoutColor = Colors.white.withValues(alpha: 0.4);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: InkWell(
-        onTap: () => context.go('/reglages'),
+        onTap: () => UserProfileDialog.show(context),
         borderRadius: BorderRadius.circular(10),
-        hoverColor: useCustom ? colors.onSurface.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.05),
+        hoverColor: Colors.white.withValues(alpha: 0.05),
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: borderColor,
-                    width: 1,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    user?.initials ?? '?',
-                    style: TextStyle(
-                      color: initialColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
+              UserAvatar(
+                user: user,
+                size: 36,
+                backgroundColor: bgColor,
+                foregroundColor: initialColor,
+                borderRadius: BorderRadius.circular(10),
+                borderColor: borderColor,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -386,7 +329,7 @@ class _SidebarProfile extends ConsumerWidget {
                   children: [
                     Text(
                       user?.fullName ?? 'Boutiquier',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: nameColor,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
@@ -396,7 +339,7 @@ class _SidebarProfile extends ConsumerWidget {
                     ),
                     Text(
                       user?.role.name == 'admin' ? 'Administrateur' : 'Vendeur',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: roleColor,
                         fontSize: 11,
                       ),
@@ -404,15 +347,18 @@ class _SidebarProfile extends ConsumerWidget {
                   ],
                 ),
               ),
-              InkWell(
-                onTap: () => ref.read(authProvider.notifier).lock(),
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: Icon(
-                    Icons.logout_rounded,
-                    color: logoutColor,
-                    size: 18,
+              Tooltip(
+                message: 'Se déconnecter',
+                child: InkWell(
+                  onTap: () => ref.read(authProvider.notifier).lock(),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Icon(
+                      Icons.logout_rounded,
+                      color: logoutColor,
+                      size: 18,
+                    ),
                   ),
                 ),
               ),
@@ -432,19 +378,18 @@ class _NavItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(appSettingsProvider);
-    final useCustom = settings.useCustomTheme;
-    final colors = Theme.of(context).colorScheme;
+    final palette = ref.watch(paletteProvider);
+    final highlight = palette.highlightColor;
 
-    final hoverColor = useCustom ? colors.onSurface.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.06);
-    final splashColor = useCustom ? colors.primary.withValues(alpha: 0.1) : _kOrange.withValues(alpha: 0.15);
-    final activeBgColor = useCustom ? colors.primaryContainer.withValues(alpha: 0.6) : _kOrange.withValues(alpha: 0.15);
-    final activeBorderColor = useCustom ? colors.primary.withValues(alpha: 0.2) : _kOrange.withValues(alpha: 0.3);
-    final indicatorColor = useCustom ? colors.primary : _kOrange;
-    final iconColorActive = useCustom ? colors.primary : _kOrange;
-    final iconColorInactive = useCustom ? colors.onSurfaceVariant : const Color(0xFF8899BB);
-    final textColorActive = useCustom ? colors.primary : Colors.white;
-    final textColorInactive = useCustom ? colors.onSurface : const Color(0xFFAABBCC);
+    final hoverColor = Colors.white.withValues(alpha: 0.06);
+    final splashColor = highlight.withValues(alpha: 0.15);
+    final activeBgColor = highlight.withValues(alpha: 0.18);
+    final activeBorderColor = highlight.withValues(alpha: 0.35);
+    final indicatorColor = highlight;
+    final iconColorActive = highlight;
+    const iconColorInactive = Color(0xFF8899BB);
+    const textColorActive = Colors.white;
+    const textColorInactive = Color(0xFFAABBCC);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
@@ -495,7 +440,7 @@ class _NavItem extends ConsumerWidget {
                     destination.label,
                     style: TextStyle(
                       fontSize: 13.5,
-                      fontWeight: active ? FontWeight.w600 : (useCustom ? FontWeight.w500 : FontWeight.w400),
+                      fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                       color: active ? textColorActive : textColorInactive,
                     ),
                     maxLines: 1,

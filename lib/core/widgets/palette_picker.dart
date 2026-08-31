@@ -31,7 +31,7 @@ class PalettePicker extends StatelessWidget {
       builder: (context, constraints) {
         const spacing = AppSpacing.md;
         // 1 à 3 colonnes selon la largeur disponible.
-        final columns = (constraints.maxWidth / 210).floor().clamp(1, 3);
+        final columns = (constraints.maxWidth / 190).floor().clamp(1, 4);
         final itemWidth =
             (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
@@ -202,10 +202,10 @@ class _MiniApp extends StatelessWidget {
         aspectRatio: 1.55,
         child: Column(
           children: [
-            // ── Barre d'en-tête (couleur mère) ──
+            // ── Barre d'en-tête (dégradé sombre thématique) ──
             Container(
               height: 22,
-              color: palette.seed,
+              color: palette.darkSidebarTop,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 children: [
@@ -215,7 +215,7 @@ class _MiniApp extends StatelessWidget {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: palette.accent,
+                      color: palette.seed,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -240,7 +240,7 @@ class _MiniApp extends StatelessWidget {
                           const SizedBox(height: 5),
                           _bar(46, 5, _ink),
                           const Spacer(),
-                          // Bouton d'action (couleur mère).
+                          // Bouton d'action (couleur maîtresse).
                           Container(
                             height: 12,
                             width: 52,
@@ -262,7 +262,7 @@ class _MiniApp extends StatelessWidget {
     );
   }
 
-  /// Petite carte de statistique avec un mini graphique à barres en accent.
+  /// Petite carte de statistique avec un mini graphique à barres aux couleurs du template.
   Widget _statCard(AppPalette palette) {
     return Container(
       width: 52,
@@ -275,18 +275,18 @@ class _MiniApp extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _bar(18, 5, palette.accent),
+          _bar(18, 5, palette.seed),
           const SizedBox(height: 4),
           _bar(30, 3, _ink),
           const Spacer(),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _chartBar(6, palette.accent.withValues(alpha: 0.55)),
+              _chartBar(6, palette.seed.withValues(alpha: 0.55)),
               const SizedBox(width: 2),
-              _chartBar(11, palette.accent),
+              _chartBar(11, palette.seed),
               const SizedBox(width: 2),
-              _chartBar(8, palette.accent.withValues(alpha: 0.75)),
+              _chartBar(8, palette.seed.withValues(alpha: 0.75)),
             ],
           ),
         ],

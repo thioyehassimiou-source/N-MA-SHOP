@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:convert';
 import 'package:csv/csv.dart';
+import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
@@ -41,8 +41,7 @@ class ExportService {
         ]);
       }
 
-      String csvData = const ListToCsvConverter().convert(rows);
-      final bytes = Uint8List.fromList(utf8.encode(csvData));
+      final bytes = await compute(_buildCsvBytes, rows);
 
       final String fileName = "export_ventes_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv";
       final savedUri = await FilePicker.saveFile(
@@ -89,4 +88,10 @@ class ExportService {
       return false;
     }
   }
+}
+
+/// Fonction de conversion CSV exécutée hors du thread UI (dans un Isolate)
+Uint8List _buildCsvBytes(List<List<dynamic>> rows) {
+  final csvData = const ListToCsvConverter().convert(rows);
+  return Uint8List.fromList(utf8.encode(csvData));
 }

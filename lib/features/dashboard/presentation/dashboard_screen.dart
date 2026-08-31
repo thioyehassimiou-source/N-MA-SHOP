@@ -15,7 +15,7 @@ import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../sales/application/sales_providers.dart';
 import '../application/dashboard_providers.dart';
-import '../../../core/providers/app_settings_provider.dart';
+import '../../../core/providers/theme_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -581,150 +581,160 @@ class _PageHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider);
-    final settings = ref.watch(appSettingsProvider);
-    final useCustom = settings.useCustomTheme;
-    final colors = Theme.of(context).colorScheme;
+    final palette = ref.watch(paletteProvider);
 
     final firstName = user?.fullName.split(' ').first ?? 'Patron';
     final greeting = _getGreeting();
 
-    final boxDecoration = useCustom
-        ? BoxDecoration(
-            color: colors.primaryContainer,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: colors.primary.withValues(alpha: 0.2),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          )
-        : BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0F1B3D),
-                Color(0xFF1A2B52),
-                Color(0xFF1E3A6E),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF0F1B3D).withValues(alpha: 0.35),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          );
+    final boxDecoration = BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          palette.darkSidebarTop,
+          Color.alphaBlend(palette.highlightColor.withValues(alpha: 0.3), palette.darkSidebarTop),
+          palette.darkSidebarBottom,
+        ],
+      ),
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: palette.darkSidebarTop.withValues(alpha: 0.35),
+          blurRadius: 24,
+          offset: const Offset(0, 10),
+        ),
+      ],
+    );
 
-    final onlineBadgeColor = useCustom ? colors.primary : const Color(0xFFE85D04);
-    final onlineBadgeBg = useCustom ? colors.primary.withValues(alpha: 0.1) : const Color(0xFFE85D04).withValues(alpha: 0.2);
-    final onlineBadgeBorder = useCustom ? colors.primary.withValues(alpha: 0.3) : const Color(0xFFE85D04).withValues(alpha: 0.5);
-    final textColor = useCustom ? colors.onPrimaryContainer : Colors.white;
-    final textSubColor = useCustom ? colors.onPrimaryContainer.withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.65);
+    final onlineBadgeColor = palette.highlightColor;
+    final onlineBadgeBg = palette.highlightColor.withValues(alpha: 0.2);
+    final onlineBadgeBorder = palette.highlightColor.withValues(alpha: 0.5);
+    const textColor = Colors.white;
+    final textSubColor = Colors.white.withValues(alpha: 0.7);
 
     return Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(28),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: onlineBadgeBg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: onlineBadgeBorder,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.circle, size: 6, color: Color(0xFF10B981)),
-                      const SizedBox(width: 6),
-                      Text(
-                        'EN LIGNE',
-                        style: TextStyle(
-                          color: onlineBadgeColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 950;
+
+          final mainInfo = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: onlineBadgeBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: onlineBadgeBorder),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  '$greeting, $firstName !',
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  "Voici le résumé de votre commerce aujourd'hui",
-                  style: TextStyle(
-                    color: textSubColor,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _BannerButton(
-                      label: 'Exporter',
-                      icon: Icons.download_outlined,
-                      onTap: () => context.go('/rapports'),
-                      outlined: true,
-                    ),
-                    const SizedBox(width: 10),
-                    _BannerButton(
-                      label: 'Actualiser',
-                      icon: Icons.refresh_rounded,
-                      onTap: () => ref.invalidate(dashboardDataProvider),
+                    const Icon(Icons.circle, size: 6, color: Color(0xFF10B981)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'EN LIGNE',
+                      style: TextStyle(
+                        color: onlineBadgeColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 24),
-          Expanded(
-            flex: 2,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '$greeting, $firstName !',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                "Voici le résumé de votre commerce aujourd'hui",
+                style: TextStyle(
+                  color: textSubColor,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _BannerButton(
+                    label: 'Exporter',
+                    icon: Icons.download_outlined,
+                    onTap: () => context.go('/rapports'),
+                    outlined: true,
+                  ),
+                  _BannerButton(
+                    label: 'Actualiser',
+                    icon: Icons.refresh_rounded,
+                    onTap: () => ref.invalidate(dashboardDataProvider),
+                  ),
+                ],
+              ),
+            ],
+          );
+
+          final statsInfo = Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: isCompact ? WrapAlignment.start : WrapAlignment.end,
+            children: [
+              _BannerStat(
+                label: 'CA du jour',
+                value: formatGnfCompact(data.todaySales),
+                icon: Icons.trending_up_rounded,
+                color: const Color(0xFF10B981),
+              ),
+              _BannerStat(
+                label: 'En caisse',
+                value: formatGnfCompact(data.cashAvailable),
+                icon: Icons.account_balance_wallet_rounded,
+                color: const Color(0xFFE85D04),
+              ),
+            ],
+          );
+
+          if (isCompact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _BannerStat(
-                  label: 'CA du jour',
-                  value: formatGnfCompact(data.todaySales),
-                  icon: Icons.trending_up_rounded,
-                  color: const Color(0xFF10B981),
-                ),
-                const SizedBox(width: 16),
-                _BannerStat(
-                  label: 'En caisse',
-                  value: formatGnfCompact(data.cashAvailable),
-                  icon: Icons.account_balance_wallet_rounded,
-                  color: const Color(0xFFE85D04),
-                ),
+                mainInfo,
+                const SizedBox(height: 24),
+                statsInfo,
               ],
-            ),
-          ),
-        ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(flex: 3, child: mainInfo),
+              const SizedBox(width: 16),
+              Flexible(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: statsInfo,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -744,15 +754,11 @@ class _BannerButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final useCustom = ref.watch(appSettingsProvider).useCustomTheme;
-    final colors = Theme.of(context).colorScheme;
-
-    final primaryColor = useCustom ? colors.primary : const Color(0xFFE85D04);
-    final textColor = useCustom ? (outlined ? colors.primary : colors.onPrimary) : Colors.white;
+    final palette = ref.watch(paletteProvider);
+    final primaryColor = palette.highlightColor;
+    const textColor = Colors.white;
     final bgColor = outlined ? Colors.transparent : primaryColor;
-    final borderColor = outlined
-        ? (useCustom ? colors.primary.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.3))
-        : primaryColor;
+    final borderColor = outlined ? Colors.white.withValues(alpha: 0.3) : primaryColor;
 
     return GestureDetector(
       onTap: onTap,
@@ -798,14 +804,13 @@ class _BannerStat extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final useCustom = ref.watch(appSettingsProvider).useCustomTheme;
-    final colors = Theme.of(context).colorScheme;
+    final palette = ref.watch(paletteProvider);
 
-    final bgColor = useCustom ? colors.surface.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08);
-    final borderColor = useCustom ? colors.outline.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.12);
-    final textColor = useCustom ? colors.onPrimaryContainer : Colors.white;
-    final textSubColor = useCustom ? colors.onPrimaryContainer.withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.7);
-    final iconColor = useCustom ? colors.primary : color;
+    final bgColor = Colors.white.withValues(alpha: 0.08);
+    final borderColor = Colors.white.withValues(alpha: 0.12);
+    const textColor = Colors.white;
+    final textSubColor = Colors.white.withValues(alpha: 0.7);
+    final iconColor = palette.highlightColor;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -1088,22 +1093,28 @@ class _RecentSalesCard extends ConsumerWidget {
                                       ),
                               ),
                               const SizedBox(width: AppSpacing.md),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    sale.title,
-                                    style: theme.textTheme.labelMedium
-                                        ?.copyWith(fontWeight: FontWeight.w700),
-                                  ),
-                                  Text(
-                                    sale.subtitle,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      sale.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.labelMedium
+                                          ?.copyWith(fontWeight: FontWeight.w700),
                                     ),
-                                  ),
-                                ],
+                                    Text(
+                                      sale.subtitle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),

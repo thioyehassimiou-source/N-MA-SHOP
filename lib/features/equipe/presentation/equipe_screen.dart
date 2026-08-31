@@ -156,7 +156,7 @@ class EquipeScreen extends ConsumerWidget {
               title: 'Ajouter un utilisateur',
               subtitle: 'Créer un nouvel accès pour l\'équipe',
               icon: Icons.person_add_outlined,
-              gradientColors: const [Color(0xFF4F46E5), Color(0xFF6366F1)],
+              gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
               width: 450,
               primaryLabel: 'Créer',
               primaryIcon: Icons.check_circle_outline,

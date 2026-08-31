@@ -83,22 +83,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (confirm != true || !mounted) return;
 
-    // 1. Vider les préférences (isSetupCompleted, businessName…)
+    // 1. Déconnexion et suppression du compte dans la session Riverpod
+    await ref.read(authProvider.notifier).deleteAccount();
+
+    // 2. Vider les préférences (isSetupCompleted, businessName, licence...)
     await ref.read(appSettingsProvider.notifier).resetSetup();
 
-    // 2. Supprimer toutes les lignes de la base de données
+    // 3. Purger l'intégralité de la base de données SQLite
     final db = ref.read(databaseProvider);
-    await db.delete(db.users).go();
-    await db.delete(db.sales).go();
-    await db.delete(db.saleItems).go();
-    await db.delete(db.products).go();
-    await db.delete(db.stockMovements).go();
-    await db.delete(db.customers).go();
-    await db.delete(db.creditPayments).go();
-    await db.delete(db.purchases).go();
-    await db.delete(db.purchaseItems).go();
-    await db.delete(db.suppliers).go();
-    await db.delete(db.supplierPayments).go();
+    await db.purgeAllData();
 
     if (!mounted) return;
     context.go('/onboarding');

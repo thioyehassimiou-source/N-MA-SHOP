@@ -35,7 +35,7 @@ class AuditLogsScreen extends ConsumerWidget {
                   title: 'Journal d\'Activité',
                   subtitle: 'Historique des actions critiques (Réservé aux administrateurs)',
                   icon: Icons.security_outlined,
-                  gradientColors: const [Color(0xFFE63946), Color(0xFF900C3F)],
+                  gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.refresh),
