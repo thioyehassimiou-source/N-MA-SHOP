@@ -44,7 +44,7 @@ class SuppliersScreen extends ConsumerWidget {
               final purchases = purchasesAsync.when(
                 data: (d) => d,
                 loading: () => <RecentPurchaseView>[],
-                error: (_, _) => <RecentPurchaseView>[],
+                error: (err, stack) => <RecentPurchaseView>[],
               );
               return _SuppliersBody(summaries: summaries, purchases: purchases);
             },

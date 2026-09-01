@@ -313,7 +313,7 @@ class _CartPanel extends ConsumerWidget {
                       vertical: AppSpacing.base,
                     ),
                     itemCount: state.lines.length,
-                    separatorBuilder: (_, _) => Divider(
+                    separatorBuilder: (context, index) => Divider(
                       height: 1,
                       color: theme.colorScheme.outlineVariant,
                       indent: AppSpacing.md,
