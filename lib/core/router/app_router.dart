@@ -55,35 +55,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       final location = state.matchedLocation;
       final settings = ref.read(appSettingsProvider);
 
-      // ── 0. Priorité absolue : Assistant au tout premier démarrage (First-Run) ──
-      if (!settings.isFirstRunCompleted) {
-        return location == '/first-run' ? null : '/first-run';
-      }
-
-      // Si l'assistant est déjà fait et qu'on essaie d'accéder à /first-run
-      if (location == '/first-run' && settings.isFirstRunCompleted) {
-        return settings.isSetupCompleted ? '/' : '/onboarding';
-      }
-
-      // ── 1. Vérification de la licence ──────────────────
-      final license = ref.read(licenseProvider);
-      if (license.isExpired && !location.startsWith('/admin')) {
-        return location == '/licence' ? null : '/licence';
-      }
-      // Si la licence est OK et qu'on est sur /licence, rediriger
-      if (location == '/licence' && !license.isExpired) return '/';
-      
-      // ── Sécurité : Le Backoffice Admin est strictement retiré du client ────
-      if (location.startsWith('/admin')) {
-        return '/licence';
-      }
-
-      // ── Forcer l'onboarding si isSetupCompleted = false ──
+      // ── 0. Premier démarrage : Séquence Onboarding -> Assistant de Configuration ──
       if (!settings.isSetupCompleted) {
-        if (location == '/onboarding') return null;
-        if (location == '/setup') return null;
-        if (location == '/connexion') return null;
+        if (location == '/onboarding' || location == '/setup' || location == '/connexion') {
+          return null;
+        }
         return '/onboarding';
+      }
+
+      // Si le paramétrage est déjà complété et qu'on essaie d'accéder à /first-run ou /onboarding
+      if (location == '/first-run') {
+        return settings.isSetupCompleted ? '/' : '/onboarding';
       }
 
       // ── 2. Aucune boutique configurée ─────────────────────────────────────

@@ -159,26 +159,42 @@ class AppDatabase extends _$AppDatabase {
         },
       );
 
-  /// Purge complète de toutes les tables de la base de données SQLite local.
+  /// Purge complète de toutes les tables de la base de données SQLite local,
+  /// en respectant strictement l'ordre des contraintes de clés étrangères (Foreign Keys).
   Future<void> purgeAllData() async {
     await transaction(() async {
+      // 1. Enfants de Sales et Customers (Règlements de créances & Lignes de vente)
       await delete(saleItems).go();
-      await delete(sales).go();
       await delete(creditPayments).go();
+      await delete(sales).go();
+
+      // 2. Enfants de Purchases et Suppliers (Paiements fournisseurs & Lignes d'achat)
       await delete(purchaseItems).go();
-      await delete(purchases).go();
       await delete(supplierPayments).go();
+      await delete(purchases).go();
+
+      // 3. Enfants de Orders et Couriers (Livraisons & Lignes de commande)
+      await delete(deliveries).go();
+      await delete(orderItems).go();
+      await delete(orders).go();
+      await delete(couriers).go();
+
+      // 4. Mouvements de stock (dépend de Products)
       await delete(stockMovements).go();
+
+      // 5. Entités parentes Principales
       await delete(products).go();
       await delete(customers).go();
       await delete(suppliers).go();
+
+      // 6. Finances et Journaux d'audit
       await delete(cashMovements).go();
       await delete(expenses).go();
-      await delete(orderItems).go();
-      await delete(orders).go();
-      await delete(deliveries).go();
-      await delete(couriers).go();
       await delete(auditLogs).go();
+
+      // 7. Licence administrative et Utilisateurs
+      await delete(adminLicenses).go();
+      await delete(adminClients).go();
       await delete(users).go();
     });
   }

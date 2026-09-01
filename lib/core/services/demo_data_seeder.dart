@@ -14,21 +14,26 @@ class DemoDataSeeder {
   static Future<void> clearDatabase(AppDatabase db) async {
     return db.transaction(() async {
       await db.delete(db.saleItems).go();
-      await db.delete(db.sales).go();
       await db.delete(db.creditPayments).go();
-      await db.delete(db.stockMovements).go();
+      await db.delete(db.sales).go();
+
       await db.delete(db.purchaseItems).go();
-      await db.delete(db.purchases).go();
       await db.delete(db.supplierPayments).go();
-      await db.delete(db.suppliers).go();
-      await db.delete(db.customers).go();
+      await db.delete(db.purchases).go();
+
+      await db.delete(db.deliveries).go();
+      await db.delete(db.orderItems).go();
+      await db.delete(db.orders).go();
+      await db.delete(db.couriers).go();
+
+      await db.delete(db.stockMovements).go();
+
       await db.delete(db.products).go();
+      await db.delete(db.customers).go();
+      await db.delete(db.suppliers).go();
+
       await db.delete(db.expenses).go();
       await db.delete(db.cashMovements).go();
-      await db.delete(db.orders).go();
-      await db.delete(db.orderItems).go();
-      await db.delete(db.deliveries).go();
-      await db.delete(db.couriers).go();
       await db.delete(db.auditLogs).go();
     });
   }
