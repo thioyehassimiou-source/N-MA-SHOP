@@ -3,12 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_settings_provider.dart';
-import '../../../core/providers/database_provider.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../application/auth_providers.dart';
 import '../domain/repositories/auth_repository.dart';
 import 'widgets/auth_layout.dart';
-import '../../../core/widgets/app_form_dialog.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
 
@@ -63,39 +61,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  /// Réinitialise complètement la boutique après confirmation de l'utilisateur.
-  Future<void> _confirmReset() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AppFormDialog(
-        title: 'Réinitialiser la boutique ?',
-        subtitle: 'Cette action supprime toutes les données (ventes, stock, compte administrateur).\n\nCette opération est irréversible.',
-        icon: Icons.warning_amber_rounded,
-        gradientColors: const [Color(0xFFDC2626), Color(0xFFEF4444)],
-        width: 450,
-        primaryLabel: 'Réinitialiser',
-        primaryIcon: Icons.delete_forever,
-        onCancel: () => Navigator.of(ctx).pop(false),
-        onPrimary: () => Navigator.of(ctx).pop(true),
-        body: const SizedBox.shrink(),
-      ),
-    );
 
-    if (confirm != true || !mounted) return;
-
-    // 1. Déconnexion et suppression du compte dans la session Riverpod
-    await ref.read(authProvider.notifier).deleteAccount();
-
-    // 2. Vider les préférences (isSetupCompleted, businessName, licence...)
-    await ref.read(appSettingsProvider.notifier).resetSetup();
-
-    // 3. Purger l'intégralité de la base de données SQLite
-    final db = ref.read(databaseProvider);
-    await db.purgeAllData();
-
-    if (!mounted) return;
-    context.go('/onboarding');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -187,35 +153,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton.icon(
-                  onPressed: () => context.go('/onboarding'),
-                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                  label: const Text("Revoir la présentation"),
-                  style: TextButton.styleFrom(
-                    foregroundColor: context.colors.primary,
-                    textStyle: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                    ),
+            Center(
+              child: TextButton.icon(
+                onPressed: () => context.go('/onboarding'),
+                icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                label: const Text("Revoir la présentation"),
+                style: TextButton.styleFrom(
+                  foregroundColor: context.colors.primary,
+                  textStyle: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                TextButton.icon(
-                  onPressed: _confirmReset,
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text('Reconfigurer'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: context.colors.onSurfaceVariant,
-                    textStyle: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),

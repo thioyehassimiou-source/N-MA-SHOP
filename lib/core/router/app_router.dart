@@ -28,6 +28,7 @@ import '../../features/equipe/presentation/equipe_screen.dart';
 import '../../features/security/presentation/audit_logs_screen.dart';
 import '../../features/help/presentation/help_screen.dart';
 import '../../features/license/presentation/license_gate_screen.dart';
+import '../../features/first_run/presentation/first_run_wizard_screen.dart';
 import '../providers/app_settings_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -52,8 +53,19 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: notifier,
     redirect: (context, state) {
       final location = state.matchedLocation;
+      final settings = ref.read(appSettingsProvider);
 
-      // ── 0. Priorité absolue : vérification de la licence ──────────────────
+      // ── 0. Priorité absolue : Assistant au tout premier démarrage (First-Run) ──
+      if (!settings.isFirstRunCompleted) {
+        return location == '/first-run' ? null : '/first-run';
+      }
+
+      // Si l'assistant est déjà fait et qu'on essaie d'accéder à /first-run
+      if (location == '/first-run' && settings.isFirstRunCompleted) {
+        return settings.isSetupCompleted ? '/' : '/onboarding';
+      }
+
+      // ── 1. Vérification de la licence ──────────────────
       final license = ref.read(licenseProvider);
       if (license.isExpired && !location.startsWith('/admin')) {
         return location == '/licence' ? null : '/licence';
@@ -66,18 +78,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/licence';
       }
 
-      // ── Forcer l'onboarding au premier démarrage si isSetupCompleted = false ──
-      if (!ref.read(appSettingsProvider).isSetupCompleted) {
+      // ── Forcer l'onboarding si isSetupCompleted = false ──
+      if (!settings.isSetupCompleted) {
         if (location == '/onboarding') return null;
         if (location == '/setup') return null;
         if (location == '/connexion') return null;
         return '/onboarding';
       }
 
-      // ── 1. Aucune boutique configurée ─────────────────────────────────────
+      // ── 2. Aucune boutique configurée ─────────────────────────────────────
       final shopExists =
           ref.read(accountExistsProvider) ||
-          ref.read(appSettingsProvider).isSetupCompleted;
+          settings.isSetupCompleted;
       final isSignedIn = ref.read(authProvider) != null;
 
       if (!shopExists) {
@@ -85,18 +97,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         return allowedRoutes.contains(location) ? null : '/onboarding';
       }
 
-      // ── 2. Boutique existante mais verrouillée ────────────────────────────
+      // ── 3. Boutique existante mais verrouillée ────────────────────────────
       if (!isSignedIn) {
         const allowedUnauth = {'/connexion', '/onboarding', '/setup'};
         return allowedUnauth.contains(location) ? null : '/connexion';
       }
 
-      // ── 3. Déverrouillé : écrans d'onboarding, setup et connexion inutiles ──────
-      if (location == '/connexion' || location == '/onboarding' || location == '/setup') {
+      // ── 4. Déverrouillé : écrans d'onboarding, setup et connexion inutiles ──────
+      if (location == '/connexion' || location == '/onboarding' || location == '/setup' || location == '/first-run') {
         return '/';
       }
 
-      // ── 4. Bloquer l'accès à l'équipe pour les vendeurs ───────────────────
+      // ── 5. Bloquer l'accès à l'équipe pour les vendeurs ───────────────────
       final user = ref.read(authProvider);
       if (user != null && user.role.name == 'cashier' && location == '/equipe') {
         return '/';
@@ -106,6 +118,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       // ── Main App Routes ────────────────────────────────────────
+      GoRoute(
+        path: '/first-run',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: FirstRunWizardScreen()),
+      ),
       GoRoute(
         path: '/licence',
         pageBuilder: (context, state) =>

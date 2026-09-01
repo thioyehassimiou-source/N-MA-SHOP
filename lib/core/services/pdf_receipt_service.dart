@@ -55,7 +55,7 @@ class ReceiptData {
   bool get isCredit => creditAmount > 0;
 }
 
-/// Service responsable de la construction du document PDF de reçu.
+/// Service responsable de la construction du document PDF de reçu et facture.
 class PdfReceiptService {
   /// Génère les octets du fichier PDF pour un [ReceiptData] donné.
   static Future<Uint8List> generateReceiptPdf(ReceiptData data) async {
@@ -64,13 +64,19 @@ class PdfReceiptService {
     final font = await PdfGoogleFonts.interRegular();
     final fontBold = await PdfGoogleFonts.interBold();
 
+    // Couleurs officielles de marque N'MaShop & Boutique
+    const navyColor = PdfColor.fromInt(0xFF0F1B3D);
+    const orangeColor = PdfColor.fromInt(0xFFE85D04);
+    const emeraldColor = PdfColor.fromInt(0xFF10B981);
+    const redColor = PdfColor.fromInt(0xFFEF4444);
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
+        margin: const pw.EdgeInsets.all(36),
         build: (pw.Context context) {
           return [
-            // Header: Business Info
+            // ── En-Tête Graphique Boutique & N'MaShop ──
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -78,45 +84,98 @@ class PdfReceiptService {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text(
-                      data.businessName.toUpperCase(),
-                      style: pw.TextStyle(font: fontBold, fontSize: 24, color: PdfColors.indigo800),
+                    pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        // Badge Emblem Boutique
+                        pw.Container(
+                          width: 32,
+                          height: 32,
+                          decoration: pw.BoxDecoration(
+                            color: orangeColor,
+                            borderRadius: pw.BorderRadius.circular(6),
+                          ),
+                          child: pw.Center(
+                            child: pw.Text(
+                              data.businessName.isNotEmpty ? data.businessName[0].toUpperCase() : 'N',
+                              style: pw.TextStyle(font: fontBold, fontSize: 18, color: PdfColors.white),
+                            ),
+                          ),
+                        ),
+                        pw.SizedBox(width: 10),
+                        pw.Text(
+                          data.businessName.toUpperCase(),
+                          style: pw.TextStyle(font: fontBold, fontSize: 20, color: navyColor),
+                        ),
+                      ],
                     ),
-                    pw.SizedBox(height: 4),
+                    pw.SizedBox(height: 6),
                     if (data.businessAddress.isNotEmpty)
-                      pw.Text(data.businessAddress, style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
+                      pw.Text(data.businessAddress, style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey800)),
                     if (data.businessPhone.isNotEmpty)
-                      pw.Text('Tél : ${data.businessPhone}', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
+                      pw.Text('Tél : ${data.businessPhone}', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey800)),
                     if (data.businessNif.isNotEmpty)
-                      pw.Text('NIF : ${data.businessNif}', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
+                      pw.Text('NIF / RCCM : ${data.businessNif}', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey800)),
                   ],
                 ),
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
-                    pw.Text('FACTURE', style: pw.TextStyle(font: fontBold, fontSize: 24, color: PdfColors.grey400)),
-                    pw.SizedBox(height: 4),
-                    pw.Text('Réf : ${data.reference}', style: pw.TextStyle(font: fontBold, fontSize: 12)),
-                    pw.Text('Date : ${formatDateTime(data.date)}', style: pw.TextStyle(font: font, fontSize: 10)),
+                    // Badge de Statut
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: pw.BoxDecoration(
+                        color: data.isCredit ? redColor : emeraldColor,
+                        borderRadius: pw.BorderRadius.circular(4),
+                      ),
+                      child: pw.Text(
+                        data.isCredit ? 'À CRÉDIT' : 'FACTURE PAYÉE',
+                        style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.white),
+                      ),
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Text('N° Réf : ${data.reference}', style: pw.TextStyle(font: fontBold, fontSize: 11, color: navyColor)),
+                    pw.Text('Date : ${formatDateTime(data.date)}', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey700)),
                   ],
                 ),
               ],
             ),
-            pw.SizedBox(height: 24),
-            pw.Divider(color: PdfColors.grey300),
-            pw.SizedBox(height: 24),
 
-            // Customer Info
+            pw.SizedBox(height: 16),
+            // Ligne de séparation aux couleurs de la marque
+            pw.Container(height: 3, color: orangeColor),
+            pw.SizedBox(height: 16),
+
+            // ── Informations Client ──
             if (data.customerName != null && data.customerName!.isNotEmpty) ...[
-              pw.Text('FACTURE À :', style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey600)),
-              pw.SizedBox(height: 4),
-              pw.Text(data.customerName!, style: pw.TextStyle(font: fontBold, fontSize: 14)),
-              pw.SizedBox(height: 24),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromInt(0xFFF8FAFC),
+                  borderRadius: pw.BorderRadius.circular(6),
+                  border: pw.Border.all(color: PdfColor.fromInt(0xFFE2E8F0)),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('CLIENT / DESTINATAIRE :', style: pw.TextStyle(font: fontBold, fontSize: 9, color: PdfColors.grey600)),
+                        pw.SizedBox(height: 2),
+                        pw.Text(data.customerName!, style: pw.TextStyle(font: fontBold, fontSize: 12, color: navyColor)),
+                      ],
+                    ),
+                    pw.Text('Mode : ${data.paymentMethodLabel}', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey800)),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 16),
             ],
 
-            // Table of items
+            // ── Tableau des Articles ──
             pw.TableHelper.fromTextArray(
-              headers: ['Désignation', 'PU', 'Quantité', 'Total'],
+              headers: ['Désignation', 'Prix Unitaire', 'Quantité', 'Total'],
               data: [
                 for (final line in data.lines)
                   [
@@ -126,51 +185,59 @@ class PdfReceiptService {
                     formatAmount(line.lineTotal),
                   ]
               ],
-              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              border: pw.TableBorder.all(color: PdfColor.fromInt(0xFFCBD5E1), width: 0.5),
               headerStyle: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.white),
-              headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo600),
-              cellStyle: pw.TextStyle(font: font, fontSize: 10),
+              headerDecoration: const pw.BoxDecoration(color: navyColor),
+              cellStyle: pw.TextStyle(font: font, fontSize: 9),
               cellAlignments: {
                 0: pw.Alignment.centerLeft,
                 1: pw.Alignment.centerRight,
                 2: pw.Alignment.center,
                 3: pw.Alignment.centerRight,
               },
-              cellPadding: const pw.EdgeInsets.all(8),
+              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             ),
-            pw.SizedBox(height: 24),
+            pw.SizedBox(height: 16),
 
-            // Totals
+            // ── Totaux & Règlement ──
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.end,
               children: [
                 pw.Container(
-                  width: 250,
+                  width: 260,
+                  padding: const pw.EdgeInsets.all(12),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColor.fromInt(0xFFF1F5F9),
+                    borderRadius: pw.BorderRadius.circular(6),
+                    border: pw.Border.all(color: PdfColor.fromInt(0xFFCBD5E1)),
+                  ),
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                     children: [
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('TOTAL', style: pw.TextStyle(font: fontBold, fontSize: 14)),
-                          pw.Text(formatGnf(data.total), style: pw.TextStyle(font: fontBold, fontSize: 14)),
+                          pw.Text('MONTANT TOTAL', style: pw.TextStyle(font: fontBold, fontSize: 12, color: navyColor)),
+                          pw.Text(formatGnf(data.total), style: pw.TextStyle(font: fontBold, fontSize: 13, color: navyColor)),
                         ],
                       ),
-                      pw.SizedBox(height: 8),
+                      pw.SizedBox(height: 6),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Paiement (${data.paymentMethodLabel})', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
-                          pw.Text(formatGnf(data.amountPaid), style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
+                          pw.Text('Montant Encaissé', style: pw.TextStyle(font: font, fontSize: 10, color: PdfColors.grey700)),
+                          pw.Text(formatGnf(data.amountPaid), style: pw.TextStyle(font: fontBold, fontSize: 10, color: emeraldColor)),
                         ],
                       ),
                       if (data.isCredit) ...[
-                        pw.SizedBox(height: 8),
+                        pw.SizedBox(height: 6),
+                        pw.Divider(color: PdfColors.grey400, thickness: 0.5),
+                        pw.SizedBox(height: 4),
                         pw.Row(
                           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                           children: [
-                            pw.Text('RESTE DÛ', style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.red600)),
-                            pw.Text(formatGnf(data.creditAmount), style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.red600)),
+                            pw.Text('RESTE À PAYER', style: pw.TextStyle(font: fontBold, fontSize: 11, color: redColor)),
+                            pw.Text(formatGnf(data.creditAmount), style: pw.TextStyle(font: fontBold, fontSize: 11, color: redColor)),
                           ],
                         ),
                       ],
@@ -179,19 +246,53 @@ class PdfReceiptService {
                 ),
               ],
             ),
-            pw.SizedBox(height: 48),
+            pw.SizedBox(height: 32),
 
-            // Footer
+            // ── Cachet & Signature ──
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('Signature Client', style: pw.TextStyle(font: fontBold, fontSize: 10)),
-                pw.Text('Cachet & Signature', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Signature du Client :', style: pw.TextStyle(font: fontBold, fontSize: 9, color: navyColor)),
+                    pw.SizedBox(height: 30),
+                    pw.Container(width: 150, height: 0.5, color: PdfColors.grey400),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Cachet & Signature Boutique :', style: pw.TextStyle(font: fontBold, fontSize: 9, color: navyColor)),
+                    pw.SizedBox(height: 30),
+                    pw.Container(width: 150, height: 0.5, color: PdfColors.grey400),
+                  ],
+                ),
               ],
             ),
-            pw.SizedBox(height: 60),
-            pw.Center(
-              child: pw.Text('Merci de votre confiance.', style: pw.TextStyle(font: font, fontSize: 10, fontStyle: pw.FontStyle.italic, color: PdfColors.grey600)),
+            pw.SizedBox(height: 30),
+
+            // ── Footer de Double Marque (Boutique Client + N'MaShop) ──
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              decoration: pw.BoxDecoration(
+                color: PdfColor.fromInt(0xFFF8FAFC),
+                borderRadius: pw.BorderRadius.circular(4),
+                border: pw.Border.all(color: PdfColor.fromInt(0xFFE2E8F0)),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Merci de votre confiance ! À bientôt chez ${data.businessName}.',
+                    style: pw.TextStyle(font: font, fontSize: 8, fontStyle: pw.FontStyle.italic, color: PdfColors.grey700),
+                  ),
+                  pw.Text(
+                    'Généré avec N\'MaShop Desktop',
+                    style: pw.TextStyle(font: fontBold, fontSize: 8, color: orangeColor),
+                  ),
+                ],
+              ),
             ),
           ];
         },

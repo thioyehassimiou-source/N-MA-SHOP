@@ -13,7 +13,10 @@ import '../../../core/widgets/app_page_header.dart';
 import '../../../core/database/tables/expenses.dart';
 import '../application/reports_providers.dart';
 
-import 'package:nmashop/core/theme/app_theme.dart';
+import 'package:printing/printing.dart';
+import '../../../core/providers/app_settings_provider.dart';
+import '../../../core/services/pdf_report_service.dart';
+import '../../../core/theme/app_theme.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -24,6 +27,21 @@ class ReportsScreen extends ConsumerStatefulWidget {
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   bool _isExporting = false;
+
+  Future<void> _exportPdf(ReportData data, ReportRange range) async {
+    final settings = ref.read(appSettingsProvider);
+    await Printing.layoutPdf(
+      onLayout: (_) => PdfReportService.generateReportPdf(
+        data: data,
+        range: range,
+        businessName: settings.businessName,
+        businessPhone: settings.businessPhone,
+        businessAddress: settings.businessAddress,
+        businessNif: settings.businessNif,
+      ),
+      name: 'Rapport_${range.label}.pdf',
+    );
+  }
 
   Future<void> _exportCsv(ReportData data, ReportRange range) async {
     setState(() => _isExporting = true);
@@ -120,7 +138,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       children: [
         AppPageHeader(
           title: 'Rapports & Analytiques',
-          subtitle: 'Pilotez la rentabilit\u00e9 de votre commerce',
+          subtitle: 'Pilotez la rentabilité de votre commerce',
           icon: Icons.bar_chart_rounded,
           gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
           actions: [
@@ -133,13 +151,29 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     )
-                  : OutlinedButton.icon(
-                      onPressed: () => _exportCsv(data, range),
-                      icon: const Icon(Icons.download_rounded, size: 18),
-                      label: const Text('Exporter CSV'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      ),
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: () => _exportPdf(data, range),
+                          icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                          label: const Text('Imprimer / PDF'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFE85D04),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => _exportCsv(data, range),
+                          icon: const Icon(Icons.download_rounded, size: 18),
+                          label: const Text('CSV'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          ),
+                        ),
+                      ],
                     ),
             ) ?? const SizedBox.shrink(),
           ],

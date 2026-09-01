@@ -1,0 +1,160 @@
+name: 🚀 Build & Release N'MaShop v1 (Windows & Linux)
+
+on:
+  # Déclenchement manuel depuis l'onglet Actions de GitHub
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version de publication (ex: 1.0.0)"
+        required: false
+        default: "1.0.0"
+
+  # Déclenchement automatique lors du push d'un tag de version (ex: v1.0.0)
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # ── 1. COMPILATION LINUX ───────────────────────────────────────────────────
+  build-linux:
+    name: 🐧 Build Linux Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout du code source
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Installer les dépendances Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
+
+      - name: 🐦 Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Récupérer les dépendances Flutter
+        run: |
+          flutter clean
+          flutter pub get
+
+      - name: 🧪 Exécuter les tests unitaires
+        run: flutter test
+
+      - name: 🔨 Compiler l'application (Linux Release)
+        run: flutter build linux --release
+
+      - name: 📦 Archive Tarball (.tar.gz)
+        run: |
+          cd build/linux/x64/release/bundle
+          tar -czvf ../../../../NMaShop_Linux_v${{ github.event.inputs.version || '1.0.0' }}_x64.tar.gz *
+          cd '../../../..'
+
+      - name: ⬆️ Sauvegarder l'artefact Linux
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMaShop-Linux-x64-v${{ github.event.inputs.version || '1.0.0' }}
+          path: NMaShop_Linux_v*.tar.gz
+          retention-days: 30
+
+  # ── 2. COMPILATION WINDOWS ─────────────────────────────────────────────────
+  build-windows:
+    name: 🪟 Build Windows Release & Installeur
+    runs-on: windows-latest
+
+    steps:
+      - name: 📥 Checkout du code source
+        uses: actions/checkout@v4
+
+      - name: 🐦 Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Récupérer les dépendances Flutter
+        run: |
+          flutter clean
+          flutter pub get
+
+      - name: 🧪 Exécuter les tests unitaires
+        run: flutter test
+
+      - name: 🔨 Compiler l'application (Windows Release)
+        run: flutter build windows --release
+
+      - name: 📦 Créer l'archive Portable (ZIP)
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "build\windows\NMaShop_Windows_Portable_v${{ github.event.inputs.version || '1.0.0' }}.zip" -Force
+        shell: powershell
+
+      - name: ⚙️ Générer l'installeur (.exe) avec Inno Setup
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows\setup.iss"
+        shell: pwsh
+
+      - name: ⬆️ Sauvegarder l'installeur Windows (.exe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMaShop-Windows-Setup-v${{ github.event.inputs.version || '1.0.0' }}
+          path: build/windows/NMaShop_Setup_v1.0.0.exe
+          retention-days: 30
+
+      - name: ⬆️ Sauvegarder l'archive Portable (.zip)
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMaShop-Windows-Portable-v${{ github.event.inputs.version || '1.0.0' }}
+          path: build/windows/NMaShop_Windows_Portable_v${{ github.event.inputs.version || '1.0.0' }}.zip
+          retention-days: 30
+
+  # ── 3. PUBLICATION AUTOMATIQUE DE LA RELEASE GITHUB ────────────────────────
+  publish-release:
+    name: 🏷️ Publier la Release Officielle GitHub
+    needs: [build-linux, build-windows]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Télécharger l'artefact Linux
+        uses: actions/download-artifact@v4
+        with:
+          name: NMaShop-Linux-x64-v${{ github.event.inputs.version || '1.0.0' }}
+          path: ./release-files
+
+      - name: 📥 Télécharger l'installeur Windows (.exe)
+        uses: actions/download-artifact@v4
+        with:
+          name: NMaShop-Windows-Setup-v${{ github.event.inputs.version || '1.0.0' }}
+          path: ./release-files
+
+      - name: 📥 Télécharger la version portable Windows (.zip)
+        uses: actions/download-artifact@v4
+        with:
+          name: NMaShop-Windows-Portable-v${{ github.event.inputs.version || '1.0.0' }}
+          path: ./release-files
+
+      - name: 🚀 Créer la Release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || format('v{0}', github.event.inputs.version || '1.0.0') }}
+          name: N'MaShop Desktop v${{ github.event.inputs.version || '1.0.0' }}
+          body: |
+            🎉 **N'MaShop Desktop v1.0.0 — Version Officielle Stable**
+            
+            ### 📦 Fichiers d'installation inclus :
+            * 🪟 **Windows** : Executable d'installation (`NMaShop_Setup_v1.0.0.exe`) et version portable (`ZIP`).
+            * 🐧 **Linux** : Archive binaire natif (`NMaShop_Linux_v1.0.0_x64.tar.gz`).
+            
+            ### ✨ Fonctionnalités :
+            * POS & Caisse rapide 100% hors-ligne.
+            * Gestion du stock, alertes & créances clients.
+            * Factures et rapports PDF personnalisés avec logo & branding.
+            * Authentification sécurisée PBKDF2 et protection de licence matérielle.
+          files: |
+            ./release-files/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

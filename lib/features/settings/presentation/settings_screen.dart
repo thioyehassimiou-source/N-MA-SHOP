@@ -32,7 +32,6 @@ import '../../../core/database/tables/users.dart';
 import '../../onboarding/presentation/setup_screen.dart';
 import '../../../core/providers/database_provider.dart';
 import '../../../core/services/export_service.dart';
-import '../../../core/services/demo_data_seeder.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -230,19 +229,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ],
               ),
-              Row(
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () => context.go('/setup'),
-                    icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-                    label: const Text('Assistant de configuration'),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  AppButton(
-                    label: _isSaving ? 'Enregistrement...' : 'Enregistrer',
-                    onPressed: _isSaving ? null : _saveProfile,
-                  ),
-                ],
+              AppButton(
+                label: _isSaving ? 'Enregistrement...' : 'Enregistrer',
+                onPressed: _isSaving ? null : _saveProfile,
               ),
             ],
           ),
@@ -421,6 +410,52 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: AppSpacing.xs),
               _buildSecurityItem(
+                Icons.restore_page_rounded,
+                'Restauration de la base de données',
+                trailing: AppButton.secondary(
+                  label: 'Restaurer',
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (dialogContext) => AppFormDialog(
+                        title: 'Restaurer une sauvegarde ?',
+                        subtitle: 'Cette action remplacera l\'intégralité des données actuelles par le fichier de sauvegarde sélectionné.\n\nL\'application réactualisera ensuite votre tableau de bord.',
+                        icon: Icons.warning_amber_rounded,
+                        gradientColors: const [Color(0xFFF59E0B), Color(0xFFD97706)],
+                        width: 480,
+                        primaryLabel: 'Sélectionner & Restaurer',
+                        primaryIcon: Icons.restore_rounded,
+                        onCancel: () => Navigator.pop(dialogContext, false),
+                        onPrimary: () => Navigator.pop(dialogContext, true),
+                        body: const SizedBox.shrink(),
+                      ),
+                    );
+                    if (!(confirmed ?? false)) return;
+
+                    final success = await ExportService.restoreDatabase();
+                    if (mounted) {
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Restauration réussie ! Redirection vers le tableau de bord...'),
+                            backgroundColor: Color(0xFF10B981),
+                          ),
+                        );
+                        context.go('/');
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Restauration annulée ou échouée.'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _buildSecurityItem(
                 Icons.file_download,
                 'Exporter les ventes (CSV)',
                 trailing: AppButton.secondary(
@@ -476,22 +511,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: AppSpacing.xs),
               _buildSecurityItem(
                 Icons.delete_sweep_rounded,
-                'Vider l\'application (Effacer toutes les données métier)',
+                'Vider les données de la boutique (Produits, Ventes & Stock)',
                 trailing: AppButton.secondary(
-                  label: 'Vider l\'appli',
+                  label: 'Purger les données',
                   onPressed: _clearAppData,
                 ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              _buildSecurityItem(
-                Icons.movie_creation_outlined,
-                'Remplir la boutique avec des données de démo (Vidéo)',
-                trailing: AppButton.secondary(
-                  label: 'Remplir (Démo)',
-                  onPressed: _seedDemoData,
-                ),
-              ),
-               Divider(color: context.colors.outlineVariant),
+              Divider(color: context.colors.outlineVariant),
               const SizedBox(height: AppSpacing.xs),
               _buildSecurityItem(
                 Icons.system_update_rounded,
@@ -501,15 +527,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onPressed: _checkAppUpdate,
                 ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              _buildSecurityItem(
-                Icons.delete_forever,
-                'Réinitialiser la configuration (Test)',
-                trailing: AppButton.secondary(
-                  label: 'Réinitialiser',
-                  onPressed: _confirmReset,
-                ),
-              ),
             ],
           ),
         ),
@@ -517,18 +534,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  /// Purge l'ensemble des données métier de la boutique (produits, ventes, créances...).
+  /// Purge l'ensemble des données de vente et de stock de la boutique.
   Future<void> _clearAppData() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AppFormDialog(
-        title: 'Vider toutes les données métier ?',
+        title: 'Vider les données de la boutique ?',
         subtitle:
-            'Cette action va vider entièrement la boutique : tous les produits, ventes, créances, dépenses et historiques de caisse seront définitivement effacés.\n\nVotre compte utilisateur et votre licence restent conservés.',
+            'Cette action va effacer les données de vente et de stock : tous les produits, ventes, créances, dépenses et historiques de caisse seront supprimés.\n\nVotre compte administrateur et votre licence restent conservés.',
         icon: Icons.delete_sweep_rounded,
         gradientColors: const [Color(0xFFDC2626), AppColors.error],
         width: 480,
-        primaryLabel: 'Vider l\'application',
+        primaryLabel: 'Purger les données',
         primaryIcon: Icons.delete_forever_rounded,
         onCancel: () => Navigator.pop(dialogContext, false),
         onPrimary: () => Navigator.pop(dialogContext, true),
@@ -538,45 +555,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!(confirmed ?? false)) return;
 
     final db = ref.read(databaseProvider);
-    await DemoDataSeeder.clearDatabase(db);
+    await db.purgeAllData();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('🧹 Application vidée avec succès ! Base de données propre pour la production.'),
-          backgroundColor: context.colors.primary,
-        ),
-      );
-    }
-  }
-
-  /// Injecte des données fictives complètes pour la démonstration vidéo.
-  Future<void> _seedDemoData() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AppFormDialog(
-        title: 'Injecter les données de démo ?',
-        subtitle:
-            'Cette action va remplir la boutique avec un catalogue de produits (Riz 50kg, Huile, Sucre, Lait...), des clients (Ibrahima Bah...), des ventes récentes, créances et dépenses pour votre tournage vidéo.\n\nToutes les données actuelles seront remplacées.',
-        icon: Icons.movie_creation_rounded,
-        gradientColors: const [Color(0xFF2563EB), Color(0xFF3B82F6)],
-        width: 480,
-        primaryLabel: 'Remplir la boutique',
-        primaryIcon: Icons.bolt_rounded,
-        onCancel: () => Navigator.pop(dialogContext, false),
-        onPrimary: () => Navigator.pop(dialogContext, true),
-        body: const SizedBox.shrink(),
-      ),
-    );
-    if (!(confirmed ?? false)) return;
-
-    final db = ref.read(databaseProvider);
-    await DemoDataSeeder.seedDatabase(db);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('🎉 Base de données remplie avec succès pour votre tournage !'),
+          content: const Text('🧹 Données métier purifiées avec succès.'),
           backgroundColor: context.colors.primary,
         ),
       );
@@ -633,32 +617,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         );
       }
     }
-  }
-
-  /// Réinitialise la configuration : la boutique et les comptes repartent à
-  /// zéro, mais les ventes et le stock déjà saisis sont conservés.
-  Future<void> _confirmReset() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AppFormDialog(
-        title: 'Réinitialiser la configuration ?',
-        subtitle: 'La fiche boutique et TOUS les comptes utilisateurs seront supprimés, et vous repasserez par l\'écran de bienvenue.\n\nVos ventes, produits et écritures comptables sont conservés.',
-        icon: Icons.warning_amber_rounded,
-        gradientColors: const [Color(0xFFDC2626), AppColors.error],
-        width: 450,
-        primaryLabel: 'Réinitialiser',
-        primaryIcon: Icons.delete_forever,
-        onCancel: () => Navigator.pop(dialogContext, false),
-        onPrimary: () => Navigator.pop(dialogContext, true),
-        body: const SizedBox.shrink(),
-      ),
-    );
-    if (!(confirmed ?? false)) return;
-
-    // Les comptes d'abord : le routeur ne doit pas basculer sur l'écran de
-    // connexion avec une base de comptes encore pleine.
-    await ref.read(authProvider.notifier).deleteAccount();
-    await ref.read(appSettingsProvider.notifier).resetSetup();
   }
 
   Widget _buildSecurityItem(

@@ -88,6 +88,40 @@ class ExportService {
       return false;
     }
   }
+
+  /// Permet à l'utilisateur de sélectionner un fichier de sauvegarde (.sqlite) et de le restaurer.
+  static Future<bool> restoreDatabase() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        dialogTitle: 'Sélectionner le fichier de sauvegarde à restaurer (.sqlite)',
+        type: FileType.custom,
+        allowedExtensions: ['sqlite', 'db'],
+      );
+
+      if (result.isEmpty || result.first.path == null) {
+        return false;
+      }
+
+      final backupPath = result.first.path!;
+      final backupFile = File(backupPath);
+
+      if (!await backupFile.exists()) {
+        return false;
+      }
+
+      final dir = await getApplicationSupportDirectory();
+      final targetFile = File(p.join(dir.path, 'gescompta.sqlite'));
+
+      final bytes = await backupFile.readAsBytes();
+      await targetFile.writeAsBytes(bytes, flush: true);
+
+      return true;
+    } catch (e) {
+      // ignore: avoid_print
+      print('Erreur lors de la restauration: $e');
+      return false;
+    }
+  }
 }
 
 /// Fonction de conversion CSV exécutée hors du thread UI (dans un Isolate)

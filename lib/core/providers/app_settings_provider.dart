@@ -10,6 +10,7 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 
 class AppSettings {
   const AppSettings({
+    required this.isFirstRunCompleted,
     required this.isSetupCompleted,
     required this.businessName,
     required this.currency,
@@ -22,6 +23,9 @@ class AppSettings {
     required this.paletteId,
     required this.useCustomTheme,
   });
+
+  /// Indique si l'assistant de tout premier démarrage (First-Run Setup Wizard) a été complété.
+  final bool isFirstRunCompleted;
 
   final bool isSetupCompleted;
   final String businessName;
@@ -43,6 +47,7 @@ class AppSettings {
   final bool useCustomTheme;
 
   AppSettings copyWith({
+    bool? isFirstRunCompleted,
     bool? isSetupCompleted,
     String? businessName,
     String? currency,
@@ -56,6 +61,7 @@ class AppSettings {
     bool? useCustomTheme,
   }) {
     return AppSettings(
+      isFirstRunCompleted: isFirstRunCompleted ?? this.isFirstRunCompleted,
       isSetupCompleted: isSetupCompleted ?? this.isSetupCompleted,
       businessName: businessName ?? this.businessName,
       currency: currency ?? this.currency,
@@ -77,6 +83,7 @@ final appSettingsProvider = NotifierProvider<AppSettingsNotifier, AppSettings>(
 );
 
 class AppSettingsNotifier extends Notifier<AppSettings> {
+  static const _kIsFirstRunCompleted = 'first_run_completed';
   static const _kIsSetupCompleted = 'is_setup_completed';
   static const _kBusinessName = 'business_name';
   static const _kCurrency = 'business_currency';
@@ -93,6 +100,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   AppSettings build() {
     final prefs = ref.watch(sharedPreferencesProvider);
     return AppSettings(
+      isFirstRunCompleted: prefs.getBool(_kIsFirstRunCompleted) ?? false,
       isSetupCompleted: prefs.getBool(_kIsSetupCompleted) ?? false,
       businessName: prefs.getString(_kBusinessName) ?? 'Ma Boutique',
       currency: prefs.getString(_kCurrency) ?? 'GNF',
@@ -205,15 +213,21 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     );
   }
 
-  /// Active ou désactive le thème personnalisé (licence requise).
-  Future<void> updateUseCustomTheme(bool value) async {
-    await _prefs.setBool(_kUseCustomTheme, value);
-    state = state.copyWith(useCustomTheme: value);
+  /// Marque l'assistant au tout premier démarrage (First-Run Wizard) comme complété.
+  Future<void> completeFirstRun({
+    required bool createDesktopShortcut,
+    required bool autoLaunchAtStartup,
+  }) async {
+    await _prefs.setBool(_kIsFirstRunCompleted, true);
+    await _prefs.setBool('create_desktop_shortcut', createDesktopShortcut);
+    await _prefs.setBool('auto_launch_startup', autoLaunchAtStartup);
+    state = state.copyWith(isFirstRunCompleted: true);
   }
 
   Future<void> resetSetup() async {
     await ref.read(licenseProvider.notifier).resetLicense();
 
+    await _prefs.remove(_kIsFirstRunCompleted);
     await _prefs.remove(_kIsSetupCompleted);
     await _prefs.remove(_kBusinessName);
     await _prefs.remove(_kCurrency);
@@ -228,6 +242,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     await _prefs.remove(_kUseCustomTheme);
 
     state = AppSettings(
+      isFirstRunCompleted: false,
       isSetupCompleted: false,
       businessName: 'Ma Boutique',
       currency: 'GNF',
