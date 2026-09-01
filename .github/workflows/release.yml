@@ -48,9 +48,7 @@ jobs:
 
       - name: 📦 Archive Tarball (.tar.gz)
         run: |
-          cd build/linux/x64/release/bundle
-          tar -czvf ../../../../NMaShop_Linux_v${{ github.event.inputs.version || '1.0.0' }}_x64.tar.gz *
-          cd '../../../..'
+          tar -czvf NMaShop_Linux_v${{ github.event.inputs.version || '1.0.0' }}_x64.tar.gz -C build/linux/x64/release/bundle .
 
       - name: ⬆️ Sauvegarder l'artefact Linux
         uses: actions/upload-artifact@v4
