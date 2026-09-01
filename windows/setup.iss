@@ -8,11 +8,10 @@
 #define MyAppURL "https://nmashop.com"
 #define MyAppExeName "nmashop.exe"
 #define BuildDir "..\build\windows\x64\runner\Release"
-#define MyAppId "{E14D254C-A23B-49E8-97F2-ABCD12345678}"
 
 [Setup]
-; Identifiant unique de l'application
-AppId={#MyAppId}
+; Identifiant unique de l'application (double {{ pour échapper l'accolade dans Inno Setup)
+AppId={{E14D254C-A23B-49E8-97F2-ABCD12345678}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -74,7 +73,7 @@ var
   sUnInstPath: String;
   sUnInstall: String;
 begin
-  sUnInstPath := ExpandConstant('Software\Microsoft\Windows\CurrentVersion\Uninstall\{#MyAppId}_is1');
+  sUnInstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{E14D254C-A23B-49E8-97F2-ABCD12345678}_is1';
   sUnInstall := '';
   if not RegQueryStringValue(HKLM, sUnInstPath, 'UninstallString', sUnInstall) then
     RegQueryStringValue(HKCU, sUnInstPath, 'UninstallString', sUnInstall);
