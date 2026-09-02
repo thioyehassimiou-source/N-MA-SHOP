@@ -38,7 +38,7 @@ class Purchases extends Table {
 /// Lignes d'un achat
 class PurchaseItems extends Table {
   TextColumn get id => text()();
-  TextColumn get purchaseId => text().references(Purchases, #id)();
+  TextColumn get purchaseId => text().references(Purchases, #id, onDelete: KeyAction.cascade)();
   TextColumn get productId => text().references(Products, #id)();
   
   /// Quantité achetée
@@ -54,7 +54,7 @@ class PurchaseItems extends Table {
 /// Règlements effectués aux fournisseurs (pour les dettes)
 class SupplierPayments extends Table {
   TextColumn get id => text()();
-  TextColumn get purchaseId => text().references(Purchases, #id)();
+  TextColumn get purchaseId => text().references(Purchases, #id, onDelete: KeyAction.cascade)();
   TextColumn get supplierId => text().references(Suppliers, #id)();
   
   /// Montant réglé (GNF)

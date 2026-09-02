@@ -50,7 +50,7 @@ class SaleItems extends Table {
 
   TextColumn get id => text()();
 
-  TextColumn get saleId => text().references(Sales, #id)();
+  TextColumn get saleId => text().references(Sales, #id, onDelete: KeyAction.cascade)();
 
   TextColumn get productId => text().references(Products, #id)();
 
@@ -77,7 +77,7 @@ class CreditPayments extends Table {
 
   TextColumn get id => text()();
 
-  TextColumn get saleId => text().references(Sales, #id)();
+  TextColumn get saleId => text().references(Sales, #id, onDelete: KeyAction.cascade)();
 
   TextColumn get customerId => text().references(Customers, #id)();
 

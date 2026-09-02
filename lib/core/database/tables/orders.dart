@@ -106,7 +106,7 @@ class OrderItems extends Table {
   String get tableName => 'order_items';
 
   TextColumn get id => text()();
-  TextColumn get orderId => text().references(Orders, #id)();
+  TextColumn get orderId => text().references(Orders, #id, onDelete: KeyAction.cascade)();
   TextColumn get productId => text().references(Products, #id)();
 
   /// Libellé figé au moment de la commande.

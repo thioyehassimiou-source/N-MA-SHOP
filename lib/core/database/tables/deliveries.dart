@@ -81,7 +81,7 @@ class Deliveries extends Table {
   TextColumn get id => text()();
 
   /// Commande rattachée
-  TextColumn get orderId => text().references(Orders, #id)();
+  TextColumn get orderId => text().references(Orders, #id, onDelete: KeyAction.cascade)();
 
   /// Livreur assigné
   TextColumn get courierId => text().references(Couriers, #id)();

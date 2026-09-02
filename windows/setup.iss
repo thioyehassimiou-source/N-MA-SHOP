@@ -8,9 +8,10 @@
 #define MyAppURL "https://nmashop.com"
 #define MyAppExeName "nmashop.exe"
 #define BuildDir "..\build\windows\x64\runner\Release"
+#define MyAppId "{E14D254C-A23B-49E8-97F2-ABCD12345678}"
 
 [Setup]
-; Identifiant unique de l'application (double {{ pour échapper l'accolade dans Inno Setup)
+; Identifiant unique de l'application (double {{ pour échapper l'accolade ouvrante dans Inno Setup)
 AppId={{E14D254C-A23B-49E8-97F2-ABCD12345678}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -24,7 +25,7 @@ DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallFilesDir={app}
 
-; Fermeture automatique des instances en cours d'exécution
+; Fermeture automatique des instances en cours d'exécution avant copie
 CloseApplications=yes
 CloseApplicationsFilter=*.exe
 RestartApplications=no
@@ -51,7 +52,7 @@ Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [InstallDelete]
-; Nettoyage des anciens exécutables et bibliothèques Flutter avant copie
+; Nettoyage préalable des anciens exécutables et bibliothèques Flutter avant copie des nouveaux fichiers
 Type: files; Name: "{app}\{#MyAppExeName}"
 Type: files; Name: "{app}\*.dll"
 
@@ -65,32 +66,3 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-
-[Code]
-// Détecte si une ancienne version est déjà installée sur le système et exécute son désinstalleur silencieusement
-function GetUninstallString(): String;
-var
-  sUnInstPath: String;
-  sUnInstall: String;
-begin
-  sUnInstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{E14D254C-A23B-49E8-97F2-ABCD12345678}_is1';
-  sUnInstall := '';
-  if not RegQueryStringValue(HKLM, sUnInstPath, 'UninstallString', sUnInstall) then
-    RegQueryStringValue(HKCU, sUnInstPath, 'UninstallString', sUnInstall);
-  Result := sUnInstall;
-end;
-
-function InitializeSetup(): Boolean;
-var
-  iResultCode: Integer;
-  sUnInstall: String;
-begin
-  Result := True;
-  sUnInstall := GetUninstallString();
-  if sUnInstall <> '' then
-  begin
-    sUnInstall := RemoveQuotes(sUnInstall);
-    // Désinstallation automatique et silencieuse de l'ancienne version
-    Exec(sUnInstall, '/SILENT /NORESTART /SUPPRESSMSGBOXES', '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
-  end;
-end;

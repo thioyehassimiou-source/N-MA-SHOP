@@ -51,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -111,14 +111,20 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(supplierPayments);
           }
           if (from < 7) {
-            await m.addColumn(sales, sales.isCancelled);
-            await m.addColumn(purchases, purchases.isCancelled);
+            if (!await _hasColumn('sales', 'is_cancelled')) {
+              await m.addColumn(sales, sales.isCancelled);
+            }
+            if (!await _hasColumn('purchases', 'is_cancelled')) {
+              await m.addColumn(purchases, purchases.isCancelled);
+            }
           }
           if (from < 8) {
             await m.createTable(cashMovements);
           }
           if (from < 9) {
-            await m.addColumn(products, products.imageUrl);
+            if (!await _hasColumn('products', 'image_url')) {
+              await m.addColumn(products, products.imageUrl);
+            }
           }
           if (from < 10) {
             await m.createTable(expenses);
@@ -132,22 +138,39 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(deliveries);
           }
           if (from < 13) {
-            await m.addColumn(users, users.role);
-            await m.addColumn(users, users.isActive);
+            if (!await _hasColumn('users', 'role')) {
+              await m.addColumn(users, users.role);
+            }
+            if (!await _hasColumn('users', 'is_active')) {
+              await m.addColumn(users, users.isActive);
+            }
           }
           if (from < 14) {
             await m.createTable(auditLogs);
           }
           if (from < 15) {
             // Ajout du champ code-barres pour le scan caméra POS.
-            await m.addColumn(products, products.barcode);
+            if (!await _hasColumn('products', 'barcode')) {
+              await m.addColumn(products, products.barcode);
+            }
           }
           if (from < 16) {
             await m.createTable(adminClients);
             await m.createTable(adminLicenses);
           }
           if (from < 17) {
-            await m.addColumn(users, users.avatarPath);
+            if (!await _hasColumn('users', 'avatar_path')) {
+              await m.addColumn(users, users.avatarPath);
+            }
+          }
+          if (from < 18) {
+            // Migration pour appliquer ON DELETE CASCADE aux tables enfants
+            await m.alterTable(TableMigration(saleItems));
+            await m.alterTable(TableMigration(creditPayments));
+            await m.alterTable(TableMigration(purchaseItems));
+            await m.alterTable(TableMigration(supplierPayments));
+            await m.alterTable(TableMigration(orderItems));
+            await m.alterTable(TableMigration(deliveries));
           }
         },
         beforeOpen: (details) async {
@@ -159,40 +182,40 @@ class AppDatabase extends _$AppDatabase {
         },
       );
 
-  /// Purge complète de toutes les tables de la base de données SQLite local,
-  /// en respectant strictement l'ordre des contraintes de clés étrangères (Foreign Keys).
+  /// Vérifie dynamiquement si une colonne existe dans une table SQLite.
+  /// Utile pour éviter l'erreur "duplicate column name" si la base a été
+  /// initialisée par onCreate dans une version intermédiaire.
+  Future<bool> _hasColumn(String tableName, String columnName) async {
+    final result = await customSelect(
+      "SELECT COUNT(*) AS c FROM pragma_table_info('$tableName') WHERE name = '$columnName'",
+    ).getSingle();
+    return result.read<int>('c') > 0;
+  }
+
+  /// Purge complète de toutes les tables de la base de données SQLite local.
+  /// Grâce à ON DELETE CASCADE (v18), la suppression des entités parentes
+  /// supprime automatiquement et atomiquement leurs enfants, garantissant
+  /// 100% d'intégrité relationnelle sans conflits d'ordre manuel.
   Future<void> purgeAllData() async {
     await transaction(() async {
-      // 1. Enfants de Sales et Customers (Règlements de créances & Lignes de vente)
-      await delete(saleItems).go();
-      await delete(creditPayments).go();
+      // 1. Flux transactionnels (Cascade supprime automatiquement sale_items, credit_payments, etc.)
       await delete(sales).go();
-
-      // 2. Enfants de Purchases et Suppliers (Paiements fournisseurs & Lignes d'achat)
-      await delete(purchaseItems).go();
-      await delete(supplierPayments).go();
       await delete(purchases).go();
-
-      // 3. Enfants de Orders et Couriers (Livraisons & Lignes de commande)
-      await delete(deliveries).go();
-      await delete(orderItems).go();
       await delete(orders).go();
-      await delete(couriers).go();
 
-      // 4. Mouvements de stock (dépend de Products)
+      // 2. Historiques et journaux
       await delete(stockMovements).go();
-
-      // 5. Entités parentes Principales
-      await delete(products).go();
-      await delete(customers).go();
-      await delete(suppliers).go();
-
-      // 6. Finances et Journaux d'audit
       await delete(cashMovements).go();
       await delete(expenses).go();
       await delete(auditLogs).go();
 
-      // 7. Licence administrative et Utilisateurs
+      // 3. Entités parentes maîtresses
+      await delete(products).go();
+      await delete(customers).go();
+      await delete(suppliers).go();
+      await delete(couriers).go();
+
+      // 4. Données administratives et sécurité
       await delete(adminLicenses).go();
       await delete(adminClients).go();
       await delete(users).go();
@@ -203,6 +226,9 @@ class AppDatabase extends _$AppDatabase {
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dir = await getApplicationSupportDirectory();
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
     // Le nom du fichier est interne et ne change pas lors d'un rebranding.
     final file = File(p.join(dir.path, 'gescompta.sqlite'));
     return NativeDatabase.createInBackground(file);
