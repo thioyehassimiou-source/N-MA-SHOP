@@ -59,10 +59,14 @@ Type: files; Name: "{app}\*.dll"
 [Files]
 ; Toutes les DLLs, exécutable principal et ressources Flutter
 Source: "{#BuildDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.zip,*.iss"
+; Package de dépendances C++ Microsoft pour SQLite (installation 100% transparente)
+Source: "vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{src}\vc_redist.x64.exe')) or FileExists('windows\vc_redist.x64.exe') or FileExists('vc_redist.x64.exe')
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"
 
 [Run]
+; Installation automatique et silencieuse des dépendances Visual C++ si présentes dans l'installeur
+Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/q /norestart"; StatusMsg: "Installation automatique des composants système requis (Visual C++)..."; Flags: waituntilterminated; Check: FileExists(ExpandConstant('{tmp}\vc_redist.x64.exe'))
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

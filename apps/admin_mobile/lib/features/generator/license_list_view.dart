@@ -413,6 +413,7 @@ Voici votre clé d'activation officielle N'MaShop PC :
     );
 
     await ref.read(licensesProvider.notifier).addLicense(record);
+    ref.read(adminSyncServiceProvider).updateLicenseRemoteStatus(_generatedKey!, true);
     if (mounted) Navigator.pop(context);
   }
 

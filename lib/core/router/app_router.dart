@@ -85,8 +85,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return allowedUnauth.contains(location) ? null : '/connexion';
       }
 
-      // ── 4. Déverrouillé : écrans d'onboarding, setup et connexion inutiles ──────
-      if (location == '/connexion' || location == '/onboarding' || location == '/setup' || location == '/first-run') {
+      // ── 4. Déverrouillé : écran de connexion et first-run inutiles ──────
+      if (location == '/connexion' || location == '/first-run') {
         return '/';
       }
 

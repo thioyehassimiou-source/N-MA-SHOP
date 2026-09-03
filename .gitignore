@@ -50,3 +50,5 @@ audio_demo/
 *.mkv
 *.mp4
 *.avi
+.kotlin/
+

@@ -94,12 +94,14 @@ class AdminSyncService {
       ''');
 
       for (final row in deactivatedResult) {
-        final hwId = row[0] as String;
-        final key = row[1] as String;
+        final hwId = (row[0] as String).trim();
+        final key = (row[1] as String).trim().toUpperCase();
 
         final licenses = _repository.getLicenses();
         for (var lic in licenses) {
-          if ((hwId.isNotEmpty && lic.hardwareId == hwId) || (key.isNotEmpty && lic.licenseKey == key)) {
+          final hwMatch = hwId.isNotEmpty && lic.hardwareId.isNotEmpty && lic.hardwareId == hwId;
+          final keyMatch = key.isNotEmpty && lic.licenseKey.isNotEmpty && lic.licenseKey.trim().toUpperCase() == key;
+          if (hwMatch || keyMatch) {
             if (lic.isActive) {
               await _repository.saveLicense(lic.copyWith(isActive: false));
             }
@@ -149,7 +151,7 @@ class AdminSyncService {
         storeName: businessName,
         ownerName: ownerName,
         phone: phone,
-        city: address, // Map address to city field or store it if modified
+        city: address,
         address: address,
         hardwareId: hardwareId,
         createdAt: existingClient?.createdAt ?? activatedAt,
@@ -159,9 +161,9 @@ class AdminSyncService {
 
       // 2. Vérifier si la licence existe déjà
       final licenses = _repository.getLicenses();
-      final licenseExists = licenses.any((l) => l.licenseKey == licenseKey);
+      final existingIndex = licenses.indexWhere((l) => l.licenseKey.trim().toUpperCase() == licenseKey.trim().toUpperCase());
 
-      if (!licenseExists) {
+      if (existingIndex < 0) {
         // Déduire le type de licence
         AdminLicenseType type = AdminLicenseType.annual;
         if (expiryDate == null || expiryDate.year >= 9999) {
@@ -186,11 +188,21 @@ class AdminSyncService {
           type: type,
           createdAt: activatedAt,
           expiresAt: expiryDate,
-          amountPaid: 0.0, // Montant par défaut pour la synchro auto
+          amountPaid: 0.0,
           isActive: true,
         );
         
         await _repository.saveLicense(record);
+      } else {
+        // La licence avait déjà été générée par l'Admin, on enrichit le record avec le hardwareId et clientName
+        final existing = licenses[existingIndex];
+        final updated = existing.copyWith(
+          hardwareId: hardwareId.isNotEmpty ? hardwareId : existing.hardwareId,
+          clientName: businessName != 'Boutique Inconnue' ? businessName : existing.clientName,
+          clientId: clientId.isNotEmpty ? clientId : existing.clientId,
+          isActive: true,
+        );
+        await _repository.saveLicense(updated);
       }
     } catch (e) {
       debugPrint('Erreur de traitement du payload d\'activation: $e');
@@ -265,6 +277,34 @@ class AdminSyncService {
       debugPrint('Statut de licence $licenseKey mis à jour sur Neon PostgreSQL: is_active = $isActive');
     } catch (e) {
       debugPrint('Erreur lors de la mise à jour du statut distant de la licence: $e');
+    }
+  }
+
+  /// Efface toutes les activations enregistrées sur Neon PostgreSQL lors d'une réinitialisation complète
+  Future<void> purgeRemoteActivations() async {
+    try {
+      final config = NeonConfig.parseConnectionString();
+
+      final connection = await Connection.open(
+        Endpoint(
+          host: config['host'],
+          port: config['port'],
+          database: config['database'],
+          username: config['username'],
+          password: config['password'],
+        ),
+        settings: ConnectionSettings(
+          sslMode: config['is_secure'] ? SslMode.require : SslMode.disable,
+          connectTimeout: const Duration(seconds: 10),
+          queryTimeout: const Duration(seconds: 10),
+        ),
+      );
+
+      await connection.execute('DELETE FROM nmashop_activations;');
+      await connection.close();
+      debugPrint('Purge des activations sur Neon PostgreSQL réalisée avec succès.');
+    } catch (e) {
+      debugPrint('Erreur purge distante Neon: $e');
     }
   }
 }

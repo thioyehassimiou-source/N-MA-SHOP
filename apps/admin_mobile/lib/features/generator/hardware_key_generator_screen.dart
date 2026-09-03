@@ -111,6 +111,7 @@ Merci pour votre confiance !
     );
 
     await ref.read(licensesProvider.notifier).addLicense(record);
+    ref.read(adminSyncServiceProvider).updateLicenseRemoteStatus(_generatedKey!, true);
   }
 
   @override

@@ -489,6 +489,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onPressed: () => context.go('/setup'),
                 ),
               ),
+              const SizedBox(height: AppSpacing.xs),
+              _buildSecurityItem(
+                Icons.restart_alt_rounded,
+                'Réinitialiser comme 1ère installation (Tester le wizard)',
+                trailing: AppButton.secondary(
+                  label: 'Réinitialiser',
+                  onPressed: _resetFullInstallation,
+                ),
+              ),
               Divider(color: context.colors.outlineVariant),
               const SizedBox(height: AppSpacing.xs),
               _buildSecurityItem(
@@ -564,6 +573,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           backgroundColor: context.colors.primary,
         ),
       );
+    }
+  }
+
+  /// Remet l'application à zéro comme au tout premier démarrage après l'installation sur Windows.
+  Future<void> _resetFullInstallation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AppFormDialog(
+        title: 'Réinitialiser comme au premier démarrage ?',
+        subtitle:
+            'Cette action réinitialisera l\'application N\'MaShop comme si elle venait d\'être installée sur un nouvel ordinateur Windows :\n\n'
+            '• La licence sera réinitialisée en mode essai (15 jours)\n'
+            '• Toutes les données métier et comptes seront purgés\n'
+            '• L\'assistant de configuration initiale sera relancé.',
+        icon: Icons.restart_alt_rounded,
+        gradientColors: const [Color(0xFFEA580C), Color(0xFFC2410C)],
+        width: 500,
+        primaryLabel: 'Réinitialiser & Démarrer Assistant',
+        primaryIcon: Icons.rocket_launch_rounded,
+        onCancel: () => Navigator.pop(dialogContext, false),
+        onPrimary: () => Navigator.pop(dialogContext, true),
+        body: const SizedBox.shrink(),
+      ),
+    );
+    if (!(confirmed ?? false)) return;
+
+    final db = ref.read(databaseProvider);
+    await db.purgeAllData();
+    await ref.read(authProvider.notifier).lock();
+    ref.read(accountExistsProvider.notifier).set(false);
+    await ref.read(appSettingsProvider.notifier).resetSetup();
+
+    if (mounted) {
+      context.go('/onboarding');
     }
   }
 

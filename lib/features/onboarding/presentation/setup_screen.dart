@@ -3,8 +3,12 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/license/license_admin_sync_service.dart';
+import '../../../core/license/license_model.dart';
+import '../../../core/license/license_provider.dart';
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/providers/database_provider.dart';
+import '../../../core/services/hardware_id_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/app_theme.dart';
@@ -42,9 +46,10 @@ class SetupScreen extends ConsumerStatefulWidget {
 }
 
 class _SetupScreenState extends ConsumerState<SetupScreen> {
-  int _currentStep = 0; // 0 = Boutique, 1 = Compte Admin
+  int _currentStep = 0; // 0 = Boutique, 1 = Licence, 2 = Compte Admin
 
   final _shopFormKey = GlobalKey<FormState>();
+  final _licenseFormKey = GlobalKey<FormState>();
   final _accountFormKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
@@ -54,6 +59,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _nifController = TextEditingController();
+  final _licenseKeyController = TextEditingController();
 
   bool _obscure = true;
   String? _selectedDomain;
@@ -61,6 +67,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   bool _saving = false;
   bool _acceptedTerms = true;
+
+  // ── Gestion de la Licence à la première installation ──
+  bool _useTrialMode = true;
+  bool _isActivatingLicense = false;
+  bool _licenseActivated = false;
+  String? _licenseErrorMessage;
+  String? _licenseSuccessMessage;
 
   late final TapGestureRecognizer _termsRecognizer;
 
@@ -80,6 +93,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     _phoneController.dispose();
     _addressController.dispose();
     _nifController.dispose();
+    _licenseKeyController.dispose();
     super.dispose();
   }
 
@@ -104,6 +118,21 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         setState(() => _currentStep = 1);
       }
     } else if (_currentStep == 1) {
+      if (_useTrialMode) {
+        setState(() => _currentStep = 2);
+      } else {
+        if (!_licenseActivated) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: context.colors.error,
+              content: const Text('Veuillez activer une clé de licence valide ou sélectionner la période d\'essai pour continuer.'),
+            ),
+          );
+          return;
+        }
+        setState(() => _currentStep = 2);
+      }
+    } else if (_currentStep == 2) {
       if (_accountFormKey.currentState!.validate()) {
         if (!_acceptedTerms) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +162,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       final db = ref.read(databaseProvider);
       await db.purgeAllData();
 
-      await ref.read(authProvider.notifier).defineAccount(
+      // Si l'utilisateur choisit le mode essai, on s'assure d'inscrire l'essai 15j
+      if (_useTrialMode) {
+        await ref.read(licenseProvider.notifier).resetLicense();
+      }
+
+      final user = await ref.read(authProvider.notifier).defineAccount(
         fullName: _ownerNameController.text.trim(),
         password: _passwordController.text,
       );
@@ -146,6 +180,27 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         businessPhone: _phoneController.text.trim(),
         paletteId: AppPalette.fallback.id,
       );
+
+      // Si l'utilisateur a activé une clé de licence, resynchroniser les infos du propriétaire et de la boutique
+      if (!_useTrialMode && _licenseActivated) {
+        try {
+          final hwId = await HardwareIdService.getHardwareId();
+          final currentLicense = ref.read(licenseProvider);
+          final rawKey = _licenseKeyController.text.trim().toUpperCase();
+
+          final payload = LicenseSyncPayload(
+            businessName: _nameController.text.trim(),
+            ownerName: user.fullName,
+            phone: _phoneController.text.trim(),
+            address: _addressController.text.trim(),
+            hardwareId: hwId,
+            licenseKey: rawKey,
+            activatedAt: DateTime.now(),
+            expiryDate: currentLicense.expiryDate,
+          );
+          LicenseAdminSyncService.notifyActivation(payload);
+        } catch (_) {}
+      }
 
       if (mounted) {
         context.go('/');
@@ -297,6 +352,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       case 0:
         return 'Fiche de votre\nBoutique';
       case 1:
+        return 'Licence &\nActivation';
+      case 2:
         return 'Compte Administrateur\nMaître';
       default:
         return 'Configuration N\'MaShop';
@@ -308,6 +365,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       case 0:
         return 'Renseignez l\'identité commerciale qui figurera sur vos reçus.';
       case 1:
+        return 'Choisissez d\'activer une licence officielle ou de commencer avec l\'essai 15 jours.';
+      case 2:
         return 'Définissez le mot de passe maître protégeant l\'accès administrateur.';
       default:
         return '';
@@ -373,7 +432,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   }
 
   Widget _buildStepperHeader() {
-    final steps = ['Boutique', 'Administrateur'];
+    final steps = ['Boutique', 'Licence', 'Administrateur'];
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
@@ -445,6 +504,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       case 0:
         return _buildStep1Shop();
       case 1:
+        return _buildStep2License();
+      case 2:
         return _buildStep3Account();
       default:
         return const SizedBox.shrink();
@@ -570,7 +631,292 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     );
   }
 
-  // ── ÉTAPE 2 : Compte Administrateur ───────────────────────────────────────
+  // ── ÉTAPE 2 : Licence & Mode d'Utilisation ───────────────────────────────
+  Widget _buildStep2License() {
+    return Form(
+      key: _licenseFormKey,
+      child: Column(
+        key: const ValueKey('step_license'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Licence & Mode d\'Utilisation',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.brandNavy,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'N\'MaShop est un logiciel commercial hors-ligne fonctionnant sous licence.',
+            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // ── Option 1 : Période d'essai ──
+          _buildOptionCard(
+            selected: _useTrialMode,
+            icon: Icons.card_giftcard_rounded,
+            title: 'Période d\'essai gratuite (15 jours)',
+            subtitle: 'Découvrez toutes les fonctionnalités de N\'MaShop gratuitement sans clé de licence.',
+            onTap: () {
+              setState(() {
+                _useTrialMode = true;
+                _licenseErrorMessage = null;
+              });
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // ── Option 2 : Clé de licence ──
+          _buildOptionCard(
+            selected: !_useTrialMode,
+            icon: Icons.verified_user_rounded,
+            title: 'J\'ai une clé de licence',
+            subtitle: 'Activez votre clé de licence officielle fournie par l\'équipe N\'MaShop.',
+            onTap: () {
+              setState(() {
+                _useTrialMode = false;
+              });
+            },
+          ),
+
+          // ── Formulaire de saisie de la clé de licence ──
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: !_useTrialMode
+                ? Padding(
+                    key: const ValueKey('license_key_form'),
+                    padding: const EdgeInsets.only(top: AppSpacing.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('Clé de licence (ex: NMAS-XXXX-XXXX-XXXX) *'),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _licenseKeyController,
+                                enabled: !_isActivatingLicense,
+                                decoration: _inputDeco(
+                                  'Saisissez votre clé de licence',
+                                  Icons.key_rounded,
+                                ),
+                                validator: (v) {
+                                  if (!_useTrialMode && (v == null || v.trim().isEmpty)) {
+                                    return 'Veuillez saisir votre clé de licence';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            SizedBox(
+                              height: 48,
+                              child: ElevatedButton.icon(
+                                onPressed: _isActivatingLicense ? null : _activateLicenseKey,
+                                icon: _isActivatingLicense
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Icon(Icons.check_circle_rounded, size: 18),
+                                label: const Text('Activer'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppPalette.fallback.seed,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Message de succès ou d'erreur
+                        if (_licenseSuccessMessage != null) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          Container(
+                            padding: const EdgeInsets.all(AppSpacing.sm),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(color: Colors.green[300]!),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.check_circle_rounded, color: Colors.green, size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _licenseSuccessMessage!,
+                                    style: const TextStyle(color: Colors.green, fontSize: 12.5, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (_licenseErrorMessage != null) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          Container(
+                            padding: const EdgeInsets.all(AppSpacing.sm),
+                            decoration: BoxDecoration(
+                              color: Colors.red[50],
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(color: Colors.red[300]!),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _licenseErrorMessage!,
+                                    style: const TextStyle(color: Colors.red, fontSize: 12.5, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('empty_license')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _activateLicenseKey() async {
+    final key = _licenseKeyController.text.trim();
+    if (key.isEmpty) {
+      setState(() {
+        _licenseErrorMessage = 'Veuillez saisir une clé de licence.';
+        _licenseSuccessMessage = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isActivatingLicense = true;
+      _licenseErrorMessage = null;
+      _licenseSuccessMessage = null;
+    });
+
+    try {
+      final result = await ref.read(licenseProvider.notifier).activate(key);
+      setState(() {
+        _isActivatingLicense = false;
+        if (result.result == LicenseActivationResult.success) {
+          _licenseActivated = true;
+          _licenseSuccessMessage = '🎉 Licence activée avec succès (${result.info?.statusLabel ?? 'Définitive'}) !';
+        } else if (result.result == LicenseActivationResult.expiredKey) {
+          _licenseActivated = false;
+          _licenseErrorMessage = 'La clé de licence saisie a expiré.';
+        } else if (result.result == LicenseActivationResult.deviceMismatch) {
+          _licenseActivated = false;
+          _licenseErrorMessage = 'Cette clé est liée à un autre ordinateur.';
+        } else {
+          _licenseActivated = false;
+          _licenseErrorMessage = 'Clé de licence invalide ou corrompue.';
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isActivatingLicense = false;
+        _licenseActivated = false;
+        _licenseErrorMessage = 'Erreur d\'activation : $e';
+      });
+    }
+  }
+
+  Widget _buildOptionCard({
+    required bool selected,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: selected ? AppPalette.fallback.seed.withValues(alpha: 0.06) : Colors.white,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(
+            color: selected ? AppPalette.fallback.seed : Colors.grey[300]!,
+            width: selected ? 2 : 1,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppPalette.fallback.seed.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : [],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2, right: AppSpacing.sm),
+              child: Icon(
+                selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                color: selected ? AppPalette.fallback.seed : Colors.grey[400],
+                size: 20,
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, size: 18, color: selected ? AppPalette.fallback.seed : Colors.grey[600]),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: selected ? AppPalette.fallback.seed : AppColors.brandNavy,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Colors.grey[600],
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── ÉTAPE 3 : Compte Administrateur ───────────────────────────────────────
   Widget _buildStep3Account() {
     return Form(
       key: _accountFormKey,
@@ -713,8 +1059,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             child: AppButton(
               label: _saving
                   ? 'Création...'
-                  : (_currentStep == 1 ? 'Finaliser & Démarrer' : 'Continuer'),
-              icon: _currentStep == 1
+                  : (_currentStep == 2 ? 'Finaliser & Démarrer' : 'Continuer'),
+              icon: _currentStep == 2
                   ? Icons.check_circle_rounded
                   : Icons.arrow_forward_rounded,
               onPressed: _saving ? null : _nextStep,

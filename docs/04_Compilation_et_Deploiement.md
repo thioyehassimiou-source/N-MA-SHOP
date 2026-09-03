@@ -53,3 +53,14 @@ Le résultat se trouvera dans le dossier :
 `\build\windows\runner\Release\`
 
 **Déploiement :** Comme pour Linux, vous devez distribuer la totalité des fichiers générés (fichiers `.exe`, `.dll`, et dossiers de données) ou utiliser un outil comme InnoSetup pour créer un installeur propre.
+
+## 4. Dépannage Windows : Erreur sqlite3.dll (Error Code 126)
+
+Si lors du lancement de l'application sur Windows, vous obtenez l'erreur suivante :
+> `Failed to load dynamic library 'sqlite3.dll': error code 126`
+
+**Causes et solutions :**
+1. **Bibliothèque dynamique SQLite absente :** Assurez-vous que le fichier `sqlite3.dll` est bien copié dans le même répertoire que `nmashop.exe` (généré automatiquement lors de `flutter build windows`).
+2. **Visual C++ Redistributable manquant :** Sur certains PC Windows clients (sans environnement de développement), `sqlite3.dll` nécessite les runtime C++ Microsoft (`vcruntime140.dll` / `msvcp140.dll`). 
+   - **Solution automatique :** L'installeur officiel `NMaShop_Setup_v1.0.0.exe` embarque désormais automatiquement les dépendances `vc_redist.x64.exe` et les installe en arrière-plan de manière 100 % silencieuse lors de l'installation de l'application. L'utilisateur n'a rien à télécharger séparément.
+

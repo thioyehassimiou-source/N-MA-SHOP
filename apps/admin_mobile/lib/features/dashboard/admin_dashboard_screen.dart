@@ -132,12 +132,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 if (confirm == true) {
                   final repo = ref.read(adminRepositoryProvider);
                   await repo.resetAllData();
+                  await ref.read(adminSyncServiceProvider).purgeRemoteActivations();
                   ref.read(clientsProvider.notifier).refresh();
                   ref.read(licensesProvider.notifier).refresh();
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Toutes les données ont été réinitialisées avec succès !'),
+                        content: Text('Toutes les données locales et distantes ont été réinitialisées avec succès !'),
                         backgroundColor: Colors.orange,
                         behavior: SnackBarBehavior.floating,
                       ),

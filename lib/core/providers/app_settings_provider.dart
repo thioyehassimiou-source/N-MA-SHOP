@@ -171,12 +171,6 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     String? businessPhone,
     String? paletteId,
   }) async {
-    // Si c'est un nouveau paramétrage (isSetupCompleted était false),
-    // réinitialiser la licence pour démarrer la nouvelle boutique à neuf.
-    if (!state.isSetupCompleted) {
-      await ref.read(licenseProvider.notifier).resetLicense();
-    }
-
     await _prefs.setBool(_kIsSetupCompleted, true);
     await _prefs.setString(_kBusinessName, businessName);
     await _prefs.setString(_kCurrency, currency);
