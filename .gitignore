@@ -52,3 +52,5 @@ audio_demo/
 *.avi
 .kotlin/
 
+.env
+.env.g.dart

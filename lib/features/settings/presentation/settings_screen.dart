@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/utils/app_image_picker.dart';
 import '../../../core/widgets/app_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -489,15 +490,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onPressed: () => context.go('/setup'),
                 ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              _buildSecurityItem(
-                Icons.restart_alt_rounded,
-                'Réinitialiser comme 1ère installation (Tester le wizard)',
-                trailing: AppButton.secondary(
-                  label: 'Réinitialiser',
-                  onPressed: _resetFullInstallation,
+              if (kDebugMode) ...[
+                const SizedBox(height: AppSpacing.xs),
+                _buildSecurityItem(
+                  Icons.restart_alt_rounded,
+                  'Réinitialiser comme 1ère installation (Mode Debug)',
+                  trailing: AppButton.secondary(
+                    label: 'Réinitialiser',
+                    onPressed: _resetFullInstallation,
+                  ),
                 ),
-              ),
+              ],
               Divider(color: context.colors.outlineVariant),
               const SizedBox(height: AppSpacing.xs),
               _buildSecurityItem(
@@ -1171,7 +1174,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 Row(
                   children: [
-                    if (!isTrial) ...[
+                    if (kDebugMode && !isTrial) ...[
                       OutlinedButton.icon(
                         onPressed: () async {
                           final confirm = await showDialog<bool>(

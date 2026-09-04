@@ -25,6 +25,18 @@ class LicenseSyncPayload {
   });
 }
 
+class RemoteLicenseStatus {
+  final bool isActive;
+  final String licenseKey;
+  final DateTime? expiryDate;
+
+  RemoteLicenseStatus({
+    required this.isActive,
+    required this.licenseKey,
+    this.expiryDate,
+  });
+}
+
 class LicenseAdminSyncService {
   /// Envoie la notification d'activation en se connectant directement à Neon PostgreSQL.
   /// Nécessite une connexion Internet. Échoue silencieusement si hors-ligne.
@@ -135,8 +147,12 @@ class LicenseAdminSyncService {
     }
   }
 
-  /// Vérifie si la licence a été désactivée ou révoquée par l'Admin sur Neon PostgreSQL.
-  static Future<bool?> checkRemoteStatus(String licenseKey, String hardwareId) async {
+  /// Interroge Neon PostgreSQL pour obtenir la toute dernière licence associée
+  /// au `hardwareId` (ou à la `licenseKey`).
+  static Future<RemoteLicenseStatus?> checkRemoteLicenseInfo(
+    String hardwareId, {
+    String? licenseKey,
+  }) async {
     try {
       final config = NeonConfig.parseConnectionString();
 
@@ -155,17 +171,17 @@ class LicenseAdminSyncService {
         ),
       );
 
-      // S'assurer que la colonne is_active existe
       await connection.execute('ALTER TABLE nmashop_activations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;');
 
+      final key = (licenseKey ?? '').trim().toUpperCase();
       final result = await connection.execute(
         Sql.named('''
-          SELECT is_active FROM nmashop_activations 
-          WHERE license_key = @key OR hardware_id = @hwId 
+          SELECT is_active, license_key, expires_at FROM nmashop_activations 
+          WHERE (hardware_id = @hwId AND @hwId != '') OR (license_key = @key AND @key != '')
           ORDER BY id DESC LIMIT 1
         '''),
         parameters: {
-          'key': licenseKey.trim().toUpperCase(),
+          'key': key,
           'hwId': hardwareId,
         },
       );
@@ -173,11 +189,27 @@ class LicenseAdminSyncService {
       await connection.close();
 
       if (result.isNotEmpty) {
-        return result.first[0] as bool?;
+        final row = result.first;
+        final isActive = (row[0] as bool?) ?? true;
+        final licKey = (row[1] as String?) ?? '';
+        final expiresAt = row[2] as DateTime?;
+
+        return RemoteLicenseStatus(
+          isActive: isActive,
+          licenseKey: licKey,
+          expiryDate: expiresAt,
+        );
       }
     } catch (e) {
       debugPrint('Vérification à distance licence Neon (offline ou indisponible): $e');
     }
     return null;
   }
+
+  /// Vérifie si la licence a été désactivée ou révoquée par l'Admin sur Neon PostgreSQL.
+  static Future<bool?> checkRemoteStatus(String licenseKey, String hardwareId) async {
+    final info = await checkRemoteLicenseInfo(hardwareId, licenseKey: licenseKey);
+    return info?.isActive;
+  }
 }
+

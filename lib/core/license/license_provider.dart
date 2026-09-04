@@ -36,27 +36,44 @@ class LicenseNotifier extends Notifier<LicenseInfo> {
 
   void _startRemoteRevocationCheck() {
     _remoteCheckTimer?.cancel();
-    // Interroger Neon PostgreSQL toutes les 5 secondes pour savoir si l'admin a désactivé la licence
+    // Interroger Neon PostgreSQL toutes les 5 secondes pour synchroniser l'état (activation / désactivation)
     _remoteCheckTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
       final prefs = ref.read(sharedPreferencesProvider);
       final storedKey = prefs.getString('lic_key');
       final hwId = await HardwareIdService.getHardwareId();
 
-      if (storedKey != null && storedKey.isNotEmpty) {
-        final remoteIsActive = await LicenseAdminSyncService.checkRemoteStatus(storedKey, hwId);
-        if (remoteIsActive == false) {
-          // L'administrateur a désactivé cette licence depuis l'application mobile Admin !
-          await _svc.resetLicense(prefs);
-          state = const LicenseInfo(
-            status: LicenseStatus.expired,
-            type: LicenseType.trial,
-            expiryDate: null,
-            daysLeft: 0,
-          );
+      final remoteInfo = await LicenseAdminSyncService.checkRemoteLicenseInfo(
+        hwId,
+        licenseKey: storedKey,
+      );
+
+      if (remoteInfo != null) {
+        if (!remoteInfo.isActive) {
+          // L'administrateur a désactivé cette licence depuis Mobile Admin !
+          if (state.status != LicenseStatus.expired) {
+            await _svc.resetLicense(prefs);
+            state = const LicenseInfo(
+              status: LicenseStatus.expired,
+              type: LicenseType.trial,
+              expiryDate: null,
+              daysLeft: 0,
+            );
+          }
+        } else if (remoteInfo.isActive && remoteInfo.licenseKey.isNotEmpty) {
+          // L'administrateur a activé une licence depuis Mobile Admin !
+          // Si l'application locale n'est pas encore activée ou possède une clé différente,
+          // on active automatiquement la licence en local.
+          if (!state.isLicensed || storedKey != remoteInfo.licenseKey) {
+            final res = await _svc.activateAsync(remoteInfo.licenseKey, prefs);
+            if (res.result == LicenseActivationResult.success && res.info != null) {
+              state = res.info!;
+            }
+          }
         }
       }
     });
   }
+
 
   Future<void> _checkAsync(dynamic prefs) async {
     final updated = await _svc.checkAsync(prefs);

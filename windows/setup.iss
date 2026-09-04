@@ -66,7 +66,29 @@ Source: "vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion; Check: File
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"
 
+[UninstallDelete]
+; Nettoyage des bases de données SQLite, préférences et caches de l'utilisateur lors de la désinstallation
+Type: filesandordirs; Name: "{userappdata}\com.nmashop\nmashop"
+Type: filesandordirs; Name: "{userappdata}\nmashop"
+Type: filesandordirs; Name: "{localappdata}\nmashop"
+Type: filesandordirs; Name: "{userappdata}\gescompta"
+Type: filesandordirs; Name: "{userappdata}\com.example.nmashop"
+
 [Run]
 ; Installation automatique et silencieuse des dépendances Visual C++ si présentes dans l'installeur
 Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/q /norestart"; StatusMsg: "Installation automatique des composants système requis (Visual C++)..."; Flags: waituntilterminated; Check: FileExists(ExpandConstant('{tmp}\vc_redist.x64.exe'))
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    DelTree(ExpandConstant('{userappdata}\com.nmashop\nmashop'), True, True, True);
+    DelTree(ExpandConstant('{userappdata}\nmashop'), True, True, True);
+    DelTree(ExpandConstant('{localappdata}\nmashop'), True, True, True);
+    DelTree(ExpandConstant('{userappdata}\gescompta'), True, True, True);
+    DelTree(ExpandConstant('{userappdata}\com.example.nmashop'), True, True, True);
+  end;
+end;
+

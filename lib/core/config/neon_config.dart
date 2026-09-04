@@ -1,8 +1,8 @@
+import 'env.dart';
+
 class NeonConfig {
-  /// URL de connexion Neon PostgreSQL.
-  /// Remplacer par la véritable Connection String avant la compilation.
-  /// Format attendu : postgresql://[user]:[password]@[host]/[dbname]?sslmode=require
-  static const String connectionString = 'postgresql://neondb_owner:npg_bY9MjSynWF4N@ep-long-scene-aeya27z7-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require';
+  /// URL de connexion Neon PostgreSQL (Obfusquée via Envied).
+  static String get connectionString => Env.neonConnectionString;
 
   /// Extrait les paramètres de connexion depuis la chaîne.
   static Map<String, dynamic> parseConnectionString() {

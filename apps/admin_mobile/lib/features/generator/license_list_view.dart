@@ -133,7 +133,21 @@ Voici votre clé d'activation officielle N'MaShop PC :
         ? DateFormat('dd/MM/yyyy').format(lic.expiresAt!)
         : 'À Vie (Illimitée)';
 
+    final isPending = lic.hardwareId.isEmpty;
     final isActive = lic.isActive;
+
+    Color statusColor;
+    Color statusBgColor;
+    if (isPending) {
+      statusColor = Colors.orange;
+      statusBgColor = Colors.orange.withValues(alpha: 0.15);
+    } else if (isActive) {
+      statusColor = AppTheme.emeraldActive;
+      statusBgColor = AppTheme.emeraldBg;
+    } else {
+      statusColor = AppTheme.roseAlert;
+      statusBgColor = AppTheme.roseBg;
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
@@ -168,18 +182,18 @@ Voici votre clé d'activation officielle N'MaShop PC :
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isActive ? AppTheme.emeraldBg : AppTheme.roseBg,
+                    color: statusBgColor,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isActive ? AppTheme.emeraldActive.withValues(alpha: 0.3) : AppTheme.roseAlert.withValues(alpha: 0.3),
+                      color: statusColor.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Text(
-                    isActive ? 'Active' : 'Désactivée',
+                    isPending ? 'En attente' : (isActive ? 'Active' : 'Désactivée'),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: isActive ? AppTheme.emeraldActive : AppTheme.roseAlert,
+                      color: statusColor,
                     ),
                   ),
                 ),

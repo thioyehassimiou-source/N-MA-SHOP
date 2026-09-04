@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
+import '../config/env.dart';
 import 'license_model.dart';
 
 /// Cœur de la logique cryptographique de licence N'MaShop.
@@ -9,13 +10,13 @@ import 'license_model.dart';
 /// et la vérification de péremption des clés.
 class LicenseCore {
   // ── Sel de Sécurité Local & Clé secrète ─────────────────────────────────────
-  static const String localSecuritySalt = 'NMaShop_security_salt_2026';
+  static String get localSecuritySalt => Env.licenseSecuritySalt;
   
-  static const _f1 = 'Nm4';
-  static const _f2 = 'Sh0';
-  static const _f3 = 'pGN';
-  static const _f4 = '3e!';
-  static const _f5 = '2026';
+  static String get _f1 => Env.licenseSecretF1;
+  static String get _f2 => Env.licenseSecretF2;
+  static String get _f3 => Env.licenseSecretF3;
+  static String get _f4 => Env.licenseSecretF4;
+  static String get _f5 => Env.licenseSecretF5;
   static String get secret => '$_f1$_f2$_f3$_f4$_f5#$localSecuritySalt';
 
   // ── Paramètres ─────────────────────────────────────────────────────────────
