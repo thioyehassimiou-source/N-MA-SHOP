@@ -42,13 +42,17 @@ jobs:
 
       - name: 🔑 Générer .env et code obfusqué
         run: |
-          echo 'NEON_CONNECTION_STRING="postgresql://neondb_owner:npg_bY9MjSynWF4N@ep-long-scene-aeya27z7-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"' > .env
-          echo 'LICENSE_SECURITY_SALT="NMaShop_security_salt_2026"' >> .env
-          echo 'LICENSE_SECRET_F1="Nm4"' >> .env
-          echo 'LICENSE_SECRET_F2="Sh"' >> .env
-          echo 'LICENSE_SECRET_F3="0p"' >> .env
-          echo 'LICENSE_SECRET_F4="2026"' >> .env
+          cat << 'EOF' > .env
+NEON_CONNECTION_STRING="postgresql://neondb_owner:npg_bY9MjSynWF4N@ep-long-scene-aeya27z7-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
+LICENSE_SECURITY_SALT="NMaShop_security_salt_2026"
+LICENSE_SECRET_F1="Nm4"
+LICENSE_SECRET_F2="Sh0"
+LICENSE_SECRET_F3="pGN"
+LICENSE_SECRET_F4="3e!"
+LICENSE_SECRET_F5="2026"
+EOF
           dart run build_runner build --delete-conflicting-outputs
+        shell: bash
 
       - name: 🧪 Exécuter les tests unitaires
         run: flutter test
@@ -93,9 +97,10 @@ jobs:
 NEON_CONNECTION_STRING="postgresql://neondb_owner:npg_bY9MjSynWF4N@ep-long-scene-aeya27z7-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
 LICENSE_SECURITY_SALT="NMaShop_security_salt_2026"
 LICENSE_SECRET_F1="Nm4"
-LICENSE_SECRET_F2="Sh"
-LICENSE_SECRET_F3="0p"
-LICENSE_SECRET_F4="2026"
+LICENSE_SECRET_F2="Sh0"
+LICENSE_SECRET_F3="pGN"
+LICENSE_SECRET_F4="3e!"
+LICENSE_SECRET_F5="2026"
 EOF
           dart run build_runner build --delete-conflicting-outputs
         shell: bash
