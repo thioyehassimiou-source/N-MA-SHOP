@@ -1,9 +1,11 @@
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/open.dart';
 
 
 import 'tables/products.dart';
@@ -232,7 +234,24 @@ LazyDatabase _openConnection() {
     }
     // Le nom du fichier est interne et ne change pas lors d'un rebranding.
     final file = File(p.join(dir.path, 'gescompta.sqlite'));
-    return NativeDatabase.createInBackground(file);
+    
+    return NativeDatabase.createInBackground(
+      file,
+      isolateSetup: () {
+        if (Platform.isWindows) {
+          open.overrideFor(OperatingSystem.windows, () {
+            final libraryNextToScript = File(p.join(
+              File(Platform.resolvedExecutable).parent.path,
+              'sqlite3.dll',
+            ));
+            if (libraryNextToScript.existsSync()) {
+              return DynamicLibrary.open(libraryNextToScript.path);
+            }
+            return DynamicLibrary.open('sqlite3.dll');
+          });
+        }
+      },
+    );
   });
 }
 

@@ -66,13 +66,7 @@ Source: "vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion; Check: File
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"
 
-[UninstallDelete]
-; Nettoyage des bases de données SQLite, préférences et caches de l'utilisateur lors de la désinstallation
-Type: filesandordirs; Name: "{userappdata}\com.nmashop\nmashop"
-Type: filesandordirs; Name: "{userappdata}\nmashop"
-Type: filesandordirs; Name: "{localappdata}\nmashop"
-Type: filesandordirs; Name: "{userappdata}\gescompta"
-Type: filesandordirs; Name: "{userappdata}\com.example.nmashop"
+
 
 [Run]
 ; Installation automatique et silencieuse des dépendances Visual C++ si présentes dans l'installeur
@@ -80,15 +74,37 @@ Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/q /norestart"; StatusMsg: "In
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
+function InitializeSetup(): Boolean;
+var
+  Answer: Integer;
+begin
+  Result := True;
+  // Vérifie si l'application est déjà installée via la clé de registre de désinstallation
+  if RegKeyExists(HKEY_LOCAL_MACHINE, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{E14D254C-A23B-49E8-97F2-ABCD12345678}_is1') or
+     RegKeyExists(HKEY_CURRENT_USER, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{E14D254C-A23B-49E8-97F2-ABCD12345678}_is1') then
+  begin
+    Answer := MsgBox('N''MaShop est déjà installé sur cet ordinateur.' #13#13 'Voulez-vous continuer l''installation pour mettre à jour l''application ?', mbConfirmation, MB_YESNO);
+    if Answer = idNo then
+      Result := False;
+  end;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usPostUninstall then
   begin
-    DelTree(ExpandConstant('{userappdata}\com.nmashop\nmashop'), True, True, True);
-    DelTree(ExpandConstant('{userappdata}\nmashop'), True, True, True);
-    DelTree(ExpandConstant('{localappdata}\nmashop'), True, True, True);
-    DelTree(ExpandConstant('{userappdata}\gescompta'), True, True, True);
-    DelTree(ExpandConstant('{userappdata}\com.example.nmashop'), True, True, True);
+    if MsgBox('Voulez-vous supprimer toutes vos données locales (bases de données, préférences, configuration) ?' #13#13 'ATTENTION : Cette action est irréversible et entraînera la perte de vos données !', mbConfirmation, MB_YESNO) = idYes then
+    begin
+      // Le chemin réel utilisé par Flutter (CompanyName\ProductName)
+      DelTree(ExpandConstant('{userappdata}\CJP Hub\NMaShop'), True, True, True);
+      
+      // Nettoyage des anciens chemins potentiels
+      DelTree(ExpandConstant('{userappdata}\com.nmashop\nmashop'), True, True, True);
+      DelTree(ExpandConstant('{userappdata}\nmashop'), True, True, True);
+      DelTree(ExpandConstant('{localappdata}\nmashop'), True, True, True);
+      DelTree(ExpandConstant('{userappdata}\gescompta'), True, True, True);
+      DelTree(ExpandConstant('{userappdata}\com.example.nmashop'), True, True, True);
+    end;
   end;
 end;
 
