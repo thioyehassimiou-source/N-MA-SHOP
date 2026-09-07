@@ -8,7 +8,7 @@ N'MaShop est conçu pour fonctionner hors-ligne (Offline-First) grâce à une ba
 - Les définitions des tables se trouvent dans : `lib/core/database/tables/`
 - Le fichier généré automatiquement par Drift : `lib/core/database/database.g.dart` (À ne pas modifier manuellement).
 
-> **Important :** Le fichier physique de la base de données est sauvegardé sous le nom `gescompta.sqlite` dans le dossier des documents locaux de l'application.
+> **Important :** Le fichier physique de la base de données est sauvegardé sous le nom `nmashop.sqlite` dans le dossier des documents locaux de l'application.
 
 ## Schéma Principal
 

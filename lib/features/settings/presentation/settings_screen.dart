@@ -697,7 +697,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   /// Section d'Apparence : sélection directe de templates visuels prédéfinis prêts à l'emploi.
   Widget _buildAppearanceTab() {
     final selected = ref.watch(paletteProvider);
-    final license = ref.watch(licenseProvider);
+    final license = ref.watch(licenseInfoProvider);
     final currentThemeMode = ref.watch(themeProvider);
     final bool hasLicense = license.isLicensed;
 
@@ -1092,7 +1092,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildLicenseCard() {
-    final license = ref.watch(licenseProvider);
+    final license = ref.watch(licenseInfoProvider);
     final bool isTrial = license.status == LicenseStatus.trial;
     
     return AppCard(

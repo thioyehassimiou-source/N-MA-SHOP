@@ -12,7 +12,7 @@ class AdminDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final licensesAsync = ref.watch(adminLicensesStreamProvider);
     final clientsAsync = ref.watch(adminClientsStreamProvider);
-    final localLicense = ref.watch(licenseProvider);
+    final localLicense = ref.watch(licenseInfoProvider);
 
     final licenses = licensesAsync.value ?? [];
     final clients = clientsAsync.value ?? [];

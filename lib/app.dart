@@ -7,8 +7,8 @@ import 'core/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 
-class GescomptaApp extends ConsumerWidget {
-  const GescomptaApp({super.key});
+class NmaShopApp extends ConsumerWidget {
+  const NmaShopApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -2,7 +2,7 @@
 
 *Calendrier de livraison et jalons de développement.*
 
-Ce document trace l'évolution de GESCOMPTA de son état de prototype maqueté vers
+Ce document trace l'évolution de N'MaShop de son état de prototype maqueté vers
 un logiciel de niveau entreprise. Chaque jalon privilégie la robustesse et la
 validation de chaque bloc avant de passer au suivant.
 
@@ -10,7 +10,7 @@ validation de chaque bloc avant de passer au suivant.
 
 ```mermaid
 timeline
-    title Livraison GESCOMPTA
+    title Livraison N'MaShop
     Version 1.0 (MVP) : Assainissement comptable : Refactoring Stock UI/Data : Espace Comptable simple
     Version 1.1 (Sécurisation) : Chiffrement SQLCipher : Ajustements de stock
     Version 1.2 (ERP local complet) : Gestion Fournisseurs active : Exports SYSCOHADA réels
@@ -45,7 +45,7 @@ passent ; **aucun écart débit/crédit** en base lors des simulations de vente.
 
 **Périmètre :**
 
-- **Chiffrement (SQLCipher)** : rendre `gescompta.sqlite` illisible sans clé.
+- **Chiffrement (SQLCipher)** : rendre `nmashop.sqlite` illisible sans clé.
 - **Module d'ajustement de stock** : écarts d'inventaire (constats de perte pour
   casse/vol), avec impact comptable.
 - **Sauvegarde USB** : export en un clic d'une sauvegarde complète chiffrée sur

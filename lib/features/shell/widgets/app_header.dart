@@ -51,7 +51,7 @@ class AppHeader extends ConsumerWidget {
     final title = _getTitle(location);
     final user = ref.watch(authProvider);
     final isDark = ref.watch(themeProvider) == ThemeMode.dark;
-    final license = ref.watch(licenseProvider);
+    final license = ref.watch(licenseInfoProvider);
 
     // Calcul des éléments visuels du badge de licence (Jours restants)
     String badgeText;

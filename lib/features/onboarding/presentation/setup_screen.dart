@@ -56,10 +56,17 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   final _ownerNameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final _recoveryCodeController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _nifController = TextEditingController();
   final _licenseKeyController = TextEditingController();
+
+  // Dialog controllers for password recovery
+  final _recoverNameController = TextEditingController();
+  final _recoveryCodeInputController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmNewPasswordController = TextEditingController();
 
   bool _obscure = true;
   String? _selectedDomain;
@@ -94,6 +101,11 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     _addressController.dispose();
     _nifController.dispose();
     _licenseKeyController.dispose();
+    _recoveryCodeController.dispose();
+    _recoverNameController.dispose();
+    _recoveryCodeInputController.dispose();
+    _newPasswordController.dispose();
+    _confirmNewPasswordController.dispose();
     super.dispose();
   }
 
@@ -170,6 +182,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       final user = await ref.read(authProvider.notifier).defineAccount(
         fullName: _ownerNameController.text.trim(),
         password: _passwordController.text,
+        recoveryCode: _recoveryCodeController.text,
       );
 
       await ref.read(appSettingsProvider.notifier).completeSetup(
@@ -185,7 +198,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       if (!_useTrialMode && _licenseActivated) {
         try {
           final hwId = await HardwareIdService.getHardwareId();
-          final currentLicense = ref.read(licenseProvider);
+          final currentLicense = ref.read(licenseInfoProvider);
           final rawKey = _licenseKeyController.text.trim().toUpperCase();
 
           final payload = LicenseSyncPayload(
@@ -220,6 +233,95 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         );
       }
     }
+  }
+
+  void _showRecoverDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Réinitialiser le mot de passe'),
+          content: Form(
+            key: GlobalKey<FormState>(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _recoverNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nom complet',
+                    prefixIcon: Icon(Icons.person_outline_rounded),
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Nom requis' : null,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                TextFormField(
+                  controller: _recoveryCodeInputController,
+                  decoration: const InputDecoration(
+                    labelText: 'Code secret',
+                    prefixIcon: Icon(Icons.key_rounded),
+                  ),
+                  validator: (v) => v == null || v.isEmpty ? 'Code secret requis' : null,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                TextFormField(
+                  controller: _newPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Nouveau mot de passe',
+                    prefixIcon: Icon(Icons.lock_rounded),
+                  ),
+                  validator: (v) => v == null || v.isEmpty ? 'Nouveau mot de passe requis' : null,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                TextFormField(
+                  controller: _confirmNewPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirmer',
+                    prefixIcon: Icon(Icons.lock_outline_rounded),
+                  ),
+                  validator: (v) => v != _newPasswordController.text ? 'Les mots de passe ne correspondent pas' : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: () async {
+                // Validate form manually
+                final form = Form.of(ctx);
+                if (form == null || !form.validate()) return;
+                try {
+                  await ref.read(authProvider.notifier).recoverPassword(
+                    fullName: _recoverNameController.text.trim(),
+                    recoveryCode: _recoveryCodeInputController.text.trim(),
+                    newPassword: _newPasswordController.text,
+                  );
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Mot de passe réinitialisé avec succès')),
+                  );
+                } on AuthException catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.message)),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erreur: $e')),
+                  );
+                }
+              },
+              child: const Text('Réinitialiser'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showTermsDialog(BuildContext context) {
@@ -981,6 +1083,14 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
               }
               return null;
             },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildLabel('Code secret de récupération *'),
+          TextFormField(
+            controller: _recoveryCodeController,
+            obscureText: true,
+            decoration: _inputDeco('Code secret', Icons.key_rounded),
+            validator: (v) => v == null || v.isEmpty ? 'Le code secret est obligatoire' : null,
           ),
           const SizedBox(height: AppSpacing.lg),
           CheckboxListTile(

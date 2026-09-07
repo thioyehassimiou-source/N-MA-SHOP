@@ -107,6 +107,13 @@ jobs:
       - name: 🔨 Compiler l'application (Windows Release)
         run: flutter build windows --release
 
+      - name: 🧩 Copier sqlite3.dll dans le bundle Release
+        run: |
+          if (Test-Path "windows\sqlite3.dll") {
+            Copy-Item -Path "windows\sqlite3.dll" -Destination "build\windows\x64\runner\Release\sqlite3.dll" -Force
+          }
+        shell: powershell
+
       - name: 📦 Créer l'archive Portable (ZIP)
         run: |
           Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "build\windows\NMaShop_Windows_Portable_v${{ github.event.inputs.version || '1.0.0' }}.zip" -Force

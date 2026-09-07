@@ -1,11 +1,9 @@
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:sqlite3/open.dart';
 
 
 import 'tables/products.dart';
@@ -54,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -232,26 +230,19 @@ LazyDatabase _openConnection() {
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
-    // Le nom du fichier est interne et ne change pas lors d'un rebranding.
-    final file = File(p.join(dir.path, 'gescompta.sqlite'));
+    final newFile = File(p.join(dir.path, 'nmashop.sqlite'));
+    final oldFile = File(p.join(dir.path, 'gescompta.sqlite'));
+    if (!await newFile.exists() && await oldFile.exists()) {
+      try {
+        await oldFile.rename(newFile.path);
+      } catch (_) {
+        await oldFile.copy(newFile.path);
+        await oldFile.delete();
+      }
+    }
+    final file = newFile;
     
-    return NativeDatabase.createInBackground(
-      file,
-      isolateSetup: () {
-        if (Platform.isWindows) {
-          open.overrideFor(OperatingSystem.windows, () {
-            final libraryNextToScript = File(p.join(
-              File(Platform.resolvedExecutable).parent.path,
-              'sqlite3.dll',
-            ));
-            if (libraryNextToScript.existsSync()) {
-              return DynamicLibrary.open(libraryNextToScript.path);
-            }
-            return DynamicLibrary.open('sqlite3.dll');
-          });
-        }
-      },
-    );
+    return NativeDatabase.createInBackground(file);
   });
 }
 

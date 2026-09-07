@@ -36,7 +36,7 @@ abstract final class UpdateService {
 
   /// GitHub Repository API pour la détection dynamique des Releases
   static const String _releasesApiUrl =
-      'https://api.github.com/repos/thioyehassimiou-source/GESCOMPTA/releases/latest';
+      'https://api.github.com/repos/thioyehassimiou-source/N-MA-SHOP/releases/latest';
 
   /// Vérifie l'existence de nouvelles mises à jour (API GitHub / N'MaShop).
   static Future<AppVersionInfo> checkForUpdates() async {
@@ -51,7 +51,7 @@ abstract final class UpdateService {
         final latestTag = rawTag.replaceAll(RegExp(r'[^0-9.]'), '');
         final notes = data['body'] as String? ?? 'Une nouvelle version de N\'MaShop est disponible.';
         final htmlUrl = data['html_url'] as String? ??
-            'https://github.com/thioyehassimiou-source/GESCOMPTA/releases';
+            'https://github.com/thioyehassimiou-source/N-MA-SHOP/releases';
 
         final hasUpdate = _compareVersions(latestTag, currentVersion) > 0;
 
@@ -79,7 +79,7 @@ abstract final class UpdateService {
           '• Gestion des créances clients & crédits\n'
           '• Rapports d\'activités & sauvegarde SQLite\n'
           '• Contrôle natif fenêtrage desktop (1024x680 min)',
-      downloadUrl: 'https://github.com/thioyehassimiou-source/GESCOMPTA/releases',
+      downloadUrl: 'https://github.com/thioyehassimiou-source/N-MA-SHOP/releases',
     );
   }
 

@@ -1,6 +1,6 @@
-# Rapports d'audit GESCOMPTA
+# Rapports d'audit N'MaShop
 
-Ce dossier consigne l'audit architectural complet de GESCOMPTA et les décisions
+Ce dossier consigne l'audit architectural complet de N'MaShop et les décisions
 qui en découlent. **Ces documents font foi pour tout le développement** : chaque
 nouvelle contribution doit s'y conformer.
 

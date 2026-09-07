@@ -1,9 +1,9 @@
-# Rapport d'Audit Global de GESCOMPTA
+# Rapport d'Audit Global de N'MaShop
 
 *Document d'architecture et de synthèse technique.*
 
 Ce document synthétise les conclusions de l'audit architectural complet de
-GESCOMPTA. Il répond de manière structurée aux 16 axes d'évaluation pour offrir
+N'MaShop. Il répond de manière structurée aux 16 axes d'évaluation pour offrir
 une visibilité totale sur le projet et permettre sa maintenance sur le long terme.
 
 ---
@@ -75,7 +75,7 @@ flowchart TD
     décrémente le stock via StockRepository, génère les écritures SYSCOHADA via
     AccountingRepository
      ↓
-[Drift Repositories] → [Drift ORM] → [SQLite] écrit sur 'gescompta.sqlite'
+[Drift Repositories] → [Drift ORM] → [SQLite] écrit sur 'nmashop.sqlite'
      ↓
 [Retour UI] succès → state mis à jour + dialogue de succès.
     Échec d'une étape → ROLLBACK automatique.
@@ -302,7 +302,7 @@ package gadget.
 
 ## 12. Sécurité
 
-- **Base en clair (risque majeur)** : `gescompta.sqlite` n'est pas chiffré.
+- **Base en clair (risque majeur)** : `nmashop.sqlite` n'est pas chiffré.
   Vol de l'ordinateur = données financières lisibles immédiatement.
 - **Validations** : uniquement dans l'UI. Aucune contrainte SQL restrictive
   (ex. `CHECK(sale_price >= 0)`).
@@ -346,7 +346,7 @@ Clean Architecture allégé, déjà en place pour `sales` :
 
 ## 16. Conclusion et plan de travail
 
-GESCOMPTA dispose de fondations SQL/Drift solides, d'un design system fluide et
+N'MaShop dispose de fondations SQL/Drift solides, d'un design system fluide et
 d'un code globalement propre. Pour une maintenance sereine sur plusieurs années,
 il est crucial d'**harmoniser l'accès aux données** des différents modules et de
 **migrer les calculs du tableau de bord vers des requêtes SQL agrégées** avant le

@@ -17,14 +17,13 @@ class DriftAuthRepository implements AuthRepository {
   Future<AppUser> defineAccount({
     required String fullName,
     required String password,
+    required String recoveryCode,
   }) async {
     final salt = PasswordHasher.generateSalt();
     final passwordHash = await PasswordHasher.hashAsync(password, salt);
-
+    final recoveryHash = await PasswordHasher.hashAsync(recoveryCode, salt);
     return _db.transaction(() async {
-      // Purge de tout compte existant pour la création/réinitialisation de la boutique
       await _db.delete(_db.users).go();
-
       final row = await _db
           .into(_db.users)
           .insertReturning(
@@ -33,6 +32,7 @@ class DriftAuthRepository implements AuthRepository {
               fullName: fullName.trim(),
               passwordHash: passwordHash,
               passwordSalt: salt,
+              recoveryCodeHash: Value(recoveryHash),
               role: const Value(UserRole.admin),
               isActive: const Value(true),
             ),
@@ -76,6 +76,37 @@ class DriftAuthRepository implements AuthRepository {
     await (_db.update(_db.users)..where((u) => u.id.equals(id))).write(
       UsersCompanion(isActive: Value(isActive)),
     );
+  }
+
+  @override
+  Future<AppUser?> recoverPassword({
+    required String fullName,
+    required String recoveryCode,
+    required String newPassword,
+  }) async {
+    final row = await (_db.select(_db.users)
+          ..where((u) => u.fullName.lower().equals(fullName.trim().toLowerCase())))
+        .getSingleOrNull();
+    if (row == null) {
+      throw const AuthException(AuthFailure.wrongPassword);
+    }
+    // Verify recovery code hash
+    final ok = await PasswordHasher.verifyAsync(
+      recoveryCode,
+      row.passwordSalt,
+      row.recoveryCodeHash ?? '',
+    );
+    if (!ok) {
+      throw const AuthException(AuthFailure.wrongPassword);
+    }
+    // Set new password
+    final newSalt = PasswordHasher.generateSalt();
+    final newHash = await PasswordHasher.hashAsync(newPassword, newSalt);
+    await (_db.update(_db.users)..where((u) => u.id.equals(row.id))).write(
+      UsersCompanion(passwordSalt: Value(newSalt), passwordHash: Value(newHash)),
+    );
+    final updatedRow = await (_db.select(_db.users)..where((u) => u.id.equals(row.id))).getSingle();
+    return _toDomain(updatedRow);
   }
 
   @override
@@ -150,6 +181,18 @@ class DriftAuthRepository implements AuthRepository {
       UsersCompanion(fullName: Value(fullName.trim())),
     );
     return _toDomain(row.copyWith(fullName: fullName.trim()));
+  }
+
+  @override
+  Future<void> setRecoveryCode(String userId, String recoveryCode) async {
+    final row = await (_db.select(_db.users)..where((u) => u.id.equals(userId))).getSingleOrNull();
+    if (row == null) {
+      throw const AuthException(AuthFailure.wrongPassword);
+    }
+    final hash = await PasswordHasher.hashAsync(recoveryCode, row.passwordSalt);
+    await (_db.update(_db.users)..where((u) => u.id.equals(row.id))).write(
+      UsersCompanion(recoveryCodeHash: Value(hash)),
+    );
   }
 
   @override

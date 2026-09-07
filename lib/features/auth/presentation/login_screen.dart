@@ -24,13 +24,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _nameController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  final _recoverNameController = TextEditingController();
+  final _recoveryCodeController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _recoverFormKey = GlobalKey<FormState>();
+
   bool _obscure = true;
   bool _submitting = false;
   String? _error;
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _recoverNameController.dispose();
+    _recoveryCodeController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -121,6 +130,83 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const SizedBox(height: AppSpacing.xl),
 
             if (_error != null) AuthErrorBanner(_error!),
+
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Réinitialiser le mot de passe'),
+                    content: Form(
+                      key: _recoverFormKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextFormField(
+                            controller: _recoverNameController,
+                            decoration: const InputDecoration(labelText: 'Nom complet'),
+                            validator: (v) => v == null || v.trim().isEmpty ? 'Entrez votre nom' : null,
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _recoveryCodeController,
+                            decoration: const InputDecoration(labelText: 'Code secret'),
+                            validator: (v) => v == null || v.isEmpty ? 'Entrez le code secret' : null,
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _newPasswordController,
+                            obscureText: true,
+                            decoration: const InputDecoration(labelText: 'Nouveau mot de passe'),
+                            validator: (v) => v == null || v.isEmpty ? 'Entrez le nouveau mot de passe' : null,
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _confirmPasswordController,
+                            obscureText: true,
+                            decoration: const InputDecoration(labelText: 'Confirmer le mot de passe'),
+                            validator: (v) => v != _newPasswordController.text ? 'Les mots de passe ne correspondent pas' : null,
+                          ),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Annuler'),
+                      ),
+                      FilledButton(
+                        onPressed: () async {
+                          if (_recoverFormKey.currentState?.validate() != true) return;
+                          try {
+                            await ref.read(authProvider.notifier).recoverPassword(
+                              fullName: _recoverNameController.text,
+                              recoveryCode: _recoveryCodeController.text,
+                              newPassword: _newPasswordController.text,
+                            );
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Mot de passe réinitialisé')),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Erreur : $e')),
+                            );
+                          }
+                        },
+                        child: const Text('Réinitialiser'),
+                      ),
+                    ],
+                  ),
+                ),
+                child: Text(
+                  'Mot de passe oublié ?',
+                  style: TextStyle(color: context.colors.primary),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
 
             SizedBox(
               height: 52,

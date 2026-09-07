@@ -1,10 +1,10 @@
-# GESCOMPTA
+# N'Ma Shop (nmashop)
 
 Logiciel **Desktop** de gestion commerciale et de comptabilité **SYSCOHADA**
 destiné aux commerçants et petites entreprises de Guinée.
 Fonctionne **hors-ligne en priorité** (base de données locale SQLite).
 
-> Le cahier des charges complet est dans `GESCOMPTA_Cahier_des_charges.docx`.
+> Le cahier des charges complet est dans `NMASHOP_Cahier_des_charges.docx`.
 
 ## Stack technique
 
@@ -73,7 +73,7 @@ lib/
 ```
 
 La base est stockée dans le dossier support de l'application
-(`~/.local/share/com.gescompta.gescompta/gescompta.sqlite` sous Linux).
+(`~/.local/share/com.nmashop.nmashop/nmashop.sqlite` sous Linux).
 
 ## État d'avancement
 

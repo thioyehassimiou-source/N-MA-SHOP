@@ -60,6 +60,14 @@ jobs:
       - name: 🔨 Compiler N'MaShop (Windows Release)
         run: flutter build windows --release --build-name=${{ inputs.version || '1.0.0' }}
 
+      # ── 5.5 Garantir la présence de sqlite3.dll dans le bundle Release ───
+      - name: 🧩 Copier sqlite3.dll dans le bundle Release
+        run: |
+          if (Test-Path "windows\sqlite3.dll") {
+            Copy-Item -Path "windows\sqlite3.dll" -Destination "build\windows\x64\runner\Release\sqlite3.dll" -Force
+          }
+        shell: powershell
+
       # ── 6. Créer l'archive Portable ZIP propre ────────────────────────────
       - name: 📦 Créer l'archive Portable (ZIP)
         run: |

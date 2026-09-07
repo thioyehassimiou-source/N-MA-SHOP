@@ -20,7 +20,8 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\N'MaShop
-UsePreviousAppDir=yes
+; Ne jamais réinstaller dans l'ancien dossier pour éviter les résidus corrompus
+UsePreviousAppDir=no
 DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallFilesDir={app}
@@ -59,19 +60,23 @@ Type: files; Name: "{app}\*.dll"
 [Files]
 ; Toutes les DLLs, exécutable principal et ressources Flutter
 Source: "{#BuildDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.zip,*.iss"
-; Package de dépendances C++ Microsoft pour SQLite (installation 100% transparente)
-Source: "vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion; Check: FileExists(ExpandConstant('{src}\vc_redist.x64.exe')) or FileExists('windows\vc_redist.x64.exe') or FileExists('vc_redist.x64.exe')
+; sqlite3.dll — bibliothèque SQLite native obligatoire pour le fonctionnement de la base de données
+Source: "sqlite3.dll"; DestDir: "{app}"; Flags: ignoreversion
+; Package de dépendances C++ Microsoft (installation 100% transparente si présent)
+Source: "vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"
 
-
-
 [Run]
 ; Installation automatique et silencieuse des dépendances Visual C++ si présentes dans l'installeur
-Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/q /norestart"; StatusMsg: "Installation automatique des composants système requis (Visual C++)..."; Flags: waituntilterminated; Check: FileExists(ExpandConstant('{tmp}\vc_redist.x64.exe'))
+Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/q /norestart"; StatusMsg: "Installation automatique des composants système requis (Visual C++)..."; Flags: waituntilterminated skipifdoesntexist
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+; Suppression complète du dossier d'installation (inclut les fichiers créés après installation : base SQLite, logs, cache)
+Type: filesandordirs; Name: "{app}"
 
 [Code]
 function InitializeSetup(): Boolean;
@@ -95,16 +100,18 @@ begin
   begin
     if MsgBox('Voulez-vous supprimer toutes vos données locales (bases de données, préférences, configuration) ?' #13#13 'ATTENTION : Cette action est irréversible et entraînera la perte de vos données !', mbConfirmation, MB_YESNO) = idYes then
     begin
-      // Le chemin réel utilisé par Flutter (CompanyName\ProductName)
+      // Chemins réels utilisés par Flutter sur Windows (AppData\Roaming et AppData\Local)
       DelTree(ExpandConstant('{userappdata}\CJP Hub\NMaShop'), True, True, True);
-      
-      // Nettoyage des anciens chemins potentiels
+      DelTree(ExpandConstant('{localappdata}\CJP Hub\NMaShop'), True, True, True);
+
+      // Nettoyage des anciens chemins potentiels (anciennes versions / ancien nom)
       DelTree(ExpandConstant('{userappdata}\com.nmashop\nmashop'), True, True, True);
+      DelTree(ExpandConstant('{localappdata}\com.nmashop\nmashop'), True, True, True);
       DelTree(ExpandConstant('{userappdata}\nmashop'), True, True, True);
       DelTree(ExpandConstant('{localappdata}\nmashop'), True, True, True);
       DelTree(ExpandConstant('{userappdata}\gescompta'), True, True, True);
+      DelTree(ExpandConstant('{localappdata}\gescompta'), True, True, True);
       DelTree(ExpandConstant('{userappdata}\com.example.nmashop'), True, True, True);
     end;
   end;
 end;
-

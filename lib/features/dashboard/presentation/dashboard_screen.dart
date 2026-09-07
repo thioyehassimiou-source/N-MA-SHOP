@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:ui';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,9 +26,66 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(dashboardDataProvider);
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(28),
-      child: async.when(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Stack(
+      children: [
+        // Premium Mesh Gradient Background
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(-0.8, -0.6),
+                radius: 1.5,
+                colors: isDark
+                    ? [
+                        const Color(0xFF1E1B4B).withValues(alpha: 0.5),
+                        const Color(0xFF0F172A),
+                      ]
+                    : [
+                        const Color(0xFFEEF2FF),
+                        const Color(0xFFF8FAFC),
+                      ],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: -100,
+          right: -50,
+          child: Container(
+            width: 300,
+            height: 300,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: (isDark ? const Color(0xFF4338CA) : const Color(0xFF818CF8)).withValues(alpha: 0.15),
+            ),
+          ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+           .scaleXY(end: 1.2, duration: 4.seconds, curve: Curves.easeInOut),
+        ),
+        Positioned(
+          bottom: 100,
+          left: -100,
+          child: Container(
+            width: 250,
+            height: 250,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: (isDark ? const Color(0xFF047857) : const Color(0xFF34D399)).withValues(alpha: 0.1),
+            ),
+          ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+           .scaleXY(end: 1.3, duration: 5.seconds, curve: Curves.easeInOut),
+        ),
+        Positioned.fill(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+            child: const SizedBox(),
+          ),
+        ),
+        // Content
+        SingleChildScrollView(
+          padding: const EdgeInsets.all(28),
+          child: async.when(
         loading: () => const Padding(
           padding: EdgeInsets.only(top: 120),
           child: Center(child: CircularProgressIndicator()),
@@ -36,7 +95,9 @@ class DashboardScreen extends ConsumerWidget {
           child: Center(child: Text('Erreur : $e')),
         ),
         data: (data) => _DashboardBody(data: data),
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -117,7 +178,7 @@ class _RevenueChartCard extends StatelessWidget {
         ? '+0.0%'
         : '${salesGrowth! >= 0 ? '+' : ''}${salesGrowth!.toStringAsFixed(1)}%';
 
-    return AppCard(
+    return _GlassCard(
       height: 360,
       padding: EdgeInsets.all(AppSpacing.lg),
       child: Column(
@@ -321,7 +382,7 @@ class _PaymentMethodsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    return _GlassCard(
       height: 360,
       padding: EdgeInsets.all(AppSpacing.lg),
       child: Column(
@@ -440,7 +501,7 @@ class _AlertsActionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    return _GlassCard(
       height: 360,
       padding: EdgeInsets.all(AppSpacing.lg),
       child: Column(
@@ -876,7 +937,7 @@ class _MetricsGrid extends StatelessWidget {
         }
 
         final cards = [
-          AppMetricCard(
+          _GlassMetricCard(
             title: 'Ventes du jour',
             value: formatGnfCompact(data.todaySales),
             badgeText: _pct(data.salesGrowth),
@@ -885,7 +946,7 @@ class _MetricsGrid extends StatelessWidget {
             iconColor: AppColors.iconPurple,
             iconBackgroundColor: AppColors.iconPurpleBg,
           ),
-          AppMetricCard(
+          _GlassMetricCard(
             title: 'Solde de caisse',
             value: formatGnfCompact(data.cashAvailable),
             badgeText: 'Trésorerie Act...',
@@ -894,7 +955,7 @@ class _MetricsGrid extends StatelessWidget {
             iconColor: AppColors.iconGreen,
             iconBackgroundColor: AppColors.iconGreenBg,
           ),
-          AppMetricCard(
+          _GlassMetricCard(
             title: 'Crédits à recouvrer',
             value: formatGnfCompact(data.owed),
             badgeText: '${data.owedCount} clients',
@@ -902,7 +963,7 @@ class _MetricsGrid extends StatelessWidget {
             iconColor: AppColors.iconOrange,
             iconBackgroundColor: AppColors.iconOrangeBg,
           ),
-          AppMetricCard(
+          _GlassMetricCard(
             title: 'Produits en alerte',
             value: '${data.lowStock.length}',
             badgeText: data.lowStock.isEmpty ? 'Stock OK' : 'À réappro...',
@@ -910,7 +971,7 @@ class _MetricsGrid extends StatelessWidget {
             iconColor: AppColors.iconRed,
             iconBackgroundColor: AppColors.iconRedBg,
           ),
-          AppMetricCard(
+          _GlassMetricCard(
             title: 'Fournisseurs actifs',
             value: formatGnfCompact(data.supplierDebt),
             badgeText: 'Dettes fournisseurs',
@@ -918,7 +979,7 @@ class _MetricsGrid extends StatelessWidget {
             iconColor: AppColors.iconNavy,
             iconBackgroundColor: AppColors.iconNavyBg,
           ),
-          AppMetricCard(
+          _GlassMetricCard(
             title: 'Ticket moyen',
             value: formatGnfCompact(data.avgTicket?.round() ?? 0),
             badgeText: 'Par transaction',
@@ -927,7 +988,7 @@ class _MetricsGrid extends StatelessWidget {
             iconColor: AppColors.iconTeal,
             iconBackgroundColor: AppColors.iconTealBg,
           ),
-          AppMetricCard(
+          _GlassMetricCard(
             title: 'Taux de crédit',
             value: '${data.creditRate?.toStringAsFixed(1) ?? '0.0'}%',
             badgeText: 'Ventes à crédit',
@@ -937,7 +998,7 @@ class _MetricsGrid extends StatelessWidget {
             progressValue: (data.creditRate ?? 0) / 100,
             progressColor: AppColors.iconCyan,
           ),
-          AppMetricCard(
+          _GlassMetricCard(
             title: 'Croissance',
             value: _pct(data.salesGrowth),
             badgeText: 'vs mois dernier',
@@ -1020,7 +1081,7 @@ class _RecentSalesCard extends ConsumerWidget {
     final user = ref.watch(authProvider);
     final isAdmin = user?.role == UserRole.admin;
 
-    return AppCard(
+    return _GlassCard(
       padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1186,3 +1247,181 @@ class _RecentSalesCard extends ConsumerWidget {
     );
   }
 }
+
+
+// ─────────────────────────── Composants Premium (Glassmorphism) ───────────────────────────
+
+class _GlassCard extends StatefulWidget {
+  const _GlassCard({required this.child, this.padding, this.height, this.onTap});
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final double? height;
+  final VoidCallback? onTap;
+
+  @override
+  State<_GlassCard> createState() => _GlassCardState();
+}
+
+class _GlassCardState extends State<_GlassCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: widget.onTap != null ? SystemMouseCursors.click : MouseCursor.defer,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: widget.height,
+          transform: _isHovered ? (Matrix4.identity()..translate(0.0, -4.0)) : Matrix4.identity(),
+          padding: widget.padding ?? const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark 
+                ? const Color(0xFF1E293B).withValues(alpha: _isHovered ? 0.8 : 0.6)
+                : Colors.white.withValues(alpha: _isHovered ? 0.9 : 0.7),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.white.withValues(alpha: 0.6),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark 
+                    ? Colors.black.withValues(alpha: _isHovered ? 0.3 : 0.1)
+                    : const Color(0xFF94A3B8).withValues(alpha: _isHovered ? 0.15 : 0.05),
+                blurRadius: _isHovered ? 24 : 12,
+                offset: _isHovered ? const Offset(0, 12) : const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: widget.child,
+        ),
+      ),
+    ).animate().fadeIn(duration: 400.ms, curve: Curves.easeOut).slideY(begin: 0.05, end: 0);
+  }
+}
+
+class _GlassMetricCard extends StatelessWidget {
+  const _GlassMetricCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    this.badgeText,
+    this.badgeColor,
+    this.iconColor,
+    this.iconBackgroundColor,
+    this.progressValue,
+    this.progressColor,
+  });
+
+  final String title;
+  final String value;
+  final IconData icon;
+  final String? badgeText;
+  final Color? badgeColor;
+  final Color? iconColor;
+  final Color? iconBackgroundColor;
+  final double? progressValue;
+  final Color? progressColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fallbackColor = iconColor ?? Theme.of(context).colorScheme.primary;
+    final fallbackBg = iconBackgroundColor ?? fallbackColor.withValues(alpha: 0.15);
+    
+    return _GlassCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: fallbackBg,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: fallbackColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              fontFamily: 'Inter',
+              letterSpacing: -0.5,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const Spacer(),
+          if (progressValue != null) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progressValue,
+                minHeight: 4,
+                backgroundColor: isDark ? Colors.white24 : Colors.black12,
+                valueColor: AlwaysStoppedAnimation<Color>(progressColor ?? fallbackColor),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (badgeText != null)
+            Row(
+              children: [
+                if (badgeColor != null)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      color: badgeColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                Text(
+                  badgeText!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+

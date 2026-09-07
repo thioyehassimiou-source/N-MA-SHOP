@@ -2,7 +2,7 @@
 
 *Spécifications de conception logicielle et structure du code.*
 
-Ce document définit les fondations logicielles de GESCOMPTA. Il s'appuie sur une
+Ce document définit les fondations logicielles de N'MaShop. Il s'appuie sur une
 Clean Architecture simplifiée pour garantir le découplage des responsabilités, la
 testabilité du code métier et la modularité de l'application Flutter.
 

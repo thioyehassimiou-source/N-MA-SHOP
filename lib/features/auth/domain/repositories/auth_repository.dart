@@ -42,6 +42,7 @@ abstract interface class AuthRepository {
   Future<AppUser> defineAccount({
     required String fullName,
     required String password,
+    required String recoveryCode,
   });
 
   /// Crée un nouvel utilisateur (Admin ou Vendeur).
@@ -49,6 +50,7 @@ abstract interface class AuthRepository {
     required String fullName,
     required String password,
     required UserRole role,
+    String? recoveryCode,
   });
 
   /// Liste tous les utilisateurs (pour le module Équipe).
@@ -77,6 +79,16 @@ abstract interface class AuthRepository {
   Future<AppUser> updateAvatar(String userId, String? avatarPath);
 
   /// Retrouve le compte par son identifiant, `null` s'il a été supprimé.
+  /// Définit le code secret de récupération pour un compte.
+  Future<void> setRecoveryCode(String userId, String recoveryCode);
+
+  /// Réinitialise le mot de passe en utilisant le code secret.
+  Future<AppUser?> recoverPassword({
+    required String fullName,
+    required String recoveryCode,
+    required String newPassword,
+  });
+
   Future<AppUser?> findById(String id);
 
   /// Le compte admin principal s'il existe (legacy fallback).

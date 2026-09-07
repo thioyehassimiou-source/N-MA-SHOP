@@ -3,7 +3,7 @@
 *Architecture Decision Records.*
 
 Ce document consigne les décisions architecturales et techniques structurantes de
-GESCOMPTA. Chaque décision est justifiée par son contexte, ses alternatives
+N'MaShop. Chaque décision est justifiée par son contexte, ses alternatives
 rejetées, ses avantages, ses inconvénients et ses impacts.
 
 ---

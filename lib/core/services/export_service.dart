@@ -65,14 +65,19 @@ class ExportService {
   static Future<bool> backupDatabase() async {
     try {
       final dir = await getApplicationSupportDirectory();
-      final dbFile = File(p.join(dir.path, 'gescompta.sqlite'));
+      var dbFile = File(p.join(dir.path, 'nmashop.sqlite'));
 
       if (!await dbFile.exists()) {
-        return false;
+        final legacyFile = File(p.join(dir.path, 'gescompta.sqlite'));
+        if (await legacyFile.exists()) {
+          dbFile = legacyFile;
+        } else {
+          return false;
+        }
       }
 
       final bytes = await dbFile.readAsBytes();
-      final String fileName = "backup_gescompta_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.sqlite";
+      final String fileName = "backup_nmashop_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.sqlite";
       
       final savedUri = await FilePicker.saveFile(
         dialogTitle: 'Sauvegarder la base de données',
@@ -110,7 +115,7 @@ class ExportService {
       }
 
       final dir = await getApplicationSupportDirectory();
-      final targetFile = File(p.join(dir.path, 'gescompta.sqlite'));
+      final targetFile = File(p.join(dir.path, 'nmashop.sqlite'));
 
       final bytes = await backupFile.readAsBytes();
       await targetFile.writeAsBytes(bytes, flush: true);

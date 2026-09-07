@@ -2,7 +2,7 @@
 
 *Manuel de normes d'écriture de code et de gestion de version.*
 
-Ce document établit les règles strictes de développement sur GESCOMPTA :
+Ce document établit les règles strictes de développement sur N'MaShop :
 homogénéité du code, travail en équipe facilité, revues simplifiées.
 
 ---

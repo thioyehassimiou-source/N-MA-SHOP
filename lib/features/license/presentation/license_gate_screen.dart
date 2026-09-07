@@ -75,7 +75,7 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
 
   @override
   Widget build(BuildContext context) {
-    final license = ref.watch(licenseProvider);
+    final license = ref.watch(licenseInfoProvider);
     final isWide = MediaQuery.sizeOf(context).width > 780;
 
     return Scaffold(

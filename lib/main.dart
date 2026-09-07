@@ -88,7 +88,7 @@ Future<void> main() async {
   runApp(
     UncontrolledProviderScope(
       container: container,
-      child: const GescomptaApp(),
+      child: const NmaShopApp(),
     ),
   );
 }
