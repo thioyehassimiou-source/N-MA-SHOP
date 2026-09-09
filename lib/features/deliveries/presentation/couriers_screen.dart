@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/url_launcher_helper.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_page_header.dart';
 import '../application/deliveries_providers.dart';
@@ -134,12 +134,12 @@ class CouriersScreen extends ConsumerWidget {
                             IconButton(
                               tooltip: 'Appeler',
                               icon: const Icon(Icons.phone_outlined, color: Colors.green),
-                              onPressed: () => launchUrl(Uri.parse('tel:${c.phone}')),
+                              onPressed: () => UrlLauncherHelper.openUrl('tel:${c.phone}'),
                             ),
                             IconButton(
                               tooltip: 'WhatsApp',
                               icon: const Icon(Icons.chat_outlined, color: Colors.teal),
-                              onPressed: () => launchUrl(Uri.parse('https://wa.me/${c.phone}')),
+                              onPressed: () => UrlLauncherHelper.openUrl('https://wa.me/${c.phone}'),
                             ),
                           ],
                           IconButton(

@@ -54,3 +54,5 @@ audio_demo/
 
 .env
 .env.g.dart
+releases/
+*.apk

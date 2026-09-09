@@ -4158,6 +4158,12 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
   late final GeneratedColumn<String> avatarPath = GeneratedColumn<String>(
       'avatar_path', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _recoveryCodeHashMeta =
+      const VerificationMeta('recoveryCodeHash');
+  @override
+  late final GeneratedColumn<String> recoveryCodeHash = GeneratedColumn<String>(
+      'recovery_code_hash', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -4168,7 +4174,8 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         isActive,
         createdAt,
         lastLoginAt,
-        avatarPath
+        avatarPath,
+        recoveryCodeHash
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4227,6 +4234,12 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
           avatarPath.isAcceptableOrUnknown(
               data['avatar_path']!, _avatarPathMeta));
     }
+    if (data.containsKey('recovery_code_hash')) {
+      context.handle(
+          _recoveryCodeHashMeta,
+          recoveryCodeHash.isAcceptableOrUnknown(
+              data['recovery_code_hash']!, _recoveryCodeHashMeta));
+    }
     return context;
   }
 
@@ -4254,6 +4267,8 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
           .read(DriftSqlType.dateTime, data['${effectivePrefix}last_login_at']),
       avatarPath: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}avatar_path']),
+      recoveryCodeHash: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}recovery_code_hash']),
     );
   }
 
@@ -4290,6 +4305,9 @@ class User extends DataClass implements Insertable<User> {
 
   /// Chemin du fichier d'image d'avatar local.
   final String? avatarPath;
+
+  /// Condensat du code secret de récupération (hash PBKDF2).
+  final String? recoveryCodeHash;
   const User(
       {required this.id,
       required this.fullName,
@@ -4299,7 +4317,8 @@ class User extends DataClass implements Insertable<User> {
       required this.isActive,
       required this.createdAt,
       this.lastLoginAt,
-      this.avatarPath});
+      this.avatarPath,
+      this.recoveryCodeHash});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -4317,6 +4336,9 @@ class User extends DataClass implements Insertable<User> {
     }
     if (!nullToAbsent || avatarPath != null) {
       map['avatar_path'] = Variable<String>(avatarPath);
+    }
+    if (!nullToAbsent || recoveryCodeHash != null) {
+      map['recovery_code_hash'] = Variable<String>(recoveryCodeHash);
     }
     return map;
   }
@@ -4336,6 +4358,9 @@ class User extends DataClass implements Insertable<User> {
       avatarPath: avatarPath == null && nullToAbsent
           ? const Value.absent()
           : Value(avatarPath),
+      recoveryCodeHash: recoveryCodeHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recoveryCodeHash),
     );
   }
 
@@ -4353,6 +4378,7 @@ class User extends DataClass implements Insertable<User> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastLoginAt: serializer.fromJson<DateTime?>(json['lastLoginAt']),
       avatarPath: serializer.fromJson<String?>(json['avatarPath']),
+      recoveryCodeHash: serializer.fromJson<String?>(json['recoveryCodeHash']),
     );
   }
   @override
@@ -4368,6 +4394,7 @@ class User extends DataClass implements Insertable<User> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastLoginAt': serializer.toJson<DateTime?>(lastLoginAt),
       'avatarPath': serializer.toJson<String?>(avatarPath),
+      'recoveryCodeHash': serializer.toJson<String?>(recoveryCodeHash),
     };
   }
 
@@ -4380,7 +4407,8 @@ class User extends DataClass implements Insertable<User> {
           bool? isActive,
           DateTime? createdAt,
           Value<DateTime?> lastLoginAt = const Value.absent(),
-          Value<String?> avatarPath = const Value.absent()}) =>
+          Value<String?> avatarPath = const Value.absent(),
+          Value<String?> recoveryCodeHash = const Value.absent()}) =>
       User(
         id: id ?? this.id,
         fullName: fullName ?? this.fullName,
@@ -4391,6 +4419,9 @@ class User extends DataClass implements Insertable<User> {
         createdAt: createdAt ?? this.createdAt,
         lastLoginAt: lastLoginAt.present ? lastLoginAt.value : this.lastLoginAt,
         avatarPath: avatarPath.present ? avatarPath.value : this.avatarPath,
+        recoveryCodeHash: recoveryCodeHash.present
+            ? recoveryCodeHash.value
+            : this.recoveryCodeHash,
       );
   User copyWithCompanion(UsersCompanion data) {
     return User(
@@ -4409,6 +4440,9 @@ class User extends DataClass implements Insertable<User> {
           data.lastLoginAt.present ? data.lastLoginAt.value : this.lastLoginAt,
       avatarPath:
           data.avatarPath.present ? data.avatarPath.value : this.avatarPath,
+      recoveryCodeHash: data.recoveryCodeHash.present
+          ? data.recoveryCodeHash.value
+          : this.recoveryCodeHash,
     );
   }
 
@@ -4423,14 +4457,15 @@ class User extends DataClass implements Insertable<User> {
           ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastLoginAt: $lastLoginAt, ')
-          ..write('avatarPath: $avatarPath')
+          ..write('avatarPath: $avatarPath, ')
+          ..write('recoveryCodeHash: $recoveryCodeHash')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, fullName, passwordHash, passwordSalt,
-      role, isActive, createdAt, lastLoginAt, avatarPath);
+      role, isActive, createdAt, lastLoginAt, avatarPath, recoveryCodeHash);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4443,7 +4478,8 @@ class User extends DataClass implements Insertable<User> {
           other.isActive == this.isActive &&
           other.createdAt == this.createdAt &&
           other.lastLoginAt == this.lastLoginAt &&
-          other.avatarPath == this.avatarPath);
+          other.avatarPath == this.avatarPath &&
+          other.recoveryCodeHash == this.recoveryCodeHash);
 }
 
 class UsersCompanion extends UpdateCompanion<User> {
@@ -4456,6 +4492,7 @@ class UsersCompanion extends UpdateCompanion<User> {
   final Value<DateTime> createdAt;
   final Value<DateTime?> lastLoginAt;
   final Value<String?> avatarPath;
+  final Value<String?> recoveryCodeHash;
   final Value<int> rowid;
   const UsersCompanion({
     this.id = const Value.absent(),
@@ -4467,6 +4504,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.createdAt = const Value.absent(),
     this.lastLoginAt = const Value.absent(),
     this.avatarPath = const Value.absent(),
+    this.recoveryCodeHash = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   UsersCompanion.insert({
@@ -4479,6 +4517,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.createdAt = const Value.absent(),
     this.lastLoginAt = const Value.absent(),
     this.avatarPath = const Value.absent(),
+    this.recoveryCodeHash = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         fullName = Value(fullName),
@@ -4494,6 +4533,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastLoginAt,
     Expression<String>? avatarPath,
+    Expression<String>? recoveryCodeHash,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4506,6 +4546,7 @@ class UsersCompanion extends UpdateCompanion<User> {
       if (createdAt != null) 'created_at': createdAt,
       if (lastLoginAt != null) 'last_login_at': lastLoginAt,
       if (avatarPath != null) 'avatar_path': avatarPath,
+      if (recoveryCodeHash != null) 'recovery_code_hash': recoveryCodeHash,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4520,6 +4561,7 @@ class UsersCompanion extends UpdateCompanion<User> {
       Value<DateTime>? createdAt,
       Value<DateTime?>? lastLoginAt,
       Value<String?>? avatarPath,
+      Value<String?>? recoveryCodeHash,
       Value<int>? rowid}) {
     return UsersCompanion(
       id: id ?? this.id,
@@ -4531,6 +4573,7 @@ class UsersCompanion extends UpdateCompanion<User> {
       createdAt: createdAt ?? this.createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
       avatarPath: avatarPath ?? this.avatarPath,
+      recoveryCodeHash: recoveryCodeHash ?? this.recoveryCodeHash,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4565,6 +4608,9 @@ class UsersCompanion extends UpdateCompanion<User> {
     if (avatarPath.present) {
       map['avatar_path'] = Variable<String>(avatarPath.value);
     }
+    if (recoveryCodeHash.present) {
+      map['recovery_code_hash'] = Variable<String>(recoveryCodeHash.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4583,6 +4629,7 @@ class UsersCompanion extends UpdateCompanion<User> {
           ..write('createdAt: $createdAt, ')
           ..write('lastLoginAt: $lastLoginAt, ')
           ..write('avatarPath: $avatarPath, ')
+          ..write('recoveryCodeHash: $recoveryCodeHash, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -12641,6 +12688,7 @@ typedef $$UsersTableCreateCompanionBuilder = UsersCompanion Function({
   Value<DateTime> createdAt,
   Value<DateTime?> lastLoginAt,
   Value<String?> avatarPath,
+  Value<String?> recoveryCodeHash,
   Value<int> rowid,
 });
 typedef $$UsersTableUpdateCompanionBuilder = UsersCompanion Function({
@@ -12653,6 +12701,7 @@ typedef $$UsersTableUpdateCompanionBuilder = UsersCompanion Function({
   Value<DateTime> createdAt,
   Value<DateTime?> lastLoginAt,
   Value<String?> avatarPath,
+  Value<String?> recoveryCodeHash,
   Value<int> rowid,
 });
 
@@ -12692,6 +12741,10 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
 
   ColumnFilters<String> get avatarPath => $composableBuilder(
       column: $table.avatarPath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get recoveryCodeHash => $composableBuilder(
+      column: $table.recoveryCodeHash,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$UsersTableOrderingComposer
@@ -12731,6 +12784,10 @@ class $$UsersTableOrderingComposer
 
   ColumnOrderings<String> get avatarPath => $composableBuilder(
       column: $table.avatarPath, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get recoveryCodeHash => $composableBuilder(
+      column: $table.recoveryCodeHash,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$UsersTableAnnotationComposer
@@ -12768,6 +12825,9 @@ class $$UsersTableAnnotationComposer
 
   GeneratedColumn<String> get avatarPath => $composableBuilder(
       column: $table.avatarPath, builder: (column) => column);
+
+  GeneratedColumn<String> get recoveryCodeHash => $composableBuilder(
+      column: $table.recoveryCodeHash, builder: (column) => column);
 }
 
 class $$UsersTableTableManager extends RootTableManager<
@@ -12802,6 +12862,7 @@ class $$UsersTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime?> lastLoginAt = const Value.absent(),
             Value<String?> avatarPath = const Value.absent(),
+            Value<String?> recoveryCodeHash = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               UsersCompanion(
@@ -12814,6 +12875,7 @@ class $$UsersTableTableManager extends RootTableManager<
             createdAt: createdAt,
             lastLoginAt: lastLoginAt,
             avatarPath: avatarPath,
+            recoveryCodeHash: recoveryCodeHash,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -12826,6 +12888,7 @@ class $$UsersTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime?> lastLoginAt = const Value.absent(),
             Value<String?> avatarPath = const Value.absent(),
+            Value<String?> recoveryCodeHash = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               UsersCompanion.insert(
@@ -12838,6 +12901,7 @@ class $$UsersTableTableManager extends RootTableManager<
             createdAt: createdAt,
             lastLoginAt: lastLoginAt,
             avatarPath: avatarPath,
+            recoveryCodeHash: recoveryCodeHash,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

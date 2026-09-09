@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/admin_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../clients/client_list_view.dart';
+import '../generator/hardware_key_generator_screen.dart';
 import '../generator/license_list_view.dart';
 import '../settings/change_pin_dialog.dart';
 import '../statistics/statistics_dashboard_view.dart';
@@ -208,6 +209,28 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           ],
         ),
         actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const HardwareKeyGeneratorScreen()),
+                );
+              },
+              icon: const Icon(Icons.vpn_key_rounded, size: 16),
+              label: const Text('Générer'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                elevation: 2,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
           IconButton(
             icon: const Icon(Icons.sync_rounded, size: 22, color: AppTheme.primaryIndigo),
             onPressed: _onRefresh,

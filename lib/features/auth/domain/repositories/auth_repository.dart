@@ -42,7 +42,7 @@ abstract interface class AuthRepository {
   Future<AppUser> defineAccount({
     required String fullName,
     required String password,
-    required String recoveryCode,
+    String? recoveryCode,
   });
 
   /// Crée un nouvel utilisateur (Admin ou Vendeur).

@@ -10,6 +10,7 @@ import '../../core/models/client_model.dart';
 import '../../core/models/license_record.dart';
 import '../../core/providers/admin_providers.dart';
 import '../../core/theme/app_theme.dart';
+import 'hardware_key_generator_screen.dart';
 
 class LicenseListView extends ConsumerStatefulWidget {
   const LicenseListView({super.key});
@@ -21,11 +22,11 @@ class LicenseListView extends ConsumerStatefulWidget {
 class _LicenseListViewState extends ConsumerState<LicenseListView> {
 
   void _showNewLicenseSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => const _NmaLicenseGeneratorSheet(),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const HardwareKeyGeneratorScreen(),
+      ),
     );
   }
 
@@ -77,53 +78,118 @@ Voici votre clé d'activation officielle N'MaShop PC :
 
     return Scaffold(
       backgroundColor: AppTheme.bgSlate,
-      body: licenses.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primaryLightBg,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.vpn_key_rounded, size: 48, color: AppTheme.primaryIndigo),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Aucune clé de licence générée',
-                    style: TextStyle(color: AppTheme.textDark, fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Générez des clés d\'activation PC pour vos boutiques',
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: _showNewLicenseSheet,
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Générer une Licence'),
+      body: Column(
+        children: [
+          // Banner permanent en tête d'onglet
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppTheme.primaryIndigo, AppTheme.primaryViolet],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryIndigo.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: licenses.length,
-              itemBuilder: (context, index) {
-                final lic = licenses[index];
-                return _buildNmaLicenseCard(context, lic);
-              },
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.vpn_key_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Émettre une Clé PC',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Liaison machine et envoi WhatsApp',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _showNewLicenseSheet,
+                    icon: const Icon(Icons.add_rounded, size: 16),
+                    label: const Text('Générer'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppTheme.primaryIndigo,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showNewLicenseSheet,
-        backgroundColor: AppTheme.primaryIndigo,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        icon: const Icon(Icons.key_rounded),
-        label: const Text('Nouvelle Licence'),
+          ),
+          Expanded(
+            child: licenses.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: const BoxDecoration(
+                            color: AppTheme.primaryLightBg,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.vpn_key_rounded, size: 48, color: AppTheme.primaryIndigo),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Aucune clé de licence générée',
+                          style: TextStyle(color: AppTheme.textDark, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Générez des clés d\'activation PC pour vos boutiques',
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: _showNewLicenseSheet,
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: const Text('Générer une Licence'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryIndigo,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+                    itemCount: licenses.length,
+                    itemBuilder: (context, index) {
+                      final lic = licenses[index];
+                      return _buildNmaLicenseCard(context, lic);
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -239,6 +305,33 @@ Voici votre clé d'activation officielle N'MaShop PC :
                 ),
               ),
             ),
+            if (lic.hardwareId.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.emeraldBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.emeraldActive.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.computer_rounded, size: 13, color: AppTheme.emeraldActive),
+                    const SizedBox(width: 6),
+                    Text(
+                      'PC : ${lic.hardwareId}',
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.emeraldActive,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
 
             // Footer Expiry & Actions

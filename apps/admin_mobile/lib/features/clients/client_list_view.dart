@@ -7,6 +7,7 @@ import '../../core/models/client_model.dart';
 import '../../core/models/license_record.dart';
 import '../../core/providers/admin_providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../generator/hardware_key_generator_screen.dart';
 import 'client_form_dialog.dart';
 
 class ClientListView extends ConsumerStatefulWidget {
@@ -419,7 +420,7 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final client = filtered[index];
@@ -429,13 +430,16 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddClientDialog(),
-        backgroundColor: AppTheme.primaryIndigo,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        icon: const Icon(Icons.add_business_rounded),
-        label: const Text('Nouvelle Boutique'),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 70),
+        child: FloatingActionButton.extended(
+          onPressed: () => _showAddClientDialog(),
+          backgroundColor: AppTheme.primaryIndigo,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          icon: const Icon(Icons.add_business_rounded),
+          label: const Text('Nouvelle Boutique'),
+        ),
       ),
     );
   }
@@ -566,6 +570,20 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
                   ),
 
                 const Spacer(),
+
+                // Generate License Action
+                IconButton(
+                  icon: const Icon(Icons.vpn_key_rounded, color: AppTheme.emeraldActive, size: 20),
+                  tooltip: 'Générer une clé pour cette boutique',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HardwareKeyGeneratorScreen(preselectedClient: client),
+                      ),
+                    );
+                  },
+                ),
 
                 // Edit Action
                 IconButton(

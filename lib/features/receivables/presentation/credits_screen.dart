@@ -1,11 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/format/formatters.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/url_launcher_helper.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_chip.dart';
@@ -257,22 +255,10 @@ class _CreditTile extends StatelessWidget {
     );
 
     final urlStr = 'https://wa.me/$phone?text=$message';
-
-    try {
-      // Appel direct OS — contourne le canal Pigeon de url_launcher sur Desktop
-      if (Platform.isLinux) {
-        await Process.run('xdg-open', [urlStr]);
-      } else if (Platform.isWindows) {
-        await Process.run('cmd', ['/c', 'start', '', urlStr], runInShell: true);
-      } else if (Platform.isMacOS) {
-        await Process.run('open', [urlStr]);
-      } else {
-        // Android / iOS : url_launcher standard
-        await launchUrl(Uri.parse(urlStr), mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
+    final success = await UrlLauncherHelper.openUrl(urlStr);
+    if (!success) {
       messenger.showSnackBar(
-        SnackBar(content: Text("Impossible d'ouvrir WhatsApp : $e")),
+        const SnackBar(content: Text("Impossible d'ouvrir WhatsApp.")),
       );
     }
   }

@@ -10,8 +10,7 @@ import '../../../core/database/tables/users.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/app_metric_card.dart';
+
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/app_button.dart';
@@ -1252,11 +1251,10 @@ class _RecentSalesCard extends ConsumerWidget {
 // ─────────────────────────── Composants Premium (Glassmorphism) ───────────────────────────
 
 class _GlassCard extends StatefulWidget {
-  const _GlassCard({required this.child, this.padding, this.height, this.onTap});
+  const _GlassCard({required this.child, this.padding, this.height});
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final double? height;
-  final VoidCallback? onTap;
 
   @override
   State<_GlassCard> createState() => _GlassCardState();
@@ -1272,14 +1270,11 @@ class _GlassCardState extends State<_GlassCard> {
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      cursor: widget.onTap != null ? SystemMouseCursors.click : MouseCursor.defer,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          height: widget.height,
-          transform: _isHovered ? (Matrix4.identity()..translate(0.0, -4.0)) : Matrix4.identity(),
-          padding: widget.padding ?? const EdgeInsets.all(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: widget.height,
+        transform: _isHovered ? Matrix4.translationValues(0.0, -4.0, 0.0) : Matrix4.identity(),
+        padding: widget.padding ?? const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: isDark 
                 ? const Color(0xFF1E293B).withValues(alpha: _isHovered ? 0.8 : 0.6)
@@ -1303,8 +1298,7 @@ class _GlassCardState extends State<_GlassCard> {
           ),
           child: widget.child,
         ),
-      ),
-    ).animate().fadeIn(duration: 400.ms, curve: Curves.easeOut).slideY(begin: 0.05, end: 0);
+      ).animate().fadeIn(duration: 400.ms, curve: Curves.easeOut).slideY(begin: 0.05, end: 0);
   }
 }
 

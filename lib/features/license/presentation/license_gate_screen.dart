@@ -3,9 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_contacts.dart';
 import '../../../core/license/license_model.dart';
 import '../../../core/license/license_provider.dart';
+import '../../../core/services/hardware_id_service.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/url_launcher_helper.dart';
 
 /// Écran affiché quand la période d'essai ou la licence est expirée.
 /// Bloque totalement l'accès à toutes les fonctionnalités.
@@ -23,6 +26,7 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
   bool _isActivating = false;
   String? _errorMsg;
   bool _obscure = true;
+  String? _hardwareId;
 
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
@@ -35,6 +39,9 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
       duration: const Duration(milliseconds: 600),
     )..forward();
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+    HardwareIdService.getHardwareId().then((id) {
+      if (mounted) setState(() => _hardwareId = id);
+    });
   }
 
   @override
@@ -129,9 +136,9 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Titre
+                  // Titre chaleureux et clair
                   const Text(
-                    'Activer votre licence',
+                    'Période d\'essai terminée',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
@@ -141,14 +148,54 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Entrez votre clé pour continuer à utiliser N\'MaShop.',
+                    'Pour continuer à utiliser N\'MaShop et enregistrer vos ventes, activez votre licence.',
                     style: TextStyle(fontSize: 14, color: Color(0xFF64748B), height: 1.5),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
-                  // Champ clé
+                  // Option 1 : Bouton principal WhatsApp (En 1 clic, la référence est transmise automatiquement)
+                  SizedBox(
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final refCode = _hardwareId ?? '';
+                        final url = AppContacts.getWhatsAppOrderUrl(referenceCode: refCode);
+                        await UrlLauncherHelper.openUrl(url);
+                      },
+                      icon: const Icon(Icons.chat_rounded, size: 20, color: Colors.white),
+                      label: const Text(
+                        'Acheter ma licence sur WhatsApp',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Séparateur doux
+                  Row(
+                    children: [
+                      const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'ou entrez votre code reçu',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                        ),
+                      ),
+                      const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Champ code d'activation simple
                   const Text(
-                    'CLÉ DE LICENCE',
+                    'CODE D\'ACTIVATION',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -167,14 +214,13 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
                       color: Color(0xFF0F172A),
                     ),
                     inputFormatters: [
-                      // Formater automatiquement en majuscules
                       TextInputFormatter.withFunction((old, newVal) {
                         return newVal.copyWith(text: newVal.text.toUpperCase());
                       }),
                     ],
                     decoration: InputDecoration(
-                      hintText: 'NMAS-XXXXXXXX-XXXXXXXX',
-                      hintStyle: const TextStyle(color: Color(0xFFCBD5E1), letterSpacing: 0),
+                      hintText: 'Collez le code reçu...',
+                      hintStyle: const TextStyle(color: Color(0xFFCBD5E1), letterSpacing: 0, fontSize: 14),
                       filled: true,
                       fillColor: const Color(0xFFF8FAFC),
                       suffixIcon: IconButton(
@@ -203,10 +249,10 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Entrez votre clé';
+                      if (v == null || v.trim().isEmpty) return 'Entrez votre code d\'activation';
                       final parts = v.trim().split('-');
-                      if (parts.length != 3 || parts[0] != 'NMAS') {
-                        return 'Format invalide (NMAS-XXXXXXXX-XXXXXXXX)';
+                      if (parts.isEmpty || parts[0] != 'NMAS' || (parts.length != 3 && parts.length != 4)) {
+                        return 'Code invalide. Vérifiez le code reçu.';
                       }
                       return null;
                     },
@@ -237,11 +283,11 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
                     ),
                   ],
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // Bouton Activer
+                  // Bouton Déverrouiller
                   SizedBox(
-                    height: 50,
+                    height: 48,
                     child: ElevatedButton(
                       onPressed: _isActivating ? null : _activate,
                       style: ElevatedButton.styleFrom(
@@ -259,42 +305,71 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                             )
                           : const Text(
-                              'Activer la licence',
+                              'Déverrouiller ma boutique',
                               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                             ),
                     ),
                   ),
                   const SizedBox(height: 24),
 
-                  // Contact
+                  // Assistance commerciale & Réf discrète
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    child: const Column(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Obtenir une licence',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF0F172A),
+                        const Row(
+                          children: [
+                            Icon(Icons.headset_mic_rounded, size: 16, color: Color(0xFF6366F1)),
+                            SizedBox(width: 8),
+                            Text(
+                              'Besoin d\'aide ? Service Commercial :',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        const Row(
+                          children: [
+                            Text(
+                              '📞 ${AppContacts.phone}',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              '✉️ ${AppContacts.email}',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
+                        if (_hardwareId != null) ...[
+                          const SizedBox(height: 8),
+                          Divider(color: Colors.grey.shade200, height: 1),
+                          const SizedBox(height: 6),
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: _hardwareId!));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Réf boutique copiée'), duration: Duration(seconds: 1)),
+                              );
+                            },
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Réf : $_hardwareId',
+                                  style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontFamily: 'monospace'),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.copy_rounded, size: 10, color: Color(0xFF94A3B8)),
+                              ],
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 6),
-                        _ContactLine(
-                          icon: Icons.phone_rounded,
-                          label: '+224 621 XX XX XX',
-                        ),
-                        SizedBox(height: 4),
-                        _ContactLine(
-                          icon: Icons.email_rounded,
-                          label: 'contact@nmashop.app',
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -433,28 +508,6 @@ class _BrandPanel extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-// ── Widget contact ───────────────────────────────────────────────────────────
-
-class _ContactLine extends StatelessWidget {
-  const _ContactLine({required this.icon, required this.label});
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 15, color: const Color(0xFF6366F1)),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
-        ),
-      ],
     );
   }
 }

@@ -239,6 +239,7 @@ class AdminLicensesScreen extends ConsumerWidget {
     DateTime expiresAt = DateTime.now().add(const Duration(days: 365));
     String? generatedKey;
     final notesCtrl = TextEditingController();
+    final hwIdCtrl = TextEditingController();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
@@ -251,7 +252,19 @@ class AdminLicensesScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
-          if (selectedType == 'lifetime') {
+          final rawHwId = hwIdCtrl.text.trim();
+          final effectiveExpiry = selectedType == 'lifetime'
+              ? DateTime(9999, 12, 31)
+              : selectedType == 'monthly'
+                  ? validFrom.add(const Duration(days: 30))
+                  : expiresAt;
+
+          if (rawHwId.isNotEmpty) {
+            generatedKey = LicenseCore.generateHardwareBoundKey(
+              hardwareId: rawHwId,
+              expiryDate: effectiveExpiry,
+            );
+          } else if (selectedType == 'lifetime') {
             generatedKey = LicenseCore.generateLifetimeKey();
           } else if (selectedType == 'monthly') {
             generatedKey = LicenseCore.generateMonthlyKey(validFrom);
@@ -336,6 +349,50 @@ class AdminLicensesScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.md),
 
+                    // Réf boutique / ID client (Reçu sur WhatsApp)
+                    TextFormField(
+                      controller: hwIdCtrl,
+                      style: TextStyle(color: textPrimary, fontFamily: 'monospace', fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: 'Réf boutique (Reçue sur WhatsApp - Optionnel)',
+                        hintText: 'Collez la référence reçue sur WhatsApp ou laissez vide',
+                        helperText: rawHwId.isNotEmpty
+                            ? '🔒 Clé verrouillée pour le PC de cette boutique'
+                            : '🌐 Clé libre (activable sur n\'importe quel ordinateur)',
+                        helperStyle: TextStyle(
+                          color: rawHwId.isNotEmpty ? const Color(0xFF10B981) : textSecondary,
+                          fontSize: 11,
+                          fontWeight: rawHwId.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                        prefixIcon: Icon(
+                          rawHwId.isNotEmpty ? Icons.lock_rounded : Icons.public_rounded,
+                          color: rawHwId.isNotEmpty ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                          size: 20,
+                        ),
+                        suffixIcon: rawHwId.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 16),
+                                onPressed: () {
+                                  hwIdCtrl.clear();
+                                  setDialogState(() {});
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: fieldBg,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: fieldBorder),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: fieldBorder),
+                        ),
+                      ),
+                      onChanged: (_) => setDialogState(() {}),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
                     // Date de début
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -387,7 +444,17 @@ class AdminLicensesScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Clé générée :', style: TextStyle(color: textSecondary, fontSize: 12)),
+                          Row(
+                            children: [
+                              Text('Clé générée :', style: TextStyle(color: textSecondary, fontSize: 12)),
+                              const Spacer(),
+                              if (rawHwId.isNotEmpty)
+                                const Text(
+                                  'Verrouillée PC 🔒',
+                                  style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                            ],
+                          ),
                           const SizedBox(height: 4),
                           SelectableText(
                             generatedKey ?? '',
@@ -476,6 +543,10 @@ class AdminLicensesScreen extends ConsumerWidget {
     DateTime newExpiry = (oldExpiry ?? DateTime.now()).add(const Duration(days: 365));
     String? newKey;
 
+    final existingParts = lic.licenseKey.trim().toUpperCase().split('-');
+    final isHwBound = existingParts.length == 4 && existingParts[0] == 'NMAS';
+    final hwHash = isHwBound ? existingParts[1] : null;
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? const Color(0xFF1E293B) : Colors.white;
     final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
@@ -487,7 +558,11 @@ class AdminLicensesScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
-          newKey = LicenseCore.generateAnnualKey(newExpiry);
+          if (hwHash != null) {
+            newKey = LicenseCore.generateBoundKeyFromHash(hwHash: hwHash, expiryDate: newExpiry);
+          } else {
+            newKey = LicenseCore.generateAnnualKey(newExpiry);
+          }
 
           return AlertDialog(
             backgroundColor: surfaceColor,
@@ -498,6 +573,25 @@ class AdminLicensesScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (isHwBound)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_rounded, size: 14, color: Color(0xFF10B981)),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Licence liée au PC (Hash: $hwHash)',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (oldExpiry != null)
                     _InfoRow(label: 'Ancienne expiration', value: oldExpiry.toLocal().toString().split(' ')[0]),
                   const SizedBox(height: AppSpacing.md),

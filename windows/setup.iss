@@ -4,8 +4,10 @@
 
 #define MyAppName "N'MaShop"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "CJP Hub"
-#define MyAppURL "https://nmashop.com"
+#define MyAppPublisher "Hassimiou Thioye Développeur"
+#define MyAppURL "https://github.com/thioyehassimiou-source/N-MA-SHOP"
+#define MyAppContact "thioyehassimiou@gmail.com"
+#define MyAppPhone "+224 624 19 30 69"
 #define MyAppExeName "nmashop.exe"
 #define BuildDir "..\build\windows\x64\runner\Release"
 #define MyAppId "{E14D254C-A23B-49E8-97F2-ABCD12345678}"

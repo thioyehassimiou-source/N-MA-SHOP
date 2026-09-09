@@ -227,7 +227,13 @@ class AdminSyncService {
   }
 
   /// Met à jour à distance l'état d'activation de la licence (is_active) sur Neon PostgreSQL
-  Future<void> updateLicenseRemoteStatus(String licenseKey, bool isActive) async {
+  Future<void> updateLicenseRemoteStatus(
+    String licenseKey,
+    bool isActive, {
+    String? hardwareId,
+    String? storeName,
+    DateTime? expiresAt,
+  }) async {
     try {
       final config = NeonConfig.parseConnectionString();
 
@@ -265,16 +271,42 @@ class AdminSyncService {
 
       await connection.execute('ALTER TABLE nmashop_activations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;');
 
-      await connection.execute(
-        Sql.named('UPDATE nmashop_activations SET is_active = @isActive WHERE license_key = @key OR hardware_id = @key'),
+      final cleanKey = licenseKey.trim().toUpperCase();
+      final cleanHwId = (hardwareId ?? '').trim().toUpperCase();
+
+      final updateResult = await connection.execute(
+        Sql.named('UPDATE nmashop_activations SET is_active = @isActive WHERE license_key = @key OR (hardware_id = @hwId AND @hwId != \'\')'),
         parameters: {
           'isActive': isActive,
-          'key': licenseKey.trim().toUpperCase(),
+          'key': cleanKey,
+          'hwId': cleanHwId,
         },
       );
 
+      // Si la clé n'existait pas encore sur Neon (création préalable par l'admin), on insère la pré-activation
+      if (updateResult.affectedRows == 0 && isActive) {
+        await connection.execute(
+          Sql.named('''
+            INSERT INTO nmashop_activations (
+              business_name, owner_name, phone, address, hardware_id, license_key, activated_at, expires_at, is_synced, is_active
+            ) VALUES (
+              @businessName, @ownerName, '', '', @hwId, @key, @activatedAt, @expiresAt, true, @isActive
+            )
+          '''),
+          parameters: {
+            'businessName': storeName ?? 'Boutique Client',
+            'ownerName': 'Client',
+            'hwId': cleanHwId,
+            'key': cleanKey,
+            'activatedAt': DateTime.now(),
+            'expiresAt': expiresAt,
+            'isActive': isActive,
+          },
+        );
+      }
+
       await connection.close();
-      debugPrint('Statut de licence $licenseKey mis à jour sur Neon PostgreSQL: is_active = $isActive');
+      debugPrint('Statut de licence $cleanKey synchronisé sur Neon PostgreSQL: is_active = $isActive');
     } catch (e) {
       debugPrint('Erreur lors de la mise à jour du statut distant de la licence: $e');
     }

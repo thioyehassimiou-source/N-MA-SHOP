@@ -53,7 +53,7 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
     // Vérification bloquante : anti-tamper + device binding + période d'essai
     final info = await _svc.checkAsync(prefs);
 
-    // Démarre la surveillance de révocation à distance (30s entre chaque vérif)
+    // Démarre la surveillance de révocation à distance (toutes les 30 minutes)
     _startRemoteRevocationCheck();
 
     return info;
@@ -63,8 +63,10 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
 
   void _startRemoteRevocationCheck() {
     _remoteCheckTimer?.cancel();
-    // 30 secondes : équilibre entre réactivité et charge réseau/Neon
-    _remoteCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    // Synchro immédiate en arrière-plan sans bloquer
+    Future.microtask(() => _syncWithRemote());
+    // 30 minutes : périodicité optimale évitant la saturation de connexions PostgreSQL Neon
+    _remoteCheckTimer = Timer.periodic(const Duration(minutes: 30), (_) {
       _syncWithRemote();
     });
   }

@@ -35,7 +35,10 @@ class Users extends Table {
   DateTimeColumn get lastLoginAt => dateTime().nullable()();
 
   /// Chemin du fichier d'image d'avatar local.
-  /// Condensat du code secret de récupération (hash PBKDF2).\n  TextColumn get recoveryCodeHash => text().nullable()();
+  TextColumn get avatarPath => text().nullable()();
+
+  /// Condensat du code secret de récupération (hash PBKDF2).
+  TextColumn get recoveryCodeHash => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

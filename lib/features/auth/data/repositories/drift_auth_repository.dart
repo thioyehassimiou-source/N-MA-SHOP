@@ -17,11 +17,13 @@ class DriftAuthRepository implements AuthRepository {
   Future<AppUser> defineAccount({
     required String fullName,
     required String password,
-    required String recoveryCode,
+    String? recoveryCode,
   }) async {
     final salt = PasswordHasher.generateSalt();
     final passwordHash = await PasswordHasher.hashAsync(password, salt);
-    final recoveryHash = await PasswordHasher.hashAsync(recoveryCode, salt);
+    final recoveryHash = recoveryCode != null && recoveryCode.isNotEmpty
+        ? await PasswordHasher.hashAsync(recoveryCode, salt)
+        : null;
     return _db.transaction(() async {
       await _db.delete(_db.users).go();
       final row = await _db
@@ -46,8 +48,12 @@ class DriftAuthRepository implements AuthRepository {
     required String fullName,
     required String password,
     required UserRole role,
+    String? recoveryCode,
   }) async {
     final salt = PasswordHasher.generateSalt();
+    final recoveryHash = recoveryCode != null && recoveryCode.isNotEmpty
+        ? await PasswordHasher.hashAsync(recoveryCode, salt)
+        : null;
     final row = await _db
         .into(_db.users)
         .insertReturning(
@@ -56,6 +62,7 @@ class DriftAuthRepository implements AuthRepository {
             fullName: fullName.trim(),
             passwordHash: await PasswordHasher.hashAsync(password, salt),
             passwordSalt: salt,
+            recoveryCodeHash: Value(recoveryHash),
             role: Value(role),
             isActive: const Value(true),
           ),

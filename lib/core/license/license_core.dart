@@ -50,8 +50,11 @@ class LicenseCore {
 
     if (expiryStr.length != 8) return null;
 
-    // Vérification du Device Binding si la clé contient un Hardware ID Hash
-    if (keyHwIdHash != null && deviceHwId != null) {
+    // Vérification stricte du Device Binding si la clé contient un Hardware ID Hash
+    if (keyHwIdHash != null) {
+      if (deviceHwId == null) {
+        return null; // Clé liée à un appareil spécifique : ID matériel requis
+      }
       final expectedHwHash = generateHwHash(deviceHwId);
       if (keyHwIdHash != expectedHwHash) {
         return null; // La licence appartient à une autre machine !
@@ -115,6 +118,19 @@ class LicenseCore {
     required DateTime expiryDate,
   }) {
     final hwHash = generateHwHash(hardwareId);
+    final dateStr = '${expiryDate.year.toString().padLeft(4, '0')}'
+        '${expiryDate.month.toString().padLeft(2, '0')}'
+        '${expiryDate.day.toString().padLeft(2, '0')}';
+    final payload = 'NMAS-$hwHash-$dateStr';
+    final hmac = generateHmac(payload);
+    return 'NMAS-$hwHash-$dateStr-$hmac';
+  }
+
+  /// Génère une clé liée directement à partir d'un hachage matériel (ex: renouvellement).
+  static String generateBoundKeyFromHash({
+    required String hwHash,
+    required DateTime expiryDate,
+  }) {
     final dateStr = '${expiryDate.year.toString().padLeft(4, '0')}'
         '${expiryDate.month.toString().padLeft(2, '0')}'
         '${expiryDate.day.toString().padLeft(2, '0')}';

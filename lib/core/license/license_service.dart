@@ -58,7 +58,7 @@ class LicenseService {
         );
       }
 
-      final info = LicenseCore.validateKey(stored, deviceHwId: hwId) ?? LicenseCore.validateKey(stored);
+      final info = LicenseCore.validateKey(stored, deviceHwId: hwId);
       if (info != null) return info;
 
       // Clé invalide ou falsifiée → suppression
@@ -151,7 +151,7 @@ class LicenseService {
     SharedPreferences prefs,
   ) async {
     final hwId = await HardwareIdService.getHardwareId();
-    final info = LicenseCore.validateKey(rawKey, deviceHwId: hwId) ?? LicenseCore.validateKey(rawKey);
+    final info = LicenseCore.validateKey(rawKey, deviceHwId: hwId);
 
     if (info == null) {
       return (result: LicenseActivationResult.invalidKey, info: null);

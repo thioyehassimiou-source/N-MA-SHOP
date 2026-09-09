@@ -173,6 +173,11 @@ class AppDatabase extends _$AppDatabase {
             await m.alterTable(TableMigration(orderItems));
             await m.alterTable(TableMigration(deliveries));
           }
+          if (from < 19) {
+            if (!await _hasColumn('users', 'recovery_code_hash')) {
+              await m.addColumn(users, users.recoveryCodeHash);
+            }
+          }
         },
         beforeOpen: (details) async {
           // Intégrité référentielle et optimisations de performance SQLite (pour PC modestes / HDD).

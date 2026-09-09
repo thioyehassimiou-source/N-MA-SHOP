@@ -81,10 +81,12 @@ class AuthNotifier extends Notifier<AppUser?> {
   Future<AppUser> defineAccount({
     required String fullName,
     required String password,
+    String? recoveryCode,
   }) async {
     final user = await _repo.defineAccount(
       fullName: fullName,
       password: password,
+      recoveryCode: recoveryCode,
     );
     await ref
         .read(sharedPreferencesProvider)
@@ -105,20 +107,20 @@ class AuthNotifier extends Notifier<AppUser?> {
         .setString(_kSessionUserId, user.id);
     state = user;
     return user;
+  }
 
-    /// Récupère le mot de passe en utilisant le code secret.
-    Future<AppUser?> recoverPassword({
-      required String fullName,
-      required String recoveryCode,
-      required String newPassword,
-    }) async {
-      // Pas besoin d'être connecté pour récupérer le mot de passe.
-      return _repo.recoverPassword(
-        fullName: fullName,
-        recoveryCode: recoveryCode,
-        newPassword: newPassword,
-      );
-    }
+  /// Récupère le mot de passe en utilisant le code secret.
+  Future<AppUser?> recoverPassword({
+    required String fullName,
+    required String recoveryCode,
+    required String newPassword,
+  }) async {
+    // Pas besoin d'être connecté pour récupérer le mot de passe.
+    return _repo.recoverPassword(
+      fullName: fullName,
+      recoveryCode: recoveryCode,
+      newPassword: newPassword,
+    );
   }
 
   /// Change le mot de passe. Lève [AuthException] si l'actuel est faux.

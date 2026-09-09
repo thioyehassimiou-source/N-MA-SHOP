@@ -63,34 +63,34 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/onboarding';
       }
 
-      // Si le paramétrage est déjà complété et qu'on essaie d'accéder à /first-run ou /onboarding
-      if (location == '/first-run') {
-        return settings.isSetupCompleted ? '/' : '/onboarding';
-      }
-
-      // ── 2. Aucune boutique configurée ─────────────────────────────────────
-      final shopExists =
-          ref.read(accountExistsProvider) ||
-          settings.isSetupCompleted;
-      final isSignedIn = ref.read(authProvider) != null;
-
-      if (!shopExists) {
-        const allowedRoutes = {'/onboarding', '/setup', '/connexion'};
-        return allowedRoutes.contains(location) ? null : '/onboarding';
-      }
-
-      // ── 3. Boutique existante mais verrouillée ────────────────────────────
-      if (!isSignedIn) {
-        const allowedUnauth = {'/connexion', '/onboarding', '/setup'};
-        return allowedUnauth.contains(location) ? null : '/connexion';
-      }
-
-      // ── 4. Déverrouillé : écran de connexion et first-run inutiles ──────
-      if (location == '/connexion' || location == '/first-run') {
+      // Si le paramétrage est déjà complété et qu'on tente d'accéder à l'onboarding / setup
+      if (location == '/first-run' || location == '/onboarding' || location == '/setup') {
         return '/';
       }
 
-      // ── 5. Bloquer l'accès à l'équipe pour les vendeurs ───────────────────
+      // ── 1. Contrôle Strict de la Licence (Verrouillage Commercial) ─────────
+      final license = ref.read(licenseInfoProvider);
+      if (license.isExpired) {
+        return location == '/licence' ? null : '/licence';
+      }
+
+      // Si la licence est valide et qu'on essaie d'accéder à l'écran de blocage
+      final isSignedIn = ref.read(authProvider) != null;
+      if (location == '/licence') {
+        return isSignedIn ? '/' : '/connexion';
+      }
+
+      // ── 2. Authentification : Boutique existante mais verrouillée ──────────
+      if (!isSignedIn) {
+        return location == '/connexion' ? null : '/connexion';
+      }
+
+      // ── 3. Déverrouillé : écran de connexion inutile ───────────────────────
+      if (location == '/connexion') {
+        return '/';
+      }
+
+      // ── 4. Bloquer l'accès à l'équipe pour les vendeurs ───────────────────
       final user = ref.read(authProvider);
       if (user != null && user.role.name == 'cashier' && location == '/equipe') {
         return '/';

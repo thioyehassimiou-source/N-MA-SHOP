@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import '../../../core/utils/app_image_picker.dart';
 import '../../../core/widgets/app_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/license/license_model.dart';
 import '../../../core/license/license_provider.dart';
+import '../../../core/services/hardware_id_service.dart';
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -30,10 +31,10 @@ import '../../auth/domain/repositories/auth_repository.dart';
 import '../../auth/domain/app_user.dart';
 import '../../auth/presentation/widgets/auth_layout.dart' show kMinPasswordLength, PasswordStrengthIndicator;
 import '../../../core/database/tables/users.dart';
-import '../../onboarding/presentation/setup_screen.dart';
+import '../../onboarding/presentation/setup_screen.dart' show kDomaines, kDeviseCode;
 import '../../../core/providers/database_provider.dart';
 import '../../../core/services/export_service.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../../core/utils/url_launcher_helper.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key, this.initialTabIndex = 0});
@@ -473,35 +474,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               Divider(color: context.colors.outlineVariant),
-              _buildSecurityItem(
-                Icons.auto_stories_outlined,
-                'Revoir la présentation (Onboarding)',
-                trailing: AppButton.secondary(
-                  label: 'Revoir',
-                  onPressed: () => context.go('/onboarding'),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              _buildSecurityItem(
-                Icons.tune_rounded,
-                'Assistant de configuration boutique',
-                trailing: AppButton.secondary(
-                  label: 'Lancer',
-                  onPressed: () => context.go('/setup'),
-                ),
-              ),
-              if (kDebugMode) ...[
-                const SizedBox(height: AppSpacing.xs),
-                _buildSecurityItem(
-                  Icons.restart_alt_rounded,
-                  'Réinitialiser comme 1ère installation (Mode Debug)',
-                  trailing: AppButton.secondary(
-                    label: 'Réinitialiser',
-                    onPressed: _resetFullInstallation,
-                  ),
-                ),
-              ],
-              Divider(color: context.colors.outlineVariant),
               const SizedBox(height: AppSpacing.xs),
               _buildSecurityItem(
                 Icons.history,
@@ -520,15 +492,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onPressed: () => _changePassword(),
                 ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              _buildSecurityItem(
-                Icons.delete_sweep_rounded,
-                'Vider les données de la boutique (Produits, Ventes & Stock)',
-                trailing: AppButton.secondary(
-                  label: 'Purger les données',
-                  onPressed: _clearAppData,
-                ),
-              ),
               Divider(color: context.colors.outlineVariant),
               const SizedBox(height: AppSpacing.xs),
               _buildSecurityItem(
@@ -544,73 +507,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ],
     );
-  }
-
-  /// Purge l'ensemble des données de vente et de stock de la boutique.
-  Future<void> _clearAppData() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AppFormDialog(
-        title: 'Vider les données de la boutique ?',
-        subtitle:
-            'Cette action va effacer les données de vente et de stock : tous les produits, ventes, créances, dépenses et historiques de caisse seront supprimés.\n\nVotre compte administrateur et votre licence restent conservés.',
-        icon: Icons.delete_sweep_rounded,
-        gradientColors: const [Color(0xFFDC2626), AppColors.error],
-        width: 480,
-        primaryLabel: 'Purger les données',
-        primaryIcon: Icons.delete_forever_rounded,
-        onCancel: () => Navigator.pop(dialogContext, false),
-        onPrimary: () => Navigator.pop(dialogContext, true),
-        body: const SizedBox.shrink(),
-      ),
-    );
-    if (!(confirmed ?? false)) return;
-
-    final db = ref.read(databaseProvider);
-    await db.purgeAllData();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('🧹 Données métier purifiées avec succès.'),
-          backgroundColor: context.colors.primary,
-        ),
-      );
-    }
-  }
-
-  /// Remet l'application à zéro comme au tout premier démarrage après l'installation sur Windows.
-  Future<void> _resetFullInstallation() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AppFormDialog(
-        title: 'Réinitialiser comme au premier démarrage ?',
-        subtitle:
-            'Cette action réinitialisera l\'application N\'MaShop comme si elle venait d\'être installée sur un nouvel ordinateur Windows :\n\n'
-            '• La licence sera réinitialisée en mode essai (15 jours)\n'
-            '• Toutes les données métier et comptes seront purgés\n'
-            '• L\'assistant de configuration initiale sera relancé.',
-        icon: Icons.restart_alt_rounded,
-        gradientColors: const [Color(0xFFEA580C), Color(0xFFC2410C)],
-        width: 500,
-        primaryLabel: 'Réinitialiser & Démarrer Assistant',
-        primaryIcon: Icons.rocket_launch_rounded,
-        onCancel: () => Navigator.pop(dialogContext, false),
-        onPrimary: () => Navigator.pop(dialogContext, true),
-        body: const SizedBox.shrink(),
-      ),
-    );
-    if (!(confirmed ?? false)) return;
-
-    final db = ref.read(databaseProvider);
-    await db.purgeAllData();
-    await ref.read(authProvider.notifier).lock();
-    ref.read(accountExistsProvider.notifier).set(false);
-    await ref.read(appSettingsProvider.notifier).resetSetup();
-
-    if (mounted) {
-      context.go('/onboarding');
-    }
   }
 
   /// Vérifie si une nouvelle mise à jour de N'MaShop est disponible sans bloquer l'application.
@@ -643,10 +539,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           onPrimary: () async {
             Navigator.pop(dialogContext);
             if (info.hasUpdate) {
-              final uri = Uri.parse(info.downloadUrl);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
+              await UrlLauncherHelper.openUrl(info.downloadUrl);
             }
           },
           body: const SizedBox.shrink(),
@@ -1169,55 +1062,48 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         ),
                       ],
-                    ],
-                  ),
-                ),
-                Row(
-                  children: [
-                    if (kDebugMode && !isTrial) ...[
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text('Effacer la licence ?'),
-                              content: const Text('Cela réinitialisera l\'application PC en mode essai gratuit de 7 jours.'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, false),
-                                  child: const Text('Annuler'),
+                      FutureBuilder<String>(
+                        future: HardwareIdService.getHardwareId(),
+                        builder: (context, snapshot) {
+                          final hwId = snapshot.data;
+                          if (hwId == null) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Réf. boutique : $hwId',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontFamily: 'monospace',
+                                    color: Color(0xFF94A3B8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('Réinitialiser', style: TextStyle(color: Colors.white)),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap: () {
+                                    Clipboard.setData(ClipboardData(text: hwId));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Référence boutique copiée !'),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  child: const Icon(Icons.copy_rounded, size: 12, color: Color(0xFF94A3B8)),
                                 ),
                               ],
                             ),
                           );
-                          if (confirm == true) {
-                            await ref.read(licenseProvider.notifier).resetLicense();
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Licence effacée — Mode essai réinitialisé !')),
-                              );
-                            }
-                          }
                         },
-                        icon: const Icon(Icons.refresh_rounded, size: 16),
-                        label: const Text('Effacer'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.redAccent,
-                          side: const BorderSide(color: Colors.redAccent),
-                        ),
                       ),
-                      const SizedBox(width: AppSpacing.sm),
                     ],
-                    AppButton(
-                      label: isTrial ? 'Activer' : 'Changer la clé',
-                      onPressed: () => _showActivationDialog(context),
-                    ),
-                  ],
+                  ),
+                ),
+                AppButton(
+                  label: isTrial ? 'Activer' : 'Changer la clé',
+                  onPressed: () => _showActivationDialog(context),
                 ),
               ],
             ),
@@ -1248,10 +1134,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      'Collez ici la clé de licence que vous avez reçue :',
+                      'Collez ici le code d\'activation que vous avez reçu :',
                       style: TextStyle(fontSize: 14),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     TextFormField(
                       controller: keyCtrl,
                       style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold),
@@ -1259,7 +1145,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         hintText: 'NMAS-...',
                         border: OutlineInputBorder(),
                       ),
-                      validator: (v) => v!.trim().isEmpty ? 'Requis' : null,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Entrez votre clé';
+                        final parts = v.trim().split('-');
+                        if (parts.isEmpty || parts[0] != 'NMAS' || (parts.length != 3 && parts.length != 4)) {
+                          return 'Format invalide (ex: NMAS-XXXXXXXX-XXXXXXXX)';
+                        }
+                        return null;
+                      },
                     ),
                     if (errorMsg != null) ...[
                       const SizedBox(height: 12),
