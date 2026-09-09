@@ -228,14 +228,17 @@ class LicenseAdminSyncService {
 
       final Result result;
       if (key.isNotEmpty) {
-        // 1. Poste sous licence : vérifier si CETTE clé spécifique a été révoquée
+        // 1. Poste sous licence : vérifier si cette clé ou cette machine a été révoquée
         result = await connection.execute(
           Sql.named('''
             SELECT is_active, license_key, expires_at FROM nmashop_activations 
-            WHERE license_key = @key
-            ORDER BY id DESC LIMIT 1
+            WHERE license_key = @key OR (hardware_id = @hwId AND @hwId != '')
+            ORDER BY is_active ASC, id DESC LIMIT 1
           '''),
-          parameters: {'key': key},
+          parameters: {
+            'key': key,
+            'hwId': cleanHwId,
+          },
         );
       } else if (cleanHwId.isNotEmpty) {
         // 2. Poste en essai : vérifier si l'admin a affecté une licence active à cette machine

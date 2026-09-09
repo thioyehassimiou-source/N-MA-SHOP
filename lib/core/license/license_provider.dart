@@ -6,6 +6,7 @@ import '../providers/app_settings_provider.dart';
 import '../services/hardware_id_service.dart';
 import 'license_admin_sync_service.dart';
 import 'license_model.dart';
+import 'license_realtime_service.dart';
 import 'license_service.dart';
 
 // ── Provider principal ──────────────────────────────────────────────────────
@@ -41,22 +42,61 @@ final licenseInfoProvider = Provider<LicenseInfo>((ref) {
 class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
   final _svc = LicenseService();
   Timer? _remoteCheckTimer;
+  LicenseRealtimeService? _realtimeService;
 
   /// Premier build : attend la vérification complète (anti-tamper + device binding)
   /// avant que l'UI ne soit rendue. L'écran de démarrage reste affiché jusqu'ici.
   @override
   Future<LicenseInfo> build() async {
-    ref.onDispose(() => _remoteCheckTimer?.cancel());
+    ref.onDispose(() {
+      _remoteCheckTimer?.cancel();
+      _realtimeService?.dispose();
+    });
 
     final prefs = ref.read(sharedPreferencesProvider);
 
     // Vérification bloquante : anti-tamper + device binding + période d'essai
     final info = await _svc.checkAsync(prefs);
 
-    // Démarre la surveillance de révocation à distance (toutes les 30 minutes)
+    // Démarre l'écoute instantanée P2P (LAN UDP) et Cloud Realtime (Neon LISTEN)
+    _startRealtimeListener();
+
+    // Démarre la surveillance de sécurité en arrière-plan
     _startRemoteRevocationCheck();
 
     return info;
+  }
+
+  // ── Écoute instantanée P2P et Cloud Realtime (< 50ms) ────────────────────────
+
+  void _startRealtimeListener() {
+    _realtimeService?.dispose();
+    _realtimeService = LicenseRealtimeService(
+      getHardwareId: () => HardwareIdService.getHardwareId(),
+      getStoredKey: () async {
+        final prefs = ref.read(sharedPreferencesProvider);
+        return prefs.getString('lic_key');
+      },
+      onRevoked: () async {
+        final prefs = ref.read(sharedPreferencesProvider);
+        await prefs.setBool('lic_was_revoked_by_admin', true);
+        await _svc.revokeLicense(prefs);
+        await ref.read(authProvider.notifier).lock();
+        state = const AsyncData(LicenseInfo(
+          status: LicenseStatus.expired,
+          type: LicenseType.trial,
+          expiryDate: null,
+          daysLeft: 0,
+        ));
+      },
+      onActivated: (key) async {
+        final prefs = ref.read(sharedPreferencesProvider);
+        final res = await _svc.activateAsync(key, prefs);
+        if (res.result == LicenseActivationResult.success && res.info != null) {
+          state = AsyncData(res.info!);
+        }
+      },
+    )..start();
   }
 
   // ── Surveillance distante Neon PostgreSQL ──────────────────────────────────
@@ -65,8 +105,8 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
     _remoteCheckTimer?.cancel();
     // Synchro immédiate en arrière-plan sans bloquer
     Future.microtask(() => _syncWithRemote());
-    // Vérification périodique toutes les 5 minutes
-    _remoteCheckTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+    // Vérification toutes les 10 secondes pour une réaction quasi-instantanée aux révocations/activations distantes
+    _remoteCheckTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       _syncWithRemote();
     });
     ref.onDispose(() {
@@ -83,6 +123,19 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
 
     try {
       final prefs = ref.read(sharedPreferencesProvider);
+
+      // ── 1. Contrôle local strict (100% Hors-Ligne) ─────────────────────────
+      // Si la période d'essai ou la licence arrive à échéance pendant l'utilisation,
+      // l'application déconnecte et verrouille immédiatement la session sans Internet.
+      final localCheck = await _svc.checkAsync(prefs);
+      if (localCheck.isExpired) {
+        if (!current.isExpired) {
+          await ref.read(authProvider.notifier).lock();
+          state = AsyncData(localCheck);
+        }
+        return;
+      }
+
       final storedKey = prefs.getString('lic_key');
       final hwId = await HardwareIdService.getHardwareId();
 
@@ -97,9 +150,11 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
         // L'administrateur a révoqué cette licence depuis Mobile Admin.
         // IMPORTANT : Ne révoquer QUE si le poste utilise actuellement une licence active (avec clé enregistrée).
         // Un utilisateur en période d'essai ne doit JAMAIS être révoqué par la vérification distante.
-        if (current.isLicensed && storedKey != null && storedKey.isNotEmpty) {
+        if (current.isLicensed || (storedKey != null && storedKey.isNotEmpty)) {
           await prefs.setBool('lic_was_revoked_by_admin', true);
           await _svc.revokeLicense(prefs);
+          // Déconnecter immédiatement l'utilisateur actif de sa session
+          await ref.read(authProvider.notifier).lock();
           state = const AsyncData(LicenseInfo(
             status: LicenseStatus.expired,
             type: LicenseType.trial,

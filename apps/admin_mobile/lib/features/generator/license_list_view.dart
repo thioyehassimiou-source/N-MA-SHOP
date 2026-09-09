@@ -395,7 +395,12 @@ Voici votre clé d'activation officielle N'MaShop PC :
                     );
                     if (confirm == true) {
                       ref.read(licensesProvider.notifier).removeLicense(lic.id);
-                      ref.read(adminSyncServiceProvider).updateLicenseRemoteStatus(lic.licenseKey, false);
+                      ref.read(adminSyncServiceProvider).updateLicenseRemoteStatus(
+                        lic.licenseKey,
+                        false,
+                        hardwareId: lic.hardwareId,
+                        storeName: lic.clientName,
+                      );
                     }
                   },
                   tooltip: 'Supprimer',
@@ -526,7 +531,13 @@ Voici votre clé d'activation officielle N'MaShop PC :
     );
 
     await ref.read(licensesProvider.notifier).addLicense(record);
-    ref.read(adminSyncServiceProvider).updateLicenseRemoteStatus(_generatedKey!, true);
+    ref.read(adminSyncServiceProvider).updateLicenseRemoteStatus(
+      _generatedKey!,
+      true,
+      hardwareId: targetClient?.hardwareId ?? '',
+      storeName: clientName,
+      expiresAt: expiresAt,
+    );
     if (mounted) Navigator.pop(context);
   }
 

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:postgres/postgres.dart';
 import 'package:uuid/uuid.dart';
@@ -284,7 +285,17 @@ class AdminSyncService {
       final cleanHwId = (hardwareId ?? '').trim().toUpperCase();
 
       final int affectedRows;
-      if (cleanKey.isNotEmpty) {
+      if (cleanKey.isNotEmpty && cleanHwId.isNotEmpty) {
+        final res = await connection.execute(
+          Sql.named('UPDATE nmashop_activations SET is_active = @isActive WHERE license_key = @key OR hardware_id = @hwId'),
+          parameters: {
+            'isActive': isActive,
+            'key': cleanKey,
+            'hwId': cleanHwId,
+          },
+        );
+        affectedRows = res.affectedRows;
+      } else if (cleanKey.isNotEmpty) {
         final res = await connection.execute(
           Sql.named('UPDATE nmashop_activations SET is_active = @isActive WHERE license_key = @key'),
           parameters: {
@@ -306,8 +317,8 @@ class AdminSyncService {
         affectedRows = 0;
       }
 
-      // Si la clé n'existait pas encore sur Neon (création préalable par l'admin), on insère la pré-activation
-      if (affectedRows == 0 && isActive) {
+      // Si la ligne n'existait pas encore sur Neon, on l'insère immédiatement avec son statut (actif OU inactif)
+      if (affectedRows == 0 && (cleanKey.isNotEmpty || cleanHwId.isNotEmpty)) {
         await connection.execute(
           Sql.named('''
             INSERT INTO nmashop_activations (
@@ -328,11 +339,51 @@ class AdminSyncService {
         );
       }
 
+      // Diffusion instantanée Cloud (PostgreSQL NOTIFY stream < 50ms)
+      try {
+        final payload = jsonEncode({
+          'key': cleanKey,
+          'hwId': cleanHwId,
+          'isActive': isActive,
+        });
+        await connection.execute(
+          Sql.named("SELECT pg_notify('nmashop_license_events', @payload);"),
+          parameters: {'payload': payload},
+        );
+      } catch (e) {
+        debugPrint('Erreur pg_notify: $e');
+      }
+
       await connection.close();
+
+      // Diffusion instantanée P2P Réseau Local (LAN UDP Broadcast 0ms)
+      _broadcastP2PStatus(cleanKey, cleanHwId, isActive);
+
       debugPrint('Statut de licence $cleanKey synchronisé sur Neon PostgreSQL: is_active = $isActive');
     } catch (e) {
       debugPrint('Erreur lors de la mise à jour du statut distant de la licence: $e');
     }
+  }
+
+  /// Diffuse le statut en P2P local (LAN UDP Broadcast) sur le port 48500.
+  void _broadcastP2PStatus(String cleanKey, String cleanHwId, bool isActive) {
+    Future.microtask(() async {
+      try {
+        final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+        socket.broadcastEnabled = true;
+        final data = utf8.encode(jsonEncode({
+          'event': 'license_status',
+          'key': cleanKey,
+          'hwId': cleanHwId,
+          'isActive': isActive,
+        }));
+        socket.send(data, InternetAddress('255.255.255.255'), 48500);
+        socket.close();
+        debugPrint('[P2P] Broadcast UDP local envoyé sur 255.255.255.255:48500');
+      } catch (e) {
+        debugPrint('[P2P] Erreur broadcast UDP local: $e');
+      }
+    });
   }
 
   /// Efface toutes les activations enregistrées sur Neon PostgreSQL lors d'une réinitialisation complète
