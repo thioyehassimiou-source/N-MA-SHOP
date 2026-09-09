@@ -132,8 +132,11 @@ class LicenseRealtimeService {
       debugPrint('[$source] Événement licence reçu instantanément : isActive = $isActive');
       if (!isActive) {
         onRevoked();
-      } else if (isActive && eventKey.isNotEmpty) {
-        onActivated(eventKey);
+      } else if (isActive) {
+        final keyToUse = eventKey.isNotEmpty ? eventKey : myKey;
+        if (keyToUse.isNotEmpty) {
+          onActivated(keyToUse);
+        }
       }
     }
   }

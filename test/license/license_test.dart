@@ -335,5 +335,46 @@ void main() {
       expect(info.isExpired, isTrue);
       expect(info.daysLeft, 0);
     });
+
+    test('Repeatable multi-cycle: Activate -> Revoke -> Reactivate -> Revoke preserves key and status', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      final validKey = LicenseCore.generateAnnualKey(DateTime.now().add(const Duration(days: 180)));
+      
+      // Cycle 1: Activation initiale
+      final act1 = await service.activateAsync(validKey, prefs);
+      expect(act1.result, LicenseActivationResult.success);
+      final check1 = await service.checkAsync(prefs);
+      expect(check1.isLicensed, isTrue);
+      expect(check1.isExpired, isFalse);
+      expect(prefs.getString('lic_key'), validKey);
+
+      // Cycle 1: Révocation par l'admin
+      await service.revokeLicense(prefs);
+      final check2 = await service.checkAsync(prefs);
+      expect(check2.isExpired, isTrue);
+      expect(check2.isLicensed, isFalse);
+      // La clé est TOUJOURS conservée en mémoire
+      expect(prefs.getString('lic_key'), validKey);
+
+      // Cycle 2: Réactivation par l'admin
+      await service.unrevokeLicense(prefs);
+      final check3 = await service.checkAsync(prefs);
+      expect(check3.isLicensed, isTrue);
+      expect(check3.isExpired, isFalse);
+
+      // Cycle 2: Deuxième révocation par l'admin
+      await service.revokeLicense(prefs);
+      final check4 = await service.checkAsync(prefs);
+      expect(check4.isExpired, isTrue);
+      expect(prefs.getString('lic_key'), validKey);
+
+      // Cycle 3: Troisième réactivation par l'admin
+      await service.unrevokeLicense(prefs);
+      final check5 = await service.checkAsync(prefs);
+      expect(check5.isLicensed, isTrue);
+      expect(check5.isExpired, isFalse);
+    });
   });
 }

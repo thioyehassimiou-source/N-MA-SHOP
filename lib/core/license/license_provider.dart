@@ -79,7 +79,6 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       },
       onRevoked: () async {
         final prefs = ref.read(sharedPreferencesProvider);
-        await prefs.setBool('lic_was_revoked_by_admin', true);
         await _svc.revokeLicense(prefs);
         await ref.read(authProvider.notifier).lock();
         state = const AsyncData(LicenseInfo(
@@ -91,9 +90,12 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       },
       onActivated: (key) async {
         final prefs = ref.read(sharedPreferencesProvider);
+        await _svc.unrevokeLicense(prefs);
         final res = await _svc.activateAsync(key, prefs);
         if (res.result == LicenseActivationResult.success && res.info != null) {
           state = AsyncData(res.info!);
+        } else {
+          state = AsyncData(await _svc.checkAsync(prefs));
         }
       },
     )..start();
@@ -128,12 +130,9 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       // Si la période d'essai ou la licence arrive à échéance pendant l'utilisation,
       // l'application déconnecte et verrouille immédiatement la session sans Internet.
       final localCheck = await _svc.checkAsync(prefs);
-      if (localCheck.isExpired) {
-        if (!current.isExpired) {
-          await ref.read(authProvider.notifier).lock();
-          state = AsyncData(localCheck);
-        }
-        return;
+      if (localCheck.isExpired && !current.isExpired) {
+        await ref.read(authProvider.notifier).lock();
+        state = AsyncData(localCheck);
       }
 
       final storedKey = prefs.getString('lic_key');
@@ -147,14 +146,12 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       if (remoteInfo == null) return; // Hors-ligne → état local conservé
 
       if (!remoteInfo.isActive) {
-        // L'administrateur a révoqué cette licence depuis Mobile Admin.
-        // IMPORTANT : Ne révoquer QUE si le poste utilise actuellement une licence active (avec clé enregistrée).
-        // Un utilisateur en période d'essai ne doit JAMAIS être révoqué par la vérification distante.
+        // L'administrateur a révoqué ou désactivé cette licence depuis Mobile Admin.
         if (current.isLicensed || (storedKey != null && storedKey.isNotEmpty)) {
-          await prefs.setBool('lic_was_revoked_by_admin', true);
           await _svc.revokeLicense(prefs);
-          // Déconnecter immédiatement l'utilisateur actif de sa session
-          await ref.read(authProvider.notifier).lock();
+          if (!current.isExpired) {
+            await ref.read(authProvider.notifier).lock();
+          }
           state = const AsyncData(LicenseInfo(
             status: LicenseStatus.expired,
             type: LicenseType.trial,
@@ -162,12 +159,18 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
             daysLeft: 0,
           ));
         }
-      } else if (remoteInfo.isActive && remoteInfo.licenseKey.isNotEmpty) {
-        // L'administrateur a activé ou mis à jour la licence depuis Mobile Admin
-        if (!current.isLicensed || storedKey != remoteInfo.licenseKey) {
-          final res = await _svc.activateAsync(remoteInfo.licenseKey, prefs);
-          if (res.result == LicenseActivationResult.success && res.info != null) {
-            state = AsyncData(res.info!);
+      } else if (remoteInfo.isActive) {
+        // L'administrateur a activé ou réactivé la licence depuis Mobile Admin
+        final keyToUse = remoteInfo.licenseKey.isNotEmpty ? remoteInfo.licenseKey : storedKey;
+        if (keyToUse != null && keyToUse.isNotEmpty) {
+          if (!current.isLicensed || current.isExpired || storedKey != keyToUse) {
+            await _svc.unrevokeLicense(prefs);
+            final res = await _svc.activateAsync(keyToUse, prefs);
+            if (res.result == LicenseActivationResult.success && res.info != null) {
+              state = AsyncData(res.info!);
+            } else {
+              state = AsyncData(await _svc.checkAsync(prefs));
+            }
           }
         }
       }

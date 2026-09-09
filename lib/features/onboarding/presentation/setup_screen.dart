@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/license/license_admin_sync_service.dart';
+import '../../../core/license/license_core.dart';
 import '../../../core/license/license_model.dart';
 import '../../../core/license/license_provider.dart';
 import '../../../core/providers/app_settings_provider.dart';
@@ -371,7 +372,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       case 0:
         return 'Renseignez l\'identité commerciale qui figurera sur vos reçus.';
       case 1:
-        return 'Choisissez d\'activer une licence officielle ou de commencer avec l\'essai 15 jours.';
+        return 'Choisissez d\'activer une licence officielle ou de commencer avec l\'essai ${LicenseCore.trialDays} jours.';
       case 2:
         return 'Définissez le mot de passe maître protégeant l\'accès administrateur.';
       default:
@@ -664,7 +665,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
           _buildOptionCard(
             selected: _useTrialMode,
             icon: Icons.card_giftcard_rounded,
-            title: 'Période d\'essai gratuite (15 jours)',
+            title: 'Période d\'essai gratuite (${LicenseCore.trialDays} jours)',
             subtitle: 'Découvrez toutes les fonctionnalités de N\'MaShop gratuitement sans clé de licence.',
             onTap: () {
               setState(() {

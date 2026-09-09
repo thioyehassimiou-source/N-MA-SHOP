@@ -48,6 +48,15 @@ class LicenseService {
     // ── 3. Clé activée présente ? ────────────────────────────────────────────
     final stored = prefs.getString(_prefKey);
     if (stored != null) {
+      final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
+      if (wasRevokedByAdmin) {
+        return const LicenseInfo(
+          status: LicenseStatus.expired,
+          type: LicenseType.trial,
+          daysLeft: 0,
+        );
+      }
+
       final boundHwId = prefs.getString(_prefBoundHwId);
       if (boundHwId != null && boundHwId != hwId) {
         // La licence / fichier de config a été copié sur une autre machine !
@@ -193,6 +202,7 @@ class LicenseService {
       return (result: LicenseActivationResult.expiredKey, info: info);
     }
     prefs.setString(_prefKey, rawKey.trim().toUpperCase());
+    prefs.remove('lic_was_revoked_by_admin');
     return (result: LicenseActivationResult.success, info: info);
   }
 
@@ -212,17 +222,21 @@ class LicenseService {
   }
 
   /// Révoque la licence à la demande de l'administrateur (désactivation à distance depuis Mobile Admin).
-  /// Supprime la clé active et verrouille l'application en état expiré (pas de nouvel essai gratuit).
+  /// Verrouille l'application en état expiré mais CONSERVE la clé pour permettre la réactivation distante ultérieure.
   Future<void> revokeLicense(SharedPreferences prefs) async {
     final hwId = await HardwareIdService.getHardwareId();
     final storedKey = prefs.getString(_prefKey);
 
-    await prefs.remove(_prefKey);
-    await prefs.remove(_prefBoundHwId);
+    await prefs.setBool('lic_was_revoked_by_admin', true);
     // Forcer la date de premier lancement dans le passé pour empêcher un nouvel essai gratuit
     await prefs.setString(_prefFirstLaunch, DateTime(2020, 1, 1).toIso8601String());
 
     // Notifier Neon
     LicenseAdminSyncService.notifyDeactivation(hwId, licenseKey: storedKey);
+  }
+
+  /// Réactive la licence locale suite à la réactivation par l'administrateur.
+  Future<void> unrevokeLicense(SharedPreferences prefs) async {
+    await prefs.remove('lic_was_revoked_by_admin');
   }
 }
