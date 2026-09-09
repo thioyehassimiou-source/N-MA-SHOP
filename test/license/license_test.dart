@@ -311,5 +311,29 @@ void main() {
       expect(prefs.getString('lic_first_launch'), isNull);
       expect(prefs.getString('lic_last_known_time'), isNull);
     });
+
+    test('Corrupted 2020 first_launch automatically heals to active trial when not revoked by admin', () async {
+      SharedPreferences.setMockInitialValues({
+        'lic_first_launch': DateTime(2020, 1, 1).toIso8601String(),
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      final info = await service.checkAsync(prefs);
+      expect(info.isTrial, isTrue);
+      expect(info.daysLeft, 7);
+      expect(info.isExpired, isFalse);
+    });
+
+    test('First launch in 2020 remains expired if legitimately revoked by admin', () async {
+      SharedPreferences.setMockInitialValues({
+        'lic_first_launch': DateTime(2020, 1, 1).toIso8601String(),
+        'lic_was_revoked_by_admin': true,
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      final info = await service.checkAsync(prefs);
+      expect(info.isExpired, isTrue);
+      expect(info.daysLeft, 0);
+    });
   });
 }

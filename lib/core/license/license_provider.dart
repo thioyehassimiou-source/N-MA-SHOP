@@ -65,8 +65,8 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
     _remoteCheckTimer?.cancel();
     // Synchro immédiate en arrière-plan sans bloquer
     Future.microtask(() => _syncWithRemote());
-    // Vérification toutes les 15 secondes pour une réaction quasi-instantanée aux révocations/activations distantes
-    _remoteCheckTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    // Vérification périodique toutes les 5 minutes
+    _remoteCheckTimer = Timer.periodic(const Duration(minutes: 5), (_) {
       _syncWithRemote();
     });
     ref.onDispose(() {
@@ -94,8 +94,11 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       if (remoteInfo == null) return; // Hors-ligne → état local conservé
 
       if (!remoteInfo.isActive) {
-        // L'administrateur a révoqué cette licence depuis Mobile Admin
-        if (current.status != LicenseStatus.expired) {
+        // L'administrateur a révoqué cette licence depuis Mobile Admin.
+        // IMPORTANT : Ne révoquer QUE si le poste utilise actuellement une licence active (avec clé enregistrée).
+        // Un utilisateur en période d'essai ne doit JAMAIS être révoqué par la vérification distante.
+        if (current.isLicensed && storedKey != null && storedKey.isNotEmpty) {
+          await prefs.setBool('lic_was_revoked_by_admin', true);
           await _svc.revokeLicense(prefs);
           state = const AsyncData(LicenseInfo(
             status: LicenseStatus.expired,

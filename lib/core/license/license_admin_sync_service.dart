@@ -164,17 +164,30 @@ class LicenseAdminSyncService {
 
       await connection.execute('ALTER TABLE nmashop_activations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;');
 
-      await connection.execute(
-        Sql.named('''
-          UPDATE nmashop_activations 
-          SET is_active = false 
-          WHERE hardware_id = @hwId OR (license_key = @key AND @key != '');
-        '''),
-        parameters: {
-          'hwId': hardwareId,
-          'key': licenseKey ?? '',
-        },
-      );
+      final cleanKey = (licenseKey ?? '').trim().toUpperCase();
+      final cleanHwId = hardwareId.trim().toUpperCase();
+
+      if (cleanKey.isNotEmpty) {
+        // Désactiver uniquement cette clé précise
+        await connection.execute(
+          Sql.named('''
+            UPDATE nmashop_activations 
+            SET is_active = false 
+            WHERE license_key = @key;
+          '''),
+          parameters: {'key': cleanKey},
+        );
+      } else if (cleanHwId.isNotEmpty) {
+        // Fallback si aucune clé n'est fournie
+        await connection.execute(
+          Sql.named('''
+            UPDATE nmashop_activations 
+            SET is_active = false 
+            WHERE hardware_id = @hwId;
+          '''),
+          parameters: {'hwId': cleanHwId},
+        );
+      }
 
       await connection.close();
       debugPrint('Désactivation transmise avec succès à Neon PostgreSQL.');
@@ -183,8 +196,9 @@ class LicenseAdminSyncService {
     }
   }
 
-  /// Interroge Neon PostgreSQL pour obtenir la toute dernière licence associée
-  /// au `hardwareId` (ou à la `licenseKey`).
+  /// Interroge Neon PostgreSQL pour obtenir la licence associée au `hardwareId` ou à la `licenseKey`.
+  /// - Si `licenseKey` est fournie : vérifie si cette licence précise a été révoquée par l'Admin.
+  /// - Si `licenseKey` est absente (mode essai) : vérifie si une licence active a été attribuée à cet appareil.
   static Future<RemoteLicenseStatus?> checkRemoteLicenseInfo(
     String hardwareId, {
     String? licenseKey,
@@ -210,17 +224,33 @@ class LicenseAdminSyncService {
       await connection.execute('ALTER TABLE nmashop_activations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;');
 
       final key = (licenseKey ?? '').trim().toUpperCase();
-      final result = await connection.execute(
-        Sql.named('''
-          SELECT is_active, license_key, expires_at FROM nmashop_activations 
-          WHERE (license_key = @key AND @key != '') OR (hardware_id = @hwId AND @hwId != '')
-          ORDER BY is_active ASC, id DESC LIMIT 1
-        '''),
-        parameters: {
-          'key': key,
-          'hwId': hardwareId,
-        },
-      );
+      final cleanHwId = hardwareId.trim().toUpperCase();
+
+      final Result result;
+      if (key.isNotEmpty) {
+        // 1. Poste sous licence : vérifier si CETTE clé spécifique a été révoquée
+        result = await connection.execute(
+          Sql.named('''
+            SELECT is_active, license_key, expires_at FROM nmashop_activations 
+            WHERE license_key = @key
+            ORDER BY id DESC LIMIT 1
+          '''),
+          parameters: {'key': key},
+        );
+      } else if (cleanHwId.isNotEmpty) {
+        // 2. Poste en essai : vérifier si l'admin a affecté une licence active à cette machine
+        result = await connection.execute(
+          Sql.named('''
+            SELECT is_active, license_key, expires_at FROM nmashop_activations 
+            WHERE hardware_id = @hwId AND is_active = true AND license_key != ''
+            ORDER BY id DESC LIMIT 1
+          '''),
+          parameters: {'hwId': cleanHwId},
+        );
+      } else {
+        await connection.close();
+        return null;
+      }
 
       await connection.close();
 

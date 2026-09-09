@@ -66,10 +66,19 @@ class LicenseService {
       await prefs.remove(_prefBoundHwId);
     }
 
-    // ── 4. Période d'Essai (15 Jours) ─────────────────────────────────────────
+    // ── 4. Période d'Essai (7 Jours) ─────────────────────────────────────────
     final firstLaunchStr = prefs.getString(_prefFirstLaunch);
+    DateTime? firstLaunch = firstLaunchStr != null ? DateTime.tryParse(firstLaunchStr) : null;
 
-    if (firstLaunchStr == null) {
+    // Récupération automatique si la date d'essai a été corrompue à 2020 par le bug précédent
+    // sans qu'aucune clé n'ait réellement été révoquée par l'administrateur
+    final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
+    if (firstLaunch != null && firstLaunch.year <= 2020 && !wasRevokedByAdmin) {
+      firstLaunch = null;
+      await prefs.remove(_prefFirstLaunch);
+    }
+
+    if (firstLaunch == null) {
       // Premier lancement
       await prefs.setString(_prefFirstLaunch, now.toIso8601String());
       final expiry = LicenseCore.computeTrialExpiry(now);
@@ -81,7 +90,6 @@ class LicenseService {
       );
     }
 
-    final firstLaunch = DateTime.tryParse(firstLaunchStr) ?? now;
     final expiry = LicenseCore.computeTrialExpiry(firstLaunch);
 
     if (now.isBefore(expiry)) {
@@ -113,8 +121,14 @@ class LicenseService {
 
     final firstLaunchStr = prefs.getString(_prefFirstLaunch);
     final now = DateTime.now();
+    DateTime? firstLaunch = firstLaunchStr != null ? DateTime.tryParse(firstLaunchStr) : null;
 
-    if (firstLaunchStr == null) {
+    final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
+    if (firstLaunch != null && firstLaunch.year <= 2020 && !wasRevokedByAdmin) {
+      firstLaunch = null;
+    }
+
+    if (firstLaunch == null) {
       return LicenseInfo(
         status: LicenseStatus.trial,
         type: LicenseType.trial,
@@ -123,7 +137,6 @@ class LicenseService {
       );
     }
 
-    final firstLaunch = DateTime.tryParse(firstLaunchStr) ?? now;
     final expiry = LicenseCore.computeTrialExpiry(firstLaunch);
 
     if (now.isBefore(expiry)) {
@@ -163,6 +176,7 @@ class LicenseService {
 
     await prefs.setString(_prefKey, rawKey.trim().toUpperCase());
     await prefs.setString(_prefBoundHwId, hwId);
+    await prefs.remove('lic_was_revoked_by_admin');
     return (result: LicenseActivationResult.success, info: info);
   }
 
@@ -191,6 +205,7 @@ class LicenseService {
     await prefs.remove(_prefBoundHwId);
     await prefs.remove(_prefFirstLaunch);
     await prefs.remove(_prefLastKnownTime);
+    await prefs.remove('lic_was_revoked_by_admin');
 
     // Notifier la désactivation à Neon PostgreSQL
     LicenseAdminSyncService.notifyDeactivation(hwId, licenseKey: storedKey);

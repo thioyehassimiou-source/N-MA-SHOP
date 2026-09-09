@@ -109,12 +109,11 @@ class AdminSyncService {
 
         final licenses = _repository.getLicenses();
         for (var lic in licenses) {
-          final hwMatch = hwId.isNotEmpty && lic.hardwareId.isNotEmpty && lic.hardwareId == hwId;
-          final keyMatch = key.isNotEmpty && lic.licenseKey.isNotEmpty && lic.licenseKey.trim().toUpperCase() == key;
-          if (hwMatch || keyMatch) {
-            if (lic.isActive) {
-              await _repository.saveLicense(lic.copyWith(isActive: false));
-            }
+          final isMatch = key.isNotEmpty
+              ? (lic.licenseKey.trim().toUpperCase() == key)
+              : (hwId.isNotEmpty && lic.hardwareId.trim() == hwId);
+          if (isMatch && lic.isActive) {
+            await _repository.saveLicense(lic.copyWith(isActive: false));
           }
         }
       }
@@ -284,17 +283,31 @@ class AdminSyncService {
       final cleanKey = licenseKey.trim().toUpperCase();
       final cleanHwId = (hardwareId ?? '').trim().toUpperCase();
 
-      final updateResult = await connection.execute(
-        Sql.named('UPDATE nmashop_activations SET is_active = @isActive WHERE license_key = @key OR (hardware_id = @hwId AND @hwId != \'\')'),
-        parameters: {
-          'isActive': isActive,
-          'key': cleanKey,
-          'hwId': cleanHwId,
-        },
-      );
+      final int affectedRows;
+      if (cleanKey.isNotEmpty) {
+        final res = await connection.execute(
+          Sql.named('UPDATE nmashop_activations SET is_active = @isActive WHERE license_key = @key'),
+          parameters: {
+            'isActive': isActive,
+            'key': cleanKey,
+          },
+        );
+        affectedRows = res.affectedRows;
+      } else if (cleanHwId.isNotEmpty) {
+        final res = await connection.execute(
+          Sql.named('UPDATE nmashop_activations SET is_active = @isActive WHERE hardware_id = @hwId'),
+          parameters: {
+            'isActive': isActive,
+            'hwId': cleanHwId,
+          },
+        );
+        affectedRows = res.affectedRows;
+      } else {
+        affectedRows = 0;
+      }
 
       // Si la clé n'existait pas encore sur Neon (création préalable par l'admin), on insère la pré-activation
-      if (updateResult.affectedRows == 0 && isActive) {
+      if (affectedRows == 0 && isActive) {
         await connection.execute(
           Sql.named('''
             INSERT INTO nmashop_activations (
