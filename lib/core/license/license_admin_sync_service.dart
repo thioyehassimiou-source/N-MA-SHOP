@@ -76,28 +76,64 @@ class LicenseAdminSyncService {
         );
       ''');
 
-      // Insertion sécurisée de l'activation
-      await connection.execute(
+      await connection.execute('ALTER TABLE nmashop_activations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;');
+
+      final cleanKey = payload.licenseKey.trim().toUpperCase();
+      final cleanHwId = payload.hardwareId.trim().toUpperCase();
+
+      // 1. Tenter d'abord de mettre à jour la pré-activation existante pour cette clé
+      final updateResult = await connection.execute(
         Sql.named('''
-          INSERT INTO nmashop_activations (
-            business_name, owner_name, phone, address, 
-            hardware_id, license_key, activated_at, expires_at
-          ) VALUES (
-            @businessName, @ownerName, @phone, @address, 
-            @hardwareId, @licenseKey, @activatedAt, @expiresAt
-          );
+          UPDATE nmashop_activations 
+          SET business_name = @businessName,
+              owner_name = @ownerName,
+              phone = @phone,
+              address = @address,
+              hardware_id = @hardwareId,
+              activated_at = @activatedAt,
+              expires_at = @expiresAt,
+              is_synced = false,
+              is_active = true
+          WHERE license_key = @licenseKey;
         '''),
         parameters: {
           'businessName': payload.businessName,
           'ownerName': payload.ownerName,
           'phone': payload.phone,
           'address': payload.address,
-          'hardwareId': payload.hardwareId,
-          'licenseKey': payload.licenseKey,
+          'hardwareId': cleanHwId,
+          'licenseKey': cleanKey,
           'activatedAt': payload.activatedAt,
           'expiresAt': payload.expiryDate,
         },
       );
+
+      // 2. Si la licence n'avait pas été pré-enregistrée sur Neon, insérer une nouvelle ligne
+      if (updateResult.affectedRows == 0) {
+        await connection.execute(
+          Sql.named('''
+            INSERT INTO nmashop_activations (
+              business_name, owner_name, phone, address, 
+              hardware_id, license_key, activated_at, expires_at,
+              is_synced, is_active
+            ) VALUES (
+              @businessName, @ownerName, @phone, @address, 
+              @hardwareId, @licenseKey, @activatedAt, @expiresAt,
+              false, true
+            );
+          '''),
+          parameters: {
+            'businessName': payload.businessName,
+            'ownerName': payload.ownerName,
+            'phone': payload.phone,
+            'address': payload.address,
+            'hardwareId': cleanHwId,
+            'licenseKey': cleanKey,
+            'activatedAt': payload.activatedAt,
+            'expiresAt': payload.expiryDate,
+          },
+        );
+      }
 
       await connection.close();
       debugPrint('Synchronisation activation réussie vers Neon PostgreSQL.');
@@ -177,8 +213,8 @@ class LicenseAdminSyncService {
       final result = await connection.execute(
         Sql.named('''
           SELECT is_active, license_key, expires_at FROM nmashop_activations 
-          WHERE (hardware_id = @hwId AND @hwId != '') OR (license_key = @key AND @key != '')
-          ORDER BY id DESC LIMIT 1
+          WHERE (license_key = @key AND @key != '') OR (hardware_id = @hwId AND @hwId != '')
+          ORDER BY is_active ASC, id DESC LIMIT 1
         '''),
         parameters: {
           'key': key,

@@ -271,7 +271,13 @@ Voici votre clé d'activation officielle N'MaShop PC :
                   activeThumbColor: AppTheme.emeraldActive,
                   onChanged: (val) {
                     ref.read(licensesProvider.notifier).updateLicense(lic.copyWith(isActive: val));
-                    ref.read(adminSyncServiceProvider).updateLicenseRemoteStatus(lic.licenseKey, val);
+                    ref.read(adminSyncServiceProvider).updateLicenseRemoteStatus(
+                      lic.licenseKey,
+                      val,
+                      hardwareId: lic.hardwareId,
+                      storeName: lic.clientName,
+                      expiresAt: lic.expiresAt,
+                    );
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(val ? '🟢 Licence activée pour ${lic.clientName}' : '🔴 Licence désactivée pour ${lic.clientName}'),

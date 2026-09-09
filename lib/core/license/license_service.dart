@@ -195,4 +195,19 @@ class LicenseService {
     // Notifier la désactivation à Neon PostgreSQL
     LicenseAdminSyncService.notifyDeactivation(hwId, licenseKey: storedKey);
   }
+
+  /// Révoque la licence à la demande de l'administrateur (désactivation à distance depuis Mobile Admin).
+  /// Supprime la clé active et verrouille l'application en état expiré (pas de nouvel essai gratuit).
+  Future<void> revokeLicense(SharedPreferences prefs) async {
+    final hwId = await HardwareIdService.getHardwareId();
+    final storedKey = prefs.getString(_prefKey);
+
+    await prefs.remove(_prefKey);
+    await prefs.remove(_prefBoundHwId);
+    // Forcer la date de premier lancement dans le passé pour empêcher un nouvel essai gratuit
+    await prefs.setString(_prefFirstLaunch, DateTime(2020, 1, 1).toIso8601String());
+
+    // Notifier Neon
+    LicenseAdminSyncService.notifyDeactivation(hwId, licenseKey: storedKey);
+  }
 }

@@ -59,12 +59,38 @@ class AdminRepository {
 
   List<LicenseRecord> getLicenses() {
     final raw = _prefs.getStringList(_keyLicenses) ?? [];
-    return raw.map((str) => LicenseRecord.fromJson(str)).toList();
+    final list = raw.map((str) => LicenseRecord.fromJson(str)).toList();
+
+    // Dédupliquer automatiquement par clé de licence (insensible à la casse)
+    final Map<String, LicenseRecord> uniqueMap = {};
+    for (final record in list) {
+      final key = record.licenseKey.trim().toUpperCase();
+      if (!uniqueMap.containsKey(key)) {
+        uniqueMap[key] = record;
+      } else {
+        // En cas de doublon, on conserve l'enregistrement le plus riche
+        // (celui qui a le Hardware ID et qui est activé)
+        final existing = uniqueMap[key]!;
+        final bool shouldReplace = (existing.hardwareId.isEmpty && record.hardwareId.isNotEmpty) ||
+            (!existing.isActive && record.isActive) ||
+            (existing.clientName == 'Boutique Client' && record.clientName != 'Boutique Client');
+        if (shouldReplace) {
+          uniqueMap[key] = record;
+        }
+      }
+    }
+    return uniqueMap.values.toList();
   }
 
   Future<void> saveLicense(LicenseRecord record) async {
     final licenses = getLicenses();
-    final index = licenses.indexWhere((l) => l.id == record.id);
+    final cleanKey = record.licenseKey.trim().toUpperCase();
+
+    // Recherche par ID ou par clé de licence
+    final index = licenses.indexWhere(
+      (l) => l.id == record.id || l.licenseKey.trim().toUpperCase() == cleanKey,
+    );
+
     if (index >= 0) {
       licenses[index] = record;
     } else {
@@ -75,7 +101,11 @@ class AdminRepository {
   }
 
   Future<void> deleteLicense(String id) async {
-    final licenses = getLicenses()..removeWhere((l) => l.id == id);
+    final licenses = getLicenses();
+    final target = licenses.where((l) => l.id == id).firstOrNull;
+    final cleanKey = target?.licenseKey.trim().toUpperCase();
+
+    licenses.removeWhere((l) => l.id == id || (cleanKey != null && l.licenseKey.trim().toUpperCase() == cleanKey));
     final raw = licenses.map((l) => l.toJson()).toList();
     await _prefs.setStringList(_keyLicenses, raw);
   }

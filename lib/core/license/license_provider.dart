@@ -65,9 +65,12 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
     _remoteCheckTimer?.cancel();
     // Synchro immédiate en arrière-plan sans bloquer
     Future.microtask(() => _syncWithRemote());
-    // 30 minutes : périodicité optimale évitant la saturation de connexions PostgreSQL Neon
-    _remoteCheckTimer = Timer.periodic(const Duration(minutes: 30), (_) {
+    // Vérification toutes les 15 secondes pour une réaction quasi-instantanée aux révocations/activations distantes
+    _remoteCheckTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       _syncWithRemote();
+    });
+    ref.onDispose(() {
+      _remoteCheckTimer?.cancel();
     });
   }
 
@@ -93,7 +96,7 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       if (!remoteInfo.isActive) {
         // L'administrateur a révoqué cette licence depuis Mobile Admin
         if (current.status != LicenseStatus.expired) {
-          await _svc.resetLicense(prefs);
+          await _svc.revokeLicense(prefs);
           state = const AsyncData(LicenseInfo(
             status: LicenseStatus.expired,
             type: LicenseType.trial,

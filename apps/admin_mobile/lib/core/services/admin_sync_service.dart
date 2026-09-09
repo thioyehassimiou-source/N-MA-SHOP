@@ -85,6 +85,16 @@ class AdminSyncService {
         syncedIds.add(id);
       }
 
+      // Marquer les activations traitées comme synchronisées sur Neon pour éviter les re-traitements
+      if (syncedIds.isNotEmpty) {
+        for (final id in syncedIds) {
+          await connection.execute(
+            Sql.named('UPDATE nmashop_activations SET is_synced = true WHERE id = @id'),
+            parameters: {'id': id},
+          );
+        }
+      }
+
       // Synchroniser les révocations / désactivations (is_active = false) depuis Neon
       await connection.execute('ALTER TABLE nmashop_activations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;');
       final deactivatedResult = await connection.execute('''
