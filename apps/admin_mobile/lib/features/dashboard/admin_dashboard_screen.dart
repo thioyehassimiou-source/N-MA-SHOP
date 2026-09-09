@@ -173,10 +173,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         title: Row(
           children: [
             Container(
-              width: 30,
-              height: 30,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.1),
@@ -185,52 +185,45 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 child: Image.asset(
                   'assets/images/admin_logo.png',
                   fit: BoxFit.cover,
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'N\'MaShop Admin',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppTheme.textDark),
-                ),
-                Text(
-                  'Gestionnaire de Licences PC',
-                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
-                ),
-              ],
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'N\'MaShop Admin',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textDark),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Gestionnaire de Licences PC',
+                    style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const HardwareKeyGeneratorScreen()),
-                );
-              },
-              icon: const Icon(Icons.vpn_key_rounded, size: 16),
-              label: const Text('Générer'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-                elevation: 2,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-            ),
+          IconButton(
+            icon: const Icon(Icons.vpn_key_rounded, size: 21, color: Color(0xFF10B981)),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HardwareKeyGeneratorScreen()),
+              );
+            },
+            tooltip: 'Générer une Clé PC',
           ),
-          const SizedBox(width: 4),
           IconButton(
             icon: const Icon(Icons.sync_rounded, size: 22, color: AppTheme.primaryIndigo),
             onPressed: _onRefresh,
@@ -241,7 +234,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             onPressed: _showSettingsMenu,
             tooltip: 'Paramètres PIN',
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
         ],
       ),
       body: IndexedStack(

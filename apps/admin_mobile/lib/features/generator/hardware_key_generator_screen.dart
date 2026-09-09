@@ -249,415 +249,428 @@ Merci pour votre confiance.
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Header Card ──────────────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.primaryIndigo, AppTheme.primaryViolet],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryIndigo.withValues(alpha: 0.25),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Réf. Boutique / Hardware ID Machine PC ───────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Réf. Boutique / ID Machine PC',
+                      style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    TextButton.icon(
+                      onPressed: _pasteAndExtractHardwareId,
+                      icon: const Icon(Icons.content_paste_rounded, size: 16, color: AppTheme.primaryIndigo),
+                      label: const Text('Coller Réf.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        visualDensity: VisualDensity.compact,
+                      ),
                     ),
                   ],
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.vpn_key_rounded, color: Colors.white, size: 28),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _hardwareIdCtrl,
+                  style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Ex: NMA-8F3A-92B1-4C07 (ou vide pour universelle)',
+                    hintStyle: const TextStyle(fontFamily: 'sans-serif', fontSize: 13, color: AppTheme.textMuted),
+                    prefixIcon: const Icon(Icons.computer_rounded, color: AppTheme.primaryIndigo),
+                    suffixIcon: _hardwareIdCtrl.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            onPressed: () {
+                              _hardwareIdCtrl.clear();
+                              _generateKeyPreview();
+                            },
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Indicateur Verrouillage Matériel
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isBound ? AppTheme.emeraldBg : AppTheme.amberBg,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isBound
+                          ? AppTheme.emeraldActive.withValues(alpha: 0.3)
+                          : AppTheme.amberTrial.withValues(alpha: 0.3),
                     ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Édition de Clé PC Officielle',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isBound ? Icons.lock_rounded : Icons.public_rounded,
+                        size: 16,
+                        color: isBound ? AppTheme.emeraldActive : AppTheme.amberTrial,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          isBound
+                              ? 'Clé verrouillée à 100% sur cette machine (Format 4 segments)'
+                              : 'Clé universelle (Peut être activée sur n\'importe quel PC)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isBound ? AppTheme.emeraldActive : AppTheme.amberTrial,
                           ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Signée HMAC-SHA256 avec liaison matérielle PC.',
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // ── Client / Boutique ────────────────────────────────────────
+                const Text('Sélectionner ou Saisir la Boutique', style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<ClientModel?>(
+                  initialValue: _selectedClient,
+                  dropdownColor: Colors.white,
+                  items: [
+                    const DropdownMenuItem<ClientModel?>(
+                      value: null,
+                      child: Text('➕ Nouvelle saisie directe...', style: TextStyle(color: AppTheme.primaryIndigo, fontWeight: FontWeight.bold)),
+                    ),
+                    ...clients.map((c) {
+                      return DropdownMenuItem<ClientModel?>(
+                        value: c,
+                        child: Text('${c.storeName} (${c.ownerName})'),
+                      );
+                    }),
+                  ],
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedClient = val;
+                      if (val != null) {
+                        _storeNameCtrl.text = val.storeName;
+                        _phoneCtrl.text = val.phone;
+                        if (val.hardwareId.isNotEmpty) {
+                          _hardwareIdCtrl.text = val.hardwareId;
+                        }
+                      }
+                      _generateKeyPreview();
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.storefront_rounded, color: AppTheme.primaryIndigo),
+                  ),
+                ),
+
+                if (_selectedClient == null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _storeNameCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Nom boutique',
+                            hintText: 'Ex: Alimentation...',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _phoneCtrl,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Téléphone client',
+                            hintText: 'Ex: 624193069',
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 18),
+
+                // ── Formule de Licence (Mensuelle / Annuelle / À Vie) ──────────
+                const Text('Formule de Licence', style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _buildFormulaCard(
+                      title: 'Mensuelle',
+                      subtitle: '150 000 GNF',
+                      type: AdminLicenseType.days30,
+                      days: 30,
+                      defaultAmount: '150000',
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFormulaCard(
+                      title: 'Annuelle',
+                      subtitle: '1 500 000 GNF',
+                      type: AdminLicenseType.annual,
+                      days: 365,
+                      defaultAmount: '1500000',
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFormulaCard(
+                      title: 'À Vie',
+                      subtitle: '3 500 000 GNF',
+                      type: AdminLicenseType.lifetime,
+                      days: null,
+                      defaultAmount: '3500000',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Date Expiration & Montant
+                Row(
+                  children: [
+                    if (_selectedType != AdminLicenseType.lifetime)
+                      Expanded(
+                        flex: 3,
+                        child: InkWell(
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: _expiryDate,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime(2099),
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                _expiryDate = picked;
+                                _generateKeyPreview();
+                              });
+                            }
+                          },
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Date d\'expiration',
+                              suffixIcon: Icon(Icons.calendar_month_rounded, color: AppTheme.primaryIndigo),
+                              isDense: true,
+                            ),
+                            child: Text(
+                              DateFormat('dd/MM/yyyy').format(_expiryDate),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (_selectedType != AdminLicenseType.lifetime) const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: TextFormField(
+                        controller: _amountCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Montant (GNF)',
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // ── Clé Générée & Signée ───────────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.primaryIndigo, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryIndigo.withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'CLÉ OFFICIELLE PRÊTE À L\'ACTIVATION',
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 10.5, fontWeight: FontWeight.w800),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppTheme.emeraldBg,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.check_circle_rounded, color: AppTheme.emeraldActive, size: 12),
+                                SizedBox(width: 4),
+                                Text('HMAC VALIDÉ', style: TextStyle(color: AppTheme.emeraldActive, fontSize: 10, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // ── Réf. Boutique / Hardware ID Machine PC ───────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Réf. Boutique / ID Machine PC',
-                    style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  TextButton.icon(
-                    onPressed: _pasteAndExtractHardwareId,
-                    icon: const Icon(Icons.content_paste_rounded, size: 16, color: AppTheme.primaryIndigo),
-                    label: const Text('Coller Réf.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _hardwareIdCtrl,
-                style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: 'Ex: NMA-8F3A-92B1-4C07 (ou vide pour universelle)',
-                  hintStyle: const TextStyle(fontFamily: 'sans-serif', fontSize: 13, color: AppTheme.textMuted),
-                  prefixIcon: const Icon(Icons.computer_rounded, color: AppTheme.primaryIndigo),
-                  suffixIcon: _hardwareIdCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 18),
-                          onPressed: () {
-                            _hardwareIdCtrl.clear();
-                            _generateKeyPreview();
-                          },
-                        )
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Indicateur Verrouillage Matériel
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isBound ? AppTheme.emeraldBg : AppTheme.amberBg,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isBound
-                        ? AppTheme.emeraldActive.withValues(alpha: 0.3)
-                        : AppTheme.amberTrial.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isBound ? Icons.lock_rounded : Icons.public_rounded,
-                      size: 16,
-                      color: isBound ? AppTheme.emeraldActive : AppTheme.amberTrial,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        isBound
-                            ? 'Clé verrouillée à 100% sur cette machine (Format 4 segments)'
-                            : 'Clé universelle (Peut être activée sur n\'importe quel PC)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isBound ? AppTheme.emeraldActive : AppTheme.amberTrial,
+                      const SizedBox(height: 12),
+                      SelectableText(
+                        _generatedKey ?? 'GÉNÉRATION...',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'monospace',
+                          color: AppTheme.primaryIndigo,
+                          letterSpacing: 0.8,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // ── Client / Boutique ────────────────────────────────────────
-              const Text('Sélectionner ou Saisir la Boutique', style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<ClientModel?>(
-                initialValue: _selectedClient,
-                dropdownColor: Colors.white,
-                items: [
-                  const DropdownMenuItem<ClientModel?>(
-                    value: null,
-                    child: Text('➕ Nouvelle saisie directe...', style: TextStyle(color: AppTheme.primaryIndigo, fontWeight: FontWeight.bold)),
+                    ],
                   ),
-                  ...clients.map((c) {
-                    return DropdownMenuItem<ClientModel?>(
-                      value: c,
-                      child: Text('${c.storeName} (${c.ownerName})'),
-                    );
-                  }),
-                ],
-                onChanged: (val) {
-                  setState(() {
-                    _selectedClient = val;
-                    if (val != null) {
-                      _storeNameCtrl.text = val.storeName;
-                      _phoneCtrl.text = val.phone;
-                    }
-                  });
-                },
-                decoration: const InputDecoration(
-                  hintText: 'Choisir un client enregistré...',
-                  prefixIcon: Icon(Icons.storefront_rounded, color: AppTheme.primaryIndigo),
                 ),
-              ),
-
-              if (_selectedClient == null) ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _storeNameCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Nom de la boutique',
-                          hintText: 'Ex: Alimentation Diallo',
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _phoneCtrl,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Téléphone client',
-                          hintText: 'Ex: 624193069',
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                const SizedBox(height: 16),
               ],
-              const SizedBox(height: 20),
-
-              // ── Formule de Licence (Mensuelle / Annuelle / À Vie) ──────────
-              const Text('Formule de Licence', style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('Mensuelle (30j)'),
-                      selected: _selectedType == AdminLicenseType.days30,
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() {
-                            _selectedType = AdminLicenseType.days30;
-                            _expiryDate = DateTime.now().add(const Duration(days: 30));
-                            _amountCtrl.text = '150000';
-                            _generateKeyPreview();
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('Annuelle (1 An)'),
-                      selected: _selectedType == AdminLicenseType.annual,
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() {
-                            _selectedType = AdminLicenseType.annual;
-                            _expiryDate = DateTime.now().add(const Duration(days: 365));
-                            _amountCtrl.text = '1500000';
-                            _generateKeyPreview();
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('À Vie (Illimitée)'),
-                      selected: _selectedType == AdminLicenseType.lifetime,
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() {
-                            _selectedType = AdminLicenseType.lifetime;
-                            _amountCtrl.text = '3500000';
-                            _generateKeyPreview();
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: const Border(top: BorderSide(color: AppTheme.borderSlate, width: 0.8)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 6,
+                offset: const Offset(0, -2),
               ),
-              const SizedBox(height: 16),
-
-              // Date Expiration & Montant
-              Row(
-                children: [
-                  if (_selectedType != AdminLicenseType.lifetime)
-                    Expanded(
-                      flex: 3,
-                      child: InkWell(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _expiryDate,
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime(2099),
-                          );
-                          if (picked != null) {
-                            setState(() {
-                              _expiryDate = picked;
-                              _generateKeyPreview();
-                            });
-                          }
-                        },
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Date d\'expiration',
-                            suffixIcon: Icon(Icons.calendar_month_rounded, color: AppTheme.primaryIndigo),
-                            isDense: true,
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    if (_generatedKey != null) {
+                      await Clipboard.setData(ClipboardData(text: _generatedKey!));
+                      await _saveRecord();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Clé copiée dans le presse-papier !'),
+                            behavior: SnackBarBehavior.floating,
                           ),
-                          child: Text(
-                            DateFormat('dd/MM/yyyy').format(_expiryDate),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (_selectedType != AdminLicenseType.lifetime) const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: TextFormField(
-                      controller: _amountCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Montant (GNF)',
-                        isDense: true,
-                      ),
-                    ),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.copy_rounded, color: AppTheme.primaryIndigo, size: 16),
+                  label: const Text('Copier Clé'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                ],
+                ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton.icon(
+                  onPressed: _shareOnWhatsApp,
+                  icon: const Icon(Icons.send_rounded, size: 18),
+                  label: const Text('Envoyer sur WhatsApp'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-              // ── Clé Générée & Signée ───────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppTheme.primaryIndigo, width: 1.5),
-                  boxShadow: [
+  Widget _buildFormulaCard({
+    required String title,
+    required String subtitle,
+    required AdminLicenseType type,
+    required int? days,
+    required String defaultAmount,
+  }) {
+    final isSelected = _selectedType == type;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          setState(() {
+            _selectedType = type;
+            if (days != null) {
+              _expiryDate = DateTime.now().add(Duration(days: days));
+            }
+            _amountCtrl.text = defaultAmount;
+            _generateKeyPreview();
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryIndigo : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryIndigo : AppTheme.borderSlate,
+              width: isSelected ? 1.8 : 1.0,
+            ),
+            boxShadow: isSelected
+                ? [
                     BoxShadow(
-                      color: AppTheme.primaryIndigo.withValues(alpha: 0.08),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: AppTheme.primaryIndigo.withValues(alpha: 0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'CLÉ OFFICIELLE PRÊTE À L\'ACTIVATION',
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.w800),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppTheme.emeraldBg,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.check_circle_rounded, color: AppTheme.emeraldActive, size: 12),
-                              SizedBox(width: 4),
-                              Text('HMAC VALIDÉ', style: TextStyle(color: AppTheme.emeraldActive, fontSize: 10, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    SelectableText(
-                      _generatedKey ?? 'GÉNÉRATION...',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        fontFamily: 'monospace',
-                        color: AppTheme.primaryIndigo,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ],
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12.5,
+                  color: isSelected ? Colors.white : AppTheme.textDark,
                 ),
               ),
-              const SizedBox(height: 28),
-
-              // ── Boutons d'Action ──────────────────────────────────────────
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        if (_generatedKey != null) {
-                          await Clipboard.setData(ClipboardData(text: _generatedKey!));
-                          await _saveRecord();
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Clé copiée dans le presse-papier !'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      icon: const Icon(Icons.copy_rounded, color: AppTheme.primaryIndigo),
-                      label: const Text('Copier Clé'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton.icon(
-                      onPressed: _shareOnWhatsApp,
-                      icon: const Icon(Icons.send_rounded, size: 20),
-                      label: const Text('Envoyer sur WhatsApp'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF25D366),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white.withValues(alpha: 0.9) : AppTheme.textSecondary,
+                ),
               ),
             ],
           ),

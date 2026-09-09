@@ -430,17 +430,19 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
           ),
         ],
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 70),
-        child: FloatingActionButton.extended(
-          onPressed: () => _showAddClientDialog(),
-          backgroundColor: AppTheme.primaryIndigo,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          icon: const Icon(Icons.add_business_rounded),
-          label: const Text('Nouvelle Boutique'),
-        ),
-      ),
+      floatingActionButton: filtered.isEmpty
+          ? null
+          : Padding(
+              padding: const EdgeInsets.only(bottom: 70),
+              child: FloatingActionButton.extended(
+                onPressed: () => _showAddClientDialog(),
+                backgroundColor: AppTheme.primaryIndigo,
+                foregroundColor: Colors.white,
+                elevation: 4,
+                icon: const Icon(Icons.add_business_rounded),
+                label: const Text('Nouvelle Boutique'),
+              ),
+            ),
     );
   }
 
