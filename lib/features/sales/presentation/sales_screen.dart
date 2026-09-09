@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -155,6 +156,124 @@ class _ProductPicker extends ConsumerStatefulWidget {
 
 class _ProductPickerState extends ConsumerState<_ProductPicker> {
   String _query = '';
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+
+  String _barcodeBuffer = '';
+  DateTime? _lastKeystrokeTime;
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleGlobalKey);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleGlobalKey);
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  /// Écoute globale des frappes de douchettes code-barres (USB / Bluetooth)
+  /// Même si le caissier a cliqué ailleurs, le scan est capturé et injecté directement au panier !
+  bool _handleGlobalKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+
+    // Si le focus est déjà dans le champ de recherche, le TextField gère naturellement via onSubmitted
+    if (_searchFocusNode.hasFocus) {
+      if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+        _submitBarcode(_searchController.text.trim());
+        return true;
+      }
+      return false;
+    }
+
+    final now = DateTime.now();
+    // Les douchettes envoient les caractères avec un intervalle < 60ms
+    if (_lastKeystrokeTime != null && now.difference(_lastKeystrokeTime!).inMilliseconds > 150) {
+      _barcodeBuffer = '';
+    }
+    _lastKeystrokeTime = now;
+
+    if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+      if (_barcodeBuffer.isNotEmpty) {
+        _submitBarcode(_barcodeBuffer.trim());
+        _barcodeBuffer = '';
+        return true;
+      }
+      return false;
+    }
+
+    final char = event.character;
+    if (char != null && char.isNotEmpty) {
+      _barcodeBuffer += char;
+    }
+    return false;
+  }
+
+  /// Recherche immédiate et ajout direct au panier dès qu'un code-barres est scanné
+  void _submitBarcode(String rawCode) {
+    final code = rawCode.trim();
+    if (code.isEmpty) return;
+
+    final products = ref.read(productsStreamProvider).value ?? [];
+    // Correspondance exacte sur le code-barres ou la référence article
+    final match = products.where((p) =>
+      p.isActive &&
+      ((p.barcode != null && p.barcode!.trim().toLowerCase() == code.toLowerCase()) ||
+       (p.reference != null && p.reference!.trim().toLowerCase() == code.toLowerCase()))
+    ).firstOrNull;
+
+    if (match != null) {
+      ref.read(saleCartControllerProvider.notifier).addProduct(match);
+      SystemSound.play(SystemSoundType.click);
+
+      _searchController.clear();
+      setState(() => _query = '');
+      _searchFocusNode.requestFocus();
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text('${match.name} scanné et ajouté au panier (${formatGnf(match.salePrice)})')),
+            ],
+          ),
+          backgroundColor: AppColors.brandEmerald,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    } else {
+      // Si c'est un format de code-barres (au moins 3 caractères alphanumériques sans espace)
+      final isLikelyBarcode = RegExp(r'^[0-9A-Za-z\-_]{3,}$').hasMatch(code);
+      if (isLikelyBarcode) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text('Code-barres inconnu : $code'),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -187,13 +306,15 @@ class _ProductPickerState extends ConsumerState<_ProductPicker> {
                   vertical: AppSpacing.xs,
                 ),
                 child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
                   decoration: InputDecoration(
                     prefixIcon: Icon(
                       Icons.search,
                       color: theme.colorScheme.onSurfaceVariant,
                       size: 20,
                     ),
-                    hintText: 'Rechercher un produit…',
+                    hintText: 'Scanner ou rechercher un produit…',
                     hintStyle: AppTypography.bodySm.copyWith(
                       color: context.colors.onSurfaceVariant,
                     ),
@@ -202,9 +323,30 @@ class _ProductPickerState extends ConsumerState<_ProductPicker> {
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: AppSpacing.base,
                     ),
+                    suffixIcon: _query.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                              _searchFocusNode.requestFocus();
+                            },
+                          )
+                        : null,
                   ),
                   style: AppTypography.bodySm,
-                  onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                  onChanged: (v) {
+                    setState(() => _query = v.trim().toLowerCase());
+                    // Si la douchette injecte directement un code-barres complet :
+                    if (v.trim().length >= 6) {
+                      final products = ref.read(productsStreamProvider).value ?? [];
+                      final exactMatch = products.where((p) => p.isActive && p.barcode != null && p.barcode!.trim().toLowerCase() == v.trim().toLowerCase()).firstOrNull;
+                      if (exactMatch != null) {
+                        _submitBarcode(v);
+                      }
+                    }
+                  },
+                  onSubmitted: (v) => _submitBarcode(v),
                 ),
               ),
             ),
