@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -66,6 +67,85 @@ String _statusLabelOf(StockStatus status) {
   }
 }
 
+Future<void> _showPrintLabelsDialog(BuildContext context, Product product) async {
+  int copies = 1;
+  final code = (product.barcode?.trim().isNotEmpty == true)
+      ? product.barcode!.trim()
+      : (product.reference?.trim().isNotEmpty == true
+          ? product.reference!.trim()
+          : product.id.substring(0, 8).toUpperCase());
+
+  await showDialog(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setDialogState) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.print_outlined, color: AppColors.brandOrange),
+            const SizedBox(width: 10),
+            const Text('Imprimer étiquettes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(product.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            const SizedBox(height: 4),
+            Text('Code: $code  •  Prix: ${formatAmount(product.salePrice)}',
+                style: const TextStyle(color: Colors.grey, fontSize: 13)),
+            const SizedBox(height: 20),
+            const Text('Nombre d\'exemplaires :', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton.outlined(
+                  icon: const Icon(Icons.remove),
+                  onPressed: copies > 1 ? () => setDialogState(() => copies--) : null,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text('$copies', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                ),
+                IconButton.outlined(
+                  icon: const Icon(Icons.add),
+                  onPressed: () => setDialogState(() => copies++),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              alignment: WrapAlignment.center,
+              children: [1, 5, 10, 20, 50].map((preset) => ActionChip(
+                label: Text('$preset'),
+                onPressed: () => setDialogState(() => copies = preset),
+              )).toList(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Annuler'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.brandOrange),
+            icon: const Icon(Icons.print, size: 18),
+            label: Text('Imprimer ($copies)'),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              BarcodePrinterService.printProductLabel(product, copies: copies);
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class ProductsScreen extends ConsumerStatefulWidget {
   const ProductsScreen({super.key});
 
@@ -77,11 +157,31 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   StockStatus? _statusFilter;
   int _page = 0;
   final _selected = <String>{};
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   List<Product> _applyFilter(List<Product> all) {
-    if (_statusFilter == null) return all;
+    var filtered = all;
+
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      filtered = filtered.where((p) {
+        final matchName = p.name.toLowerCase().contains(q);
+        final matchRef = p.reference != null && p.reference!.toLowerCase().contains(q);
+        final matchBarcode = p.barcode != null && p.barcode!.toLowerCase().contains(q);
+        return matchName || matchRef || matchBarcode;
+      }).toList();
+    }
+
+    if (_statusFilter == null) return filtered;
     if (_statusFilter == StockStatus.reorder) {
-      return all
+      return filtered
           .where(
             (p) =>
                 _statusOf(p) == StockStatus.reorder ||
@@ -89,7 +189,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           )
           .toList();
     }
-    return all.where((p) => _statusOf(p) == _statusFilter).toList();
+    return filtered.where((p) => _statusOf(p) == _statusFilter).toList();
   }
 
   void _openDialog(Product? product) {
@@ -301,6 +401,60 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         runSpacing: AppSpacing.md,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
+          SizedBox(
+            width: 270,
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Rechercher nom, réf, code-barres...',
+                hintStyle: AppTypography.bodySm.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
+                prefixIcon: const Icon(Icons.search, size: 18),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 16),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                            _page = 0;
+                          });
+                        },
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.qr_code_scanner, size: 18),
+                        tooltip: 'Scanner un code-barres',
+                        onPressed: () async {
+                          final code = await BarcodeScannerDialog.show(context);
+                          if (code != null && mounted) {
+                            _searchController.text = code;
+                            setState(() {
+                              _searchQuery = code;
+                              _page = 0;
+                            });
+                          }
+                        },
+                      ),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  borderSide: BorderSide(color: context.colors.outlineVariant),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  borderSide: BorderSide(color: context.colors.outlineVariant),
+                ),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                  _page = 0;
+                });
+              },
+            ),
+          ),
           Text(
             'FILTRES :',
             style: AppTypography.labelSm.copyWith(
@@ -469,8 +623,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.print_outlined, size: 20),
-                              tooltip: 'Imprimer code-barres',
-                              onPressed: () => BarcodePrinterService.printProductLabel(p),
+                              tooltip: 'Imprimer étiquettes code-barres',
+                              onPressed: () => _showPrintLabelsDialog(context, p),
                             ),
                             IconButton(
                               icon: const Icon(Icons.edit, size: 20),
@@ -587,8 +741,8 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
   late final TextEditingController _sale;
   late final TextEditingController _stock;
   late final TextEditingController _threshold;
+  late final TextEditingController _barcode;
   String? _imageUrl;
-  String? _barcode;
   bool _saving = false;
 
   bool get _isEdit => widget.product != null;
@@ -598,7 +752,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
     super.initState();
     final p = widget.product;
     _imageUrl = p?.imageUrl;
-    _barcode = p?.barcode;
+    _barcode = TextEditingController(text: p?.barcode ?? '');
     _name = TextEditingController(text: p?.name ?? '');
     _reference = TextEditingController(text: p?.reference ?? '');
     _unit = TextEditingController(text: p?.unit ?? 'pièce');
@@ -620,10 +774,28 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
       _sale,
       _stock,
       _threshold,
+      _barcode,
     ]) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  void _generateEan13() {
+    final random = Random();
+    // Préfixe standard interne 200 + 9 chiffres aléatoires = 12 chiffres
+    final base12 = '200${List.generate(9, (_) => random.nextInt(10)).join()}';
+    // Calcul de la clé de contrôle EAN-13 (modulo 10)
+    int sum = 0;
+    for (int i = 0; i < 12; i++) {
+      final digit = int.parse(base12[i]);
+      sum += (i % 2 == 0) ? digit : (digit * 3);
+    }
+    final checksum = (10 - (sum % 10)) % 10;
+    final ean13 = '$base12$checksum';
+    setState(() {
+      _barcode.text = ean13;
+    });
   }
 
   Future<void> _pickImage() async {
@@ -654,7 +826,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
       stockQuantity: int.tryParse(_stock.text.trim()) ?? 0,
       lowStockThreshold: int.tryParse(_threshold.text.trim()) ?? 0,
       imageUrl: _imageUrl,
-      barcode: _barcode?.trim().isEmpty == true ? null : _barcode?.trim(),
+      barcode: _barcode.text.trim().isEmpty ? null : _barcode.text.trim(),
     );
 
     final result = _isEdit
@@ -891,37 +1063,69 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
 
             // ── Section Code-barres ────────────────────────────
             _FormSectionContainer(
-              title: 'Code-barres (Scan POS)',
+              title: 'Code-barres (Scan POS & Caisse)',
               icon: Icons.qr_code_2_outlined,
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      initialValue: _barcode,
-                      decoration: InputDecoration(
-                        hintText: 'Ex: 6141234567890',
-                        prefixIcon: Icon(Icons.barcode_reader, size: 20, color: context.colors.primary),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _barcode,
+                          decoration: InputDecoration(
+                            hintText: 'Ex: 6141234567890 (ou générer ci-dessous)',
+                            prefixIcon: Icon(Icons.barcode_reader, size: 20, color: context.colors.primary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          ),
+                        ),
                       ),
-                      onChanged: (v) => _barcode = v.isEmpty ? null : v,
-                    ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Tooltip(
+                        message: 'Scanner via webcam ou smartphone',
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            final code = await BarcodeScannerDialog.show(context);
+                            if (code != null && mounted) {
+                              setState(() => _barcode.text = code);
+                            }
+                          },
+                          icon: const Icon(Icons.qr_code_scanner, size: 18),
+                          label: const Text('Scanner'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Tooltip(
-                    message: 'Scanner via caméra',
-                    child: FilledButton.icon(
-                      onPressed: () async {
-                        final code = await BarcodeScannerDialog.show(context);
-                        if (code != null && mounted) setState(() => _barcode = code);
-                      },
-                      icon: const Icon(Icons.qr_code_scanner, size: 18),
-                      label: const Text('Scanner'),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _generateEan13,
+                        icon: const Icon(Icons.auto_awesome, size: 16),
+                        label: const Text('Générer EAN-13 (Vrac/Local)'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
                       ),
-                    ),
+                      if (_isEdit && widget.product != null)
+                        OutlinedButton.icon(
+                          onPressed: () => _showPrintLabelsDialog(context, widget.product!),
+                          icon: const Icon(Icons.print_outlined, size: 16),
+                          label: const Text('Imprimer étiquettes'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),

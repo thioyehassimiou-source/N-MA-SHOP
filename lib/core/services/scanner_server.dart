@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-
 import 'package:network_info_plus/network_info_plus.dart';
 
 class ScannerServer {
@@ -31,7 +30,6 @@ class ScannerServer {
     }
 
     if (_localIp == null || _localIp == '127.0.0.1' || _localIp == '0.0.0.0') {
-      // Fallback robuste pour Linux/Windows — ignorer les interfaces virtuelles
       final interfaces = await NetworkInterface.list(
           type: InternetAddressType.IPv4, includeLoopback: false);
       for (var interface in interfaces) {
@@ -47,7 +45,7 @@ class ScannerServer {
       }
     }
 
-    // Démarrer le serveur HTTP sur un port fixe
+    // Démarrer le serveur HTTP simple (port 8765) — Zéro certificat, Zéro blocage, 100% compatible
     const fixedPort = 8765;
     for (var tryPort = fixedPort; tryPort < fixedPort + 10; tryPort++) {
       try {
@@ -59,10 +57,9 @@ class ScannerServer {
       }
     }
 
-    if (_server == null) return; // Aucun port disponible
+    if (_server == null) return;
 
     _server!.listen((HttpRequest request) async {
-      // Headers CORS universels
       request.response.headers.add('Access-Control-Allow-Origin', '*');
       request.response.headers
           .add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -111,290 +108,358 @@ class ScannerServer {
   }
 
   void _serveHtml(HttpRequest request) {
-    // ZERO external dependencies — works fully offline on local Wi-Fi.
-    // Uses native BarcodeDetector (Android Chrome 83+) for photo scanning.
+    // Interface Mobile Ultra-Simple, 100% Fonctionnelle, Sans Certificat, Sans Blocage
     const html = '''
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>N'MaShop Scanner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>N'MaShop - Scanner Caisse</title>
   <script src="/html5-qrcode.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
-      font-family: sans-serif;
-      background: #0F1B3D;
-      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0B132B;
+      color: #FFFFFF;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 24px;
-      text-align: center;
-    }
-    h2 { color: #E85D04; font-size: 22px; margin-bottom: 8px; }
-    .sub { color: #AABBCC; font-size: 13px; margin-bottom: 24px; line-height: 1.5; }
-    .btn {
-      display: block;
-      width: 100%;
-      max-width: 320px;
-      margin: 10px auto 0;
       padding: 16px;
+    }
+
+    .header-bar {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(26, 48, 96, 0.6);
+      border-radius: 14px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #4CAF50;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: #4CAF50;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #4CAF50;
+    }
+    .counter-badge {
       background: #E85D04;
       color: #fff;
-      font-size: 17px;
-      font-weight: bold;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      text-align: center;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 800;
     }
-    .btn-secondary { background: #1A3060; }
-    .btn:active { opacity: 0.8; }
-    .divider {
+
+    /* Bouton principal de scan rapide */
+    .scan-box {
       width: 100%;
-      max-width: 320px;
-      margin: 28px auto 0;
-      border-top: 1px solid rgba(255,255,255,0.12);
-      padding-top: 20px;
+      max-width: 440px;
+      margin-bottom: 20px;
     }
-    .divider-label { color: #7890AA; font-size: 12px; margin-bottom: 12px; }
-    #manual-input {
-      display: block;
-      width: 100%;
-      max-width: 320px;
-      margin: 0 auto;
-      padding: 14px;
-      font-size: 20px;
-      border-radius: 10px;
-      border: 2px solid #1A3060;
-      background: #fff;
-      color: #000;
-      text-align: center;
-      letter-spacing: 2px;
-    }
-    #manual-input:focus { border-color: #E85D04; outline: none; }
-    #status {
-      margin-top: 18px;
-      font-size: 14px;
-      color: #E85D04;
-      min-height: 22px;
-      line-height: 1.4;
-    }
-    #success-view {
-      display: none;
+    .btn-scan {
+      display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #E85D04, #FF8C00);
+      color: #FFFFFF;
+      padding: 36px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      box-shadow: 0 8px 30px rgba(232, 93, 4, 0.45);
+      border: 2px solid rgba(255,255,255,0.2);
+      text-align: center;
+      transition: transform 0.1s, opacity 0.1s;
     }
-    .ok-icon { font-size: 80px; color: #4CAF50; }
-    .ok-text { font-size: 22px; font-weight: bold; margin: 14px 0 8px; }
-    .ok-sub { color: #AABBCC; font-size: 14px; margin-bottom: 24px; }
+    .btn-scan:active {
+      transform: scale(0.97);
+      opacity: 0.9;
+    }
+    .scan-icon {
+      font-size: 54px;
+      margin-bottom: 12px;
+      line-height: 1;
+    }
+    .scan-title {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+    }
+    .scan-sub {
+      font-size: 13px;
+      color: rgba(255,255,255,0.9);
+      margin-top: 6px;
+    }
+
+    /* Zone de statut de scan */
+    #status-text {
+      font-size: 14px;
+      color: #AABBCC;
+      text-align: center;
+      min-height: 24px;
+      margin-bottom: 16px;
+    }
+
+    /* Saisie manuelle */
+    .manual-card {
+      width: 100%;
+      max-width: 440px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .manual-label {
+      font-size: 12px;
+      color: #7890AA;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .manual-row {
+      display: flex;
+      gap: 8px;
+    }
+    .manual-input {
+      flex: 1;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #1A3060;
+      background: #FFFFFF;
+      color: #000;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    .manual-btn {
+      background: #1A3060;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      padding: 0 18px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .manual-btn:active { opacity: 0.8; }
+
+    /* Toast Flottant */
+    #scan-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      width: 90%;
+      max-width: 400px;
+      background: #102A43;
+      border: 2px solid #34C759;
+      border-radius: 16px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.7);
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 100;
+    }
+    #scan-toast.show { transform: translateX(-50%) translateY(0); }
+    .toast-icon { font-size: 28px; line-height: 1; }
+    .toast-title { font-size: 15px; font-weight: 800; color: #FFFFFF; }
+    .toast-sub { font-size: 12px; color: #4CAF50; margin-top: 2px; font-weight: 600; }
   </style>
 </head>
 <body>
 
-  <div id="main-view">
-    <h2>N'MaShop Scanner</h2>
-    <p class="sub">Assurez-vous que votre telephone<br>est sur le même Wi-Fi que le PC.</p>
-
-    <label class="btn" for="photo-input">Prendre une photo du code-barres</label>
-    <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none">
-
-    <button class="btn btn-secondary" id="live-btn" style="margin-top:12px">Scanner en direct (Webcam)</button>
-
-    <div class="divider">
-      <p class="divider-label">OU saisissez le code manuellement</p>
-      <input type="text" id="manual-input" placeholder="Ex: 3582910090977" inputmode="numeric">
-      <button class="btn btn-secondary" id="send-btn" style="margin-top:12px">Envoyer ce code</button>
+  <!-- Barre de Statut -->
+  <div class="header-bar">
+    <div class="status-badge">
+      <div class="dot"></div>
+      <span>CONNECTÉ AU PC</span>
     </div>
-
-    <div id="status"></div>
+    <div class="counter-badge" id="counter-badge">0 ARTICLE</div>
   </div>
 
-  <div id="video-view" style="display:none; flex-direction: column; align-items: center; width: 100%;">
-    <h2>Webcam en direct</h2>
-    <video id="video" autoplay playsinline style="width: 100%; max-width: 400px; border-radius: 12px; margin-bottom: 16px; background: #000;"></video>
-    <p id="video-status" style="color: #AABBCC; font-size: 13px; margin-bottom: 16px;">Recherche de code-barres...</p>
-    <button class="btn btn-secondary" id="stop-video-btn">Annuler</button>
+  <!-- Bouton Principal de Scan -->
+  <div class="scan-box">
+    <label class="btn-scan" for="camera-input">
+      <div class="scan-icon">📷</div>
+      <div class="scan-title">SCANNER UN CODE-BARRES</div>
+      <div class="scan-sub">Appuyez ici • Détection instantanée & envoi au PC</div>
+    </label>
+    <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none">
   </div>
 
-  <div id="success-view">
-    <div class="ok-icon">&#10003;</div>
-    <p class="ok-text">Code transmis au PC !</p>
-    <p class="ok-sub">Le produit a été ajouté.</p>
-    <button class="btn" id="reset-btn">Scanner un autre produit</button>
+  <div id="status-text">Prêt à scanner un produit.</div>
+
+  <!-- Saisie Manuelle de Secours -->
+  <div class="manual-card">
+    <div class="manual-label">OU SAISIR LE CODE CHIFFRÉ :</div>
+    <div class="manual-row">
+      <input type="text" id="manual-input" class="manual-input" placeholder="Ex: 3582910090977" inputmode="numeric">
+      <button class="manual-btn" id="manual-send-btn">Envoyer</button>
+    </div>
   </div>
+
+  <!-- Toast de Confirmation -->
+  <div id="scan-toast">
+    <div class="toast-icon">✅</div>
+    <div>
+      <div class="toast-title" id="toast-code">Code scanné</div>
+      <div class="toast-sub">Transmis au PC • Ajouté au panier</div>
+    </div>
+  </div>
+
+  <div id="hidden-reader" style="display:none"></div>
 
   <script>
-    var statusEl = document.getElementById('status');
-    var videoEl = document.getElementById('video');
-    var videoStream = null;
-    var scanInterval = null;
+    var audioCtx = null;
+    var scanCount = 0;
+    var toastTimer = null;
+    var statusEl = document.getElementById('status-text');
 
-    function setStatus(msg) {
-      statusEl.textContent = msg;
-    }
-
-    function showSuccess() {
-      document.getElementById('main-view').style.display = 'none';
-      document.getElementById('success-view').style.display = 'flex';
-    }
-
-    function reset() {
-      document.getElementById('manual-input').value = '';
-      document.getElementById('photo-input').value = '';
-      setStatus('');
-      stopVideo();
-      document.getElementById('success-view').style.display = 'none';
-      document.getElementById('video-view').style.display = 'none';
-      document.getElementById('main-view').style.display = 'block';
-    }
-
-    var html5QrcodeScanner = null;
-
-    function stopVideo() {
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.stop().then(function() {
-          html5QrcodeScanner.clear();
-          html5QrcodeScanner = null;
-        }).catch(function(err) {
-          console.error('Erreur stop: ', err);
-        });
-      }
-      if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
-      if (videoStream) {
-        videoStream.getTracks().forEach(function(track) { track.stop(); });
-        videoStream = null;
-      }
-      videoEl.srcObject = null;
-    }
-
-    function sendToPC(code) {
-      setStatus('Envoi en cours...');
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', '/scan', true);
-      xhr.onload = function() {
-        if (xhr.status === 200) {
-          showSuccess();
-        } else {
-          setStatus('Erreur serveur (' + xhr.status + '). Réessayez.');
-        }
-      };
-      xhr.onerror = function() {
-        setStatus('Impossible de joindre le PC. Vérifiez que vous êtes sur le même Wi-Fi.');
-      };
-      xhr.send(code);
-    }
-
-    // Bouton envoyer
-    document.getElementById('send-btn').addEventListener('click', function() {
-      var val = document.getElementById('manual-input').value.replace(/\\s/g, '');
-      if (val.length === 0) {
-        setStatus('Saisissez un code avant d\\'envoyer.');
-        return;
-      }
-      sendToPC(val);
-    });
-
-    // Touche Entrée sur le champ
-    document.getElementById('manual-input').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter' || e.keyCode === 13) {
-        document.getElementById('send-btn').click();
-      }
-    });
-
-    // Bouton reset
-    document.getElementById('reset-btn').addEventListener('click', reset);
-    document.getElementById('stop-video-btn').addEventListener('click', reset);
-
-    // Live Webcam
-    document.getElementById('live-btn').addEventListener('click', function() {
-      if (typeof Html5Qrcode === 'undefined') {
-        setStatus('La librairie de scan est en cours de chargement. Veuillez patienter ou vérifier votre connexion.');
-        return;
-      }
-      
-      document.getElementById('main-view').style.display = 'none';
-      document.getElementById('video-view').style.display = 'flex';
-      document.getElementById('video-status').textContent = 'Initialisation de la caméra...';
-      
-      // On cache la vidéo par défaut car Html5Qrcode va injecter sa propre vidéo.
-      videoEl.style.display = 'none';
-      // Mais on a besoin d'un div conteneur !
-      if (!document.getElementById('reader')) {
-        var readerDiv = document.createElement('div');
-        readerDiv.id = 'reader';
-        readerDiv.style.width = '100%';
-        readerDiv.style.maxWidth = '400px';
-        videoEl.parentNode.insertBefore(readerDiv, videoEl);
-      }
-      
+    // Bip caisse synthétisé haute netteté (1850Hz)
+    function playBeep() {
       try {
-        html5QrcodeScanner = new Html5Qrcode("reader");
-        html5QrcodeScanner.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: {width: 250, height: 250} },
-          function(decodedText, decodedResult) {
-            stopVideo();
-            sendToPC(decodedText);
-          },
-          function(errorMessage) {
-            // parse errors are normal (frame with no barcode)
-          }
-        ).catch(function(err) {
-          reset();
-          setStatus('Erreur caméra (Permission refusée ou non sécurisé): ' + err);
-        });
-      } catch (e) {
-        reset();
-        setStatus('Erreur interne: ' + e);
-      }
-    });
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1850, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.09);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.09);
+      } catch (e) {}
+    }
 
-    // Photo avec BarcodeDetector natif (Android Chrome 83+)
-    document.getElementById('photo-input').addEventListener('change', function(e) {
+    function showToast(code) {
+      var toast = document.getElementById('scan-toast');
+      document.getElementById('toast-code').textContent = code;
+      toast.classList.add('show');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(function() {
+        toast.classList.remove('show');
+      }, 1800);
+    }
+
+    function sendCodeToPC(code) {
+      playBeep();
+      if (navigator.vibrate) navigator.vibrate(80);
+
+      scanCount++;
+      document.getElementById('counter-badge').textContent = scanCount + (scanCount > 1 ? ' ARTICLES' : ' ARTICLE');
+      statusEl.innerHTML = '<span style="color:#4CAF50; font-weight:700">Dernier code envoyé : ' + code + '</span>';
+      showToast(code);
+
+      fetch('/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        body: code
+      }).catch(function(err) {
+        statusEl.innerHTML = '<span style="color:#FF3B30">Erreur réseau : vérifiez le Wi-Fi</span>';
+      });
+    }
+
+    // Traitement rapide de l'image (redimensionnement sur canvas + décodage < 80ms)
+    document.getElementById('camera-input').addEventListener('change', function(e) {
       var file = e.target.files[0];
       if (!file) return;
 
-      if (typeof BarcodeDetector === 'undefined') {
-        setStatus('Détection photo non disponible. Saisissez le code manuellement.');
-        e.target.value = '';
+      statusEl.textContent = 'Analyse du code-barres en cours...';
+
+      // 1. Redimensionner l'image à max 800px pour un traitement ultra-rapide
+      var img = new Image();
+      var objectUrl = URL.createObjectURL(file);
+
+      img.onload = function() {
+        URL.revokeObjectURL(objectUrl);
+
+        var canvas = document.createElement('canvas');
+        var maxDim = 800;
+        var scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // A. Essai via BarcodeDetector natif du smartphone (ultra-rapide 10ms si Chrome Android)
+        if ('BarcodeDetector' in window) {
+          var detector = new BarcodeDetector({
+            formats: ['ean_13', 'code_128', 'ean_8', 'upc_a', 'upc_e', 'code_39', 'qr_code']
+          });
+          detector.detect(canvas).then(function(barcodes) {
+            if (barcodes.length > 0) {
+              sendCodeToPC(barcodes[0].rawValue);
+              document.getElementById('camera-input').value = '';
+            } else {
+              fallbackDecodeWithHtml5Qrcode(file);
+            }
+          }).catch(function() {
+            fallbackDecodeWithHtml5Qrcode(file);
+          });
+        } else {
+          fallbackDecodeWithHtml5Qrcode(file);
+        }
+      };
+
+      img.onerror = function() {
+        URL.revokeObjectURL(objectUrl);
+        statusEl.textContent = 'Impossible de charger l\\'image.';
+        document.getElementById('camera-input').value = '';
+      };
+
+      img.src = objectUrl;
+    });
+
+    function fallbackDecodeWithHtml5Qrcode(file) {
+      if (typeof Html5Qrcode === 'undefined') {
+        statusEl.textContent = 'Erreur : librairie non chargée.';
+        document.getElementById('camera-input').value = '';
         return;
       }
 
-      setStatus('Analyse de la photo en cours...');
-      
-      // Redimensionner l'image pour éviter les problèmes mémoire sur mobile
-      var img = new Image();
-      var objectUrl = URL.createObjectURL(file);
-      img.onload = function() {
-        URL.revokeObjectURL(objectUrl);
-        
-        if (typeof Html5Qrcode === 'undefined') {
-           setStatus('Librairie non chargée.');
-           return;
-        }
-
-        var html5QrCode = new Html5Qrcode("main-view"); // on utilise un élément existant quelconque
-        html5QrCode.scanFileV2(file, true)
+      var scanner = new Html5Qrcode("hidden-reader");
+      scanner.scanFileV2(file, true)
         .then(function(decodedText) {
-          document.getElementById('photo-input').value = '';
-          sendToPC(decodedText);
+          sendCodeToPC(decodedText);
+          document.getElementById('camera-input').value = '';
         })
-        .catch(function(err) {
-          document.getElementById('photo-input').value = '';
-          setStatus('Erreur d\\'analyse ou aucun code trouvé. Saisissez manuellement.');
+        .catch(function() {
+          statusEl.innerHTML = '<span style="color:#FF9800">Code non détecté. Rapprochez la caméra et réessayez.</span>';
+          document.getElementById('camera-input').value = '';
         });
-      };
-      img.onerror = function() {
-        URL.revokeObjectURL(objectUrl);
-        setStatus('Impossible de lire la photo.');
-        e.target.value = '';
-      };
-      img.src = objectUrl;
+    }
+
+    // Saisie Manuelle
+    document.getElementById('manual-send-btn').addEventListener('click', function() {
+      var input = document.getElementById('manual-input');
+      var val = input.value.replace(/\\s/g, '');
+      if (val.length < 2) return;
+      sendCodeToPC(val);
+      input.value = '';
+    });
+    document.getElementById('manual-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') document.getElementById('manual-send-btn').click();
     });
   </script>
 </body>

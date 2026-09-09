@@ -55,6 +55,9 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
 
+    // Initialiser immédiatement la webcam pour un scan direct sans clic supplémentaire
+    _initCamera();
+
     // Démarrer le serveur local (onglet Smartphone)
     _scannerServer.start().then((_) {
       if (mounted) setState(() => _serverStarting = false);
@@ -80,6 +83,15 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
     setState(() {
       _cameraController = MobileScannerController(
         detectionSpeed: DetectionSpeed.noDuplicates,
+        formats: const [
+          BarcodeFormat.ean13,
+          BarcodeFormat.ean8,
+          BarcodeFormat.code128,
+          BarcodeFormat.code39,
+          BarcodeFormat.upcA,
+          BarcodeFormat.upcE,
+          BarcodeFormat.qrCode,
+        ],
         returnImage: false,
       );
     });
@@ -132,6 +144,8 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
 
   void _onCodeDetected(String code) {
     if (_detected || !mounted) return;
+    SystemSound.play(SystemSoundType.click);
+    HapticFeedback.mediumImpact();
     setState(() => _detected = true);
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) Navigator.of(context).pop(code);
@@ -381,11 +395,13 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
       );
     }
 
+    final activeUrl = _scannerServer.serverUrl!;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
       child: Column(
         children: [
-          // Instructions
+          // Instructions Simples
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
@@ -393,21 +409,21 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
             ),
-            child: Column(
+            child: const Column(
               children: [
                 _InstructionRow(
                   number: '1',
                   text: 'Connectez votre téléphone au même réseau Wi-Fi que ce PC.',
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 _InstructionRow(
                   number: '2',
-                  text: "Scannez le QR Code ci-dessous (sur cet écran PC) pour connecter votre téléphone.",
+                  text: 'Scannez le QR Code ci-dessous avec l\'appareil photo de votre téléphone.',
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 _InstructionRow(
                   number: '3',
-                  text: "Sur votre téléphone, prenez en photo le CODE-BARRES (les lignes noires) du produit.",
+                  text: 'Appuyez sur "Scanner un code-barres" : le produit est détecté instantanément et ajouté au panier avec un Bip !',
                 ),
               ],
             ),
@@ -429,7 +445,7 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
               ],
             ),
             child: QrImageView(
-              data: _scannerServer.serverUrl!,
+              data: activeUrl,
               version: QrVersions.auto,
               size: 160.0,
               backgroundColor: Colors.white,
@@ -439,7 +455,7 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
 
           // Lien direct sélectionnable
           SelectableText(
-            _scannerServer.serverUrl!,
+            activeUrl,
             style: AppTypography.labelSm.copyWith(
               color: AppColors.primary,
               fontWeight: FontWeight.w600,
@@ -447,9 +463,9 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          Text(
-            'Ou copiez ce lien et collez-le dans le navigateur de votre téléphone.',
-            style: AppTypography.bodySm.copyWith(color: Colors.grey, fontSize: 11),
+          const Text(
+            '💡 Pour un supermarché à fort passage : vous pouvez brancher une douchette USB/Bluetooth directement sur le PC pour un scan automatique en 0,01 seconde.',
+            style: TextStyle(color: Colors.grey, fontSize: 11, height: 1.4),
             textAlign: TextAlign.center,
           ),
         ],
@@ -567,6 +583,17 @@ class _OverlayPainter extends CustomPainter {
     drawCorner(cutRect.right, cutRect.top, -1, 1);
     drawCorner(cutRect.left, cutRect.bottom, 1, -1);
     drawCorner(cutRect.right, cutRect.bottom, -1, -1);
+
+    // Ligne laser de guidage
+    final laserPaint = Paint()
+      ..color = detected ? Colors.greenAccent : const Color(0xFFFF3B30).withValues(alpha: 0.85)
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(
+      Offset(cutRect.left + 10, cutRect.center.dy),
+      Offset(cutRect.right - 10, cutRect.center.dy),
+      laserPaint,
+    );
   }
 
   @override

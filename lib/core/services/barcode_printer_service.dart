@@ -6,10 +6,11 @@ import '../../features/stock/domain/entities/product.dart';
 import '../format/formatters.dart';
 
 class BarcodePrinterService {
-  /// Imprime une étiquette thermique pour un produit donné.
+  /// Imprime une ou plusieurs étiquettes thermiques pour un produit donné.
   /// Format standard d'étiquette de code-barres : environ 50mm x 30mm
-  static Future<void> printProductLabel(Product product) async {
+  static Future<void> printProductLabel(Product product, {int copies = 1}) async {
     final doc = pw.Document();
+    final count = copies < 1 ? 1 : copies;
 
     // Générer un code si le produit n'en a pas (utilisation de l'ID ou de la référence)
     final codeToPrint = (product.barcode?.trim().isNotEmpty == true)
@@ -26,57 +27,58 @@ class BarcodePrinterService {
       marginAll: 2 * 2.83465, // Marge de 2mm
     );
 
-    // Charger une police si nécessaire, ou utiliser les polices par défaut de pdf
-    doc.addPage(
-      pw.Page(
-        pageFormat: pageFormat,
-        build: (pw.Context context) {
-          return pw.Column(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: pw.CrossAxisAlignment.center,
-            children: [
-              // Nom du produit
-              pw.Text(
-                product.name,
-                style: pw.TextStyle(
-                  fontSize: 8,
-                  fontWeight: pw.FontWeight.bold,
+    for (int i = 0; i < count; i++) {
+      doc.addPage(
+        pw.Page(
+          pageFormat: pageFormat,
+          build: (pw.Context context) {
+            return pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                // Nom du produit
+                pw.Text(
+                  product.name,
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: pw.TextOverflow.clip,
+                  textAlign: pw.TextAlign.center,
                 ),
-                maxLines: 1,
-                overflow: pw.TextOverflow.clip,
-                textAlign: pw.TextAlign.center,
-              ),
-              // Code-barres
-              pw.Expanded(
-                child: pw.Center(
-                  child: pw.BarcodeWidget(
-                    barcode: pw.Barcode.code128(),
-                    data: codeToPrint,
-                    width: pageFormat.availableWidth * 0.8,
-                    height: pageFormat.availableHeight * 0.45,
-                    drawText: true,
-                    textStyle: const pw.TextStyle(fontSize: 6),
+                // Code-barres
+                pw.Expanded(
+                  child: pw.Center(
+                    child: pw.BarcodeWidget(
+                      barcode: pw.Barcode.code128(),
+                      data: codeToPrint,
+                      width: pageFormat.availableWidth * 0.8,
+                      height: pageFormat.availableHeight * 0.45,
+                      drawText: true,
+                      textStyle: const pw.TextStyle(fontSize: 6),
+                    ),
                   ),
                 ),
-              ),
-              // Prix (optionnel, souvent utile sur une étiquette)
-              pw.Text(
-                'Prix: ${formatAmount(product.salePrice)}',
-                style: pw.TextStyle(
-                  fontSize: 7,
-                  fontWeight: pw.FontWeight.bold,
+                // Prix (optionnel, souvent utile sur une étiquette)
+                pw.Text(
+                  'Prix: ${formatAmount(product.salePrice)}',
+                  style: pw.TextStyle(
+                    fontSize: 7,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                  textAlign: pw.TextAlign.center,
                 ),
-                textAlign: pw.TextAlign.center,
-              ),
-            ],
-          );
-        },
-      ),
-    );
+              ],
+            );
+          },
+        ),
+      );
+    }
 
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => doc.save(),
-      name: 'Etiquette_${product.name}',
+      name: 'Etiquettes_${product.name}',
     );
   }
 }
