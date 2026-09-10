@@ -25,7 +25,7 @@ const CONFIG = {
   DEV_LOCATION: "Labé & Conakry, Guinée",
 
   // Vidéo de démonstration locale (issue du dossier audio_demo)
-  DEMO_VIDEO_PATH: "assets/video/nmashop_demo.mp4",
+  DEMO_VIDEO_PATH: "assets/video/nmashop_demo_with_sound.mp4",
   DEMO_AUDIO_PATH: "assets/audio/voix_off_complete.mp3",
 
   // Contacts officiels Guinée

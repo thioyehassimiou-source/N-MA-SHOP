@@ -49,6 +49,7 @@ audio_demo/
 .venv/
 *.mkv
 *.mp4
+!distribution/assets/video/nmashop_demo_with_sound.mp4
 *.avi
 .kotlin/
 
