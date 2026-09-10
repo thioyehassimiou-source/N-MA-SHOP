@@ -12,11 +12,11 @@ const CONFIG = {
   LAST_UPDATE: "Septembre 2026",
   LICENSE_TRIAL: "7 jours d'essai gratuit complet (100% hors-ligne)",
   
-  // Liens de téléchargement du logiciel Windows & Multiplateforme
-  DOWNLOAD_URL: "https://drive.google.com/drive/folders/nmashop-windows-installer",
-  DOWNLOAD_PORTABLE_URL: "https://drive.google.com/drive/folders/nmashop-windows-portable",
+  // Liens de téléchargement du logiciel Windows & Multiplateforme (Drive Officiel Windows)
+  DOWNLOAD_URL: "https://drive.google.com/uc?export=download&id=1grZnk2MUdO7yKHpT-EO4MsO7TduLbYNm",
+  DOWNLOAD_PORTABLE_URL: "https://drive.google.com/uc?export=download&id=1grZnk2MUdO7yKHpT-EO4MsO7TduLbYNm",
   DOWNLOAD_LINUX_URL: "downloads/nmashop_linux_release.tar.gz",
-  DOWNLOAD_APK_URL: "downloads/NMaShop_Admin_Mobile_v1.0.0.apk",
+  DOWNLOAD_APK_URL: "https://drive.google.com/uc?export=download&id=1yHueBEciq3z7Xh4dKOafJoY3OHN3ZsAN",
   
   // Auteur & Conception Réelle (Conforme AppContacts & Cahier des Charges)
   DEV_NAME: "Hassimiou Thioye",

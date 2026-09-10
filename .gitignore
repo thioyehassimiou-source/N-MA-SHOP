@@ -58,3 +58,4 @@ releases/
 *.apk
 scratch/
 *.wav
+.vercel/
