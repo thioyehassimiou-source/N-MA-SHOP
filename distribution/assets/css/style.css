@@ -4421,3 +4421,208 @@ html[data-theme="dark"] .btn-modal-dismiss:hover {
   font-weight: 500;
 }
 
+/* ==========================================================================
+   OPTIMISATION MOBILE EXCLUSIVEMENT PARFAITE (0 Débordement, 100% Lisible)
+   ========================================================================== */
+
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  /* ── Header Mobile Compact ── */
+  .site-header {
+    padding: 0.5rem 0;
+  }
+
+  .header-container {
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .brand-logo-img {
+    height: 28px !important;
+  }
+
+  .theme-segmented-switch {
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .theme-segment-btn {
+    padding: 3px 6px;
+    font-size: 0.72rem;
+  }
+
+  .theme-segment-btn .segment-label {
+    display: none !important; /* Masque les mots 'Clair/Sombre' sur smartphone pour libérer 80px */
+  }
+
+  .btn-hamburger {
+    padding: 6px;
+    margin-left: 2px;
+  }
+
+  /* ── Hero Section Mobile ── */
+  .hero-section {
+    padding: 1.5rem 0 2.5rem;
+  }
+
+  .hero-badge {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.65rem;
+    max-width: 100%;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .hero-title {
+    font-size: 1.75rem !important;
+    line-height: 1.25 !important;
+    margin-bottom: 0.75rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.9rem !important;
+    line-height: 1.45;
+    margin-bottom: 1.25rem;
+  }
+
+  .hero-cta-group {
+    flex-direction: column !important;
+    width: 100%;
+    gap: 0.75rem;
+  }
+
+  .btn-hero-windows,
+  .btn-hero-secondary {
+    width: 100% !important;
+    justify-content: center;
+    text-align: center;
+    font-size: 0.92rem;
+    padding: 0.85rem 1rem;
+  }
+
+  /* ── Grille KPI Caisse & Dashboard (0 Coupure) ── */
+  .real-kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .real-kpi-card {
+    padding: 12px 14px;
+    gap: 12px;
+    width: 100%;
+    border-radius: 12px;
+  }
+
+  .kpi-icon-wrap {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .kpi-value {
+    font-size: 1.1rem !important;
+  }
+
+  .kpi-label {
+    font-size: 0.74rem !important;
+  }
+
+  /* ── Conteneurs Showcase & Tableaux ── */
+  .hero-showcase-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .elite-app-window {
+    border-radius: 12px;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .showcase-nav-tabs {
+    padding: 4px 6px;
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .showcase-tab-btn {
+    padding: 5px 9px;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .pos-items-pane,
+  .pos-cart-pane,
+  .app-internal-main {
+    padding: 12px !important;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* ── Grilles & Cartes en 1 Colonne ── */
+  .features-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem;
+  }
+
+  .pricing-grid-container {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem;
+  }
+
+  .duel-comparison-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem;
+  }
+
+  .duel-comparison-card {
+    padding: 1.4rem 1.15rem !important;
+  }
+
+  .tech-spec-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px;
+  }
+
+  .video-chapters-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px;
+  }
+
+  /* ── Positionnement des Boutons Flottants ── */
+  .floating-assistant-label {
+    display: none !important;
+  }
+
+  .floating-whatsapp-assistant {
+    padding: 10px !important;
+    border-radius: 50% !important;
+    bottom: 14px !important;
+    right: 14px !important;
+    width: 44px !important;
+    height: 44px !important;
+    justify-content: center;
+    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.45);
+  }
+
+  .btn-back-to-top {
+    bottom: 14px !important;
+    left: 14px !important;
+    width: 42px !important;
+    height: 42px !important;
+  }
+}
+
