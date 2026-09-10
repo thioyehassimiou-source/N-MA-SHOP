@@ -4429,6 +4429,8 @@ html, body {
   overflow-x: hidden !important;
   max-width: 100vw !important;
   width: 100% !important;
+  margin: 0;
+  padding: 0;
 }
 
 *, *::before, *::after {
@@ -4436,193 +4438,390 @@ html, body {
 }
 
 @media (max-width: 768px) {
+  .container {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
   /* ── Header Mobile Compact ── */
   .site-header {
-    padding: 0.5rem 0;
+    padding: 0.4rem 0 !important;
   }
 
   .header-container {
-    padding: 0 10px;
-    gap: 6px;
+    padding: 0 8px !important;
+    gap: 6px !important;
   }
 
   .brand-logo-img {
-    height: 28px !important;
+    height: 26px !important;
+    max-height: 26px !important;
   }
 
   .theme-segmented-switch {
-    padding: 2px;
-    gap: 2px;
+    padding: 2px !important;
+    gap: 2px !important;
   }
 
   .theme-segment-btn {
-    padding: 3px 6px;
-    font-size: 0.72rem;
+    padding: 4px 6px !important;
+    font-size: 0.72rem !important;
   }
 
   .theme-segment-btn .segment-label {
-    display: none !important; /* Masque les mots 'Clair/Sombre' sur smartphone pour libérer 80px */
+    display: none !important; /* Masque 'Clair/Sombre' pour économiser 80px sur mobile */
   }
 
   .btn-hamburger {
-    padding: 6px;
-    margin-left: 2px;
+    padding: 5px !important;
+    margin-left: 2px !important;
   }
 
-  /* ── Hero Section Mobile ── */
+  /* ── Hero Section ── */
   .hero-section {
-    padding: 1.5rem 0 2.5rem;
+    padding: 1.25rem 0 2rem !important;
   }
 
   .hero-badge {
-    font-size: 0.7rem;
-    padding: 0.3rem 0.65rem;
-    max-width: 100%;
-    text-align: center;
-    white-space: normal;
+    font-size: 0.68rem !important;
+    padding: 0.3rem 0.6rem !important;
+    max-width: 100% !important;
+    text-align: center !important;
+    white-space: normal !important;
+    line-height: 1.3 !important;
   }
 
   .hero-title {
-    font-size: 1.75rem !important;
+    font-size: 1.6rem !important;
     line-height: 1.25 !important;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.75rem !important;
+    word-break: break-word !important;
   }
 
   .hero-subtitle {
-    font-size: 0.9rem !important;
-    line-height: 1.45;
-    margin-bottom: 1.25rem;
+    font-size: 0.88rem !important;
+    line-height: 1.45 !important;
+    margin-bottom: 1.25rem !important;
   }
 
   .hero-cta-group {
     flex-direction: column !important;
-    width: 100%;
-    gap: 0.75rem;
+    width: 100% !important;
+    gap: 0.75rem !important;
   }
 
   .btn-hero-windows,
   .btn-hero-secondary {
     width: 100% !important;
-    justify-content: center;
-    text-align: center;
-    font-size: 0.92rem;
-    padding: 0.85rem 1rem;
+    justify-content: center !important;
+    text-align: center !important;
+    font-size: 0.9rem !important;
+    padding: 0.8rem 1rem !important;
   }
 
-  /* ── Grille KPI Caisse & Dashboard (0 Coupure) ── */
-  .real-kpi-grid {
-    grid-template-columns: 1fr !important;
-    gap: 10px;
+  /* ── Impact Strip (4 statistiques) ── */
+  .hero-impact-strip {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    padding: 12px 8px !important;
+    margin-bottom: 2rem !important;
+    border-radius: 12px !important;
   }
 
-  .real-kpi-card {
-    padding: 12px 14px;
-    gap: 12px;
-    width: 100%;
-    border-radius: 12px;
+  .impact-col {
+    padding: 4px !important;
   }
 
-  .kpi-icon-wrap {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+  .impact-num {
+    font-size: 1.25rem !important;
   }
 
-  .kpi-value {
-    font-size: 1.1rem !important;
+  .impact-label {
+    font-size: 0.72rem !important;
   }
 
-  .kpi-label {
-    font-size: 0.74rem !important;
+  .impact-sub {
+    font-size: 0.65rem !important;
+    line-height: 1.2 !important;
   }
 
-  /* ── Conteneurs Showcase & Tableaux ── */
-  .hero-showcase-wrapper {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
+  /* ── Marquee / Ticker ── */
+  .hero-marquee-bar {
+    max-width: 100vw !important;
+    overflow: hidden !important;
+    margin-bottom: 2rem !important;
   }
 
+  /* ── Elite App Showcase Window ── */
+  .hero-showcase-wrapper,
   .elite-app-window {
-    border-radius: 12px;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    border-radius: 12px !important;
+  }
+
+  .elite-window-titlebar {
+    padding: 6px 10px !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .titlebar-left {
+    gap: 6px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .titlebar-text {
+    font-size: 0.7rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 180px !important;
+  }
+
+  .badge-status-offline {
+    font-size: 0.65rem !important;
+    padding: 2px 6px !important;
   }
 
   .showcase-nav-tabs {
-    padding: 4px 6px;
-    gap: 4px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    padding: 4px 6px !important;
+    gap: 4px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
   }
 
   .showcase-tab-btn {
-    padding: 5px 9px;
-    font-size: 0.75rem;
-    flex-shrink: 0;
+    padding: 5px 8px !important;
+    font-size: 0.72rem !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  /* ── Dashboard Internal Wrapper & Grid ── */
+  .real-dashboard-wrap {
+    padding: 10px 8px !important;
+    gap: 12px !important;
+  }
+
+  .dash-top-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .dash-header-actions {
+    width: 100% !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .dash-period-chips {
+    padding: 2px !important;
+    gap: 2px !important;
+  }
+
+  .period-chip {
+    padding: 3px 8px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .dash-sync-pill {
+    padding: 3px 8px !important;
+    font-size: 0.68rem !important;
+  }
+
+  /* ── KPI Grid & Cards ── */
+  .real-kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .real-kpi-card {
+    padding: 12px 14px !important;
+    gap: 10px !important;
+    width: 100% !important;
+    border-radius: 12px !important;
+  }
+
+  .kpi-icon-wrap {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .kpi-value {
+    font-size: 1.15rem !important;
+    word-break: break-word !important;
+  }
+
+  .kpi-label {
+    font-size: 0.72rem !important;
+  }
+
+  .kpi-badge {
+    font-size: 0.68rem !important;
+    padding: 2px 6px !important;
+  }
+
+  /* ── Split & Chart Cards ── */
+  .real-dash-split {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .dash-chart-card,
+  .dash-recent-sales-card,
+  .dash-payments-card,
+  .dash-alerts-card {
+    padding: 12px 10px !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+  }
+
+  /* ── POS View ── */
+  .pos-showcase-grid {
+    grid-template-columns: 1fr !important;
   }
 
   .pos-items-pane,
-  .pos-cart-pane,
-  .app-internal-main {
-    padding: 12px !important;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
+  .pos-receipt-pane,
+  .stock-overview-pane,
+  .credit-overview-pane {
+    padding: 10px !important;
   }
 
-  /* ── Grilles & Cartes en 1 Colonne ── */
-  .features-grid {
-    grid-template-columns: 1fr !important;
-    gap: 1.25rem;
+  .pos-catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+    gap: 8px !important;
   }
 
-  .pricing-grid-container {
-    grid-template-columns: 1fr !important;
-    gap: 1.5rem;
+  .pos-card-item {
+    padding: 8px 6px !important;
   }
 
-  .duel-comparison-grid {
-    grid-template-columns: 1fr !important;
-    gap: 1.25rem;
+  /* ── Responsive Tables ── */
+  .dash-table-wrap,
+  .table-responsive {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .dash-table {
+    min-width: 460px !important;
+  }
+
+  /* ── Duel Section ── */
+  .duel-section {
+    padding: 2rem 0 !important;
   }
 
   .duel-comparison-card {
-    padding: 1.4rem 1.15rem !important;
+    padding: 1.25rem 1rem !important;
+    border-radius: 14px !important;
   }
 
-  .tech-spec-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px;
+  .duel-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
   }
 
+  .duel-side {
+    padding: 1.15rem 0.9rem !important;
+  }
+
+  /* ── Grids (Features, Pricing, Tech Specs) ── */
+  .features-grid,
+  .pricing-grid-container {
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
+  }
+
+  .pricing-card {
+    padding: 1.5rem 1.15rem !important;
+  }
+
+  .tech-spec-grid,
   .video-chapters-row {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px;
+    gap: 8px !important;
   }
 
-  /* ── Positionnement des Boutons Flottants ── */
+  .tech-spec-item,
+  .chapter-card {
+    padding: 10px 8px !important;
+  }
+
+  /* ── Floating Action Buttons ── */
   .floating-assistant-label {
     display: none !important;
   }
 
   .floating-whatsapp-assistant {
-    padding: 10px !important;
-    border-radius: 50% !important;
+    position: fixed !important;
     bottom: 14px !important;
     right: 14px !important;
     width: 44px !important;
     height: 44px !important;
-    justify-content: center;
-    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.45);
+    min-width: 44px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.45) !important;
+    z-index: 9999 !important;
   }
 
   .btn-back-to-top {
+    position: fixed !important;
     bottom: 14px !important;
     left: 14px !important;
     width: 42px !important;
     height: 42px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 9998 !important;
+  }
+
+  /* ── Footer ── */
+  .footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.75rem !important;
+  }
+
+  .footer-bottom {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 8px !important;
   }
 }
+
+@media (max-width: 400px) {
+  .hero-title {
+    font-size: 1.45rem !important;
+  }
+
+  .hero-impact-strip {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .tech-spec-grid,
+  .video-chapters-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 
