@@ -351,7 +351,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       const SizedBox(height: AppSpacing.lg),
                       _buildTableCard(pageItems, pageCount, isAdmin),
                       const SizedBox(height: AppSpacing.xl),
-                      _buildInsights(all),
+                      _buildInsights(all, isAdmin),
                     ],
                   ),
                 ),
@@ -370,25 +370,25 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       icon: Icons.inventory_2_outlined,
       gradientColors: const [AppColors.brandNavy, AppColors.brandNavyLight],
       actions: [
-        AppButton.secondary(
-          icon: Icons.file_upload_outlined,
-          label: 'Importer',
-          onPressed: _importCsv,
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        AppButton.secondary(
-          icon: Icons.file_download_outlined,
-          label: 'Exporter',
-          onPressed: () => _exportCsv(allProducts),
-        ),
         if (isAdmin) ...[
+          AppButton.secondary(
+            icon: Icons.file_upload_outlined,
+            label: 'Importer',
+            onPressed: _importCsv,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          AppButton.secondary(
+            icon: Icons.file_download_outlined,
+            label: 'Exporter',
+            onPressed: () => _exportCsv(allProducts),
+          ),
           const SizedBox(width: AppSpacing.sm),
           AppButton(
             icon: Icons.add,
             label: 'Nouveau Produit',
             onPressed: () => _openDialog(null),
           ),
-        ]
+        ],
       ],
     );
   }
@@ -674,7 +674,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     );
   }
 
-  Widget _buildInsights(List<Product> products) {
+  Widget _buildInsights(List<Product> products, bool isAdmin) {
     final inventoryValue = products.fold<int>(0, (sum, p) {
       final cost = p.weightedAverageCost > 0
           ? p.weightedAverageCost
@@ -688,23 +688,26 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 600;
-        final cardWidth = isMobile ? double.infinity : (constraints.maxWidth - AppSpacing.lg) / 2;
+        final cardWidth = isMobile || !isAdmin
+            ? double.infinity
+            : (constraints.maxWidth - AppSpacing.lg) / 2;
 
         return Wrap(
           spacing: AppSpacing.lg,
           runSpacing: AppSpacing.lg,
           children: [
-            SizedBox(
-              width: cardWidth,
-              child: AppMetricCard(
-                title: 'Valeur du Stock (GNF)',
-                value: formatAmount(inventoryValue),
-                icon: Icons.inventory_2,
-                iconColor: context.colors.primary,
-                iconBackgroundColor: context.colors.primaryContainer,
-                badgeText: '+4.2%',
+            if (isAdmin)
+              SizedBox(
+                width: cardWidth,
+                child: AppMetricCard(
+                  title: 'Valeur du Stock (GNF)',
+                  value: formatAmount(inventoryValue),
+                  icon: Icons.inventory_2,
+                  iconColor: context.colors.primary,
+                  iconBackgroundColor: context.colors.primaryContainer,
+                  badgeText: '+4.2%',
+                ),
               ),
-            ),
             SizedBox(
               width: cardWidth,
               child: AppMetricCard(
@@ -718,7 +721,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
             ),
           ],
         );
-      }
+      },
     );
   }
 }

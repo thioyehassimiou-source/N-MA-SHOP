@@ -12,6 +12,7 @@ class RecentSale {
     required this.paid,
     required this.isCancelled,
     this.imageUrl,
+    this.sellerName,
   });
 
   final String id;
@@ -22,6 +23,7 @@ class RecentSale {
   final bool paid;
   final bool isCancelled;
   final String? imageUrl;
+  final String? sellerName;
 }
 
 /// Produit sous son seuil d'alerte, réduit à ce qu'affiche l'accueil.

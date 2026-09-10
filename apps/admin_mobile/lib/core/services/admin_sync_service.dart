@@ -34,7 +34,7 @@ class AdminSyncService {
         ),
       );
 
-      // S'assure que la table existe
+      // S'assure que la table et la colonne is_active existent
       await connection.execute('''
         CREATE TABLE IF NOT EXISTS nmashop_activations (
           id SERIAL PRIMARY KEY,
@@ -49,16 +49,17 @@ class AdminSyncService {
           is_synced BOOLEAN DEFAULT false
         );
       ''');
+      await connection.execute('ALTER TABLE nmashop_activations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;');
 
-      // Récupérer les activations non synchronisées
+      // Récupérer toutes les activations enregistrées sur Neon
       final result = await connection.execute('''
         SELECT id, business_name, owner_name, phone, address, 
-               hardware_id, license_key, activated_at, expires_at 
+               hardware_id, license_key, activated_at, expires_at, is_active, is_synced 
         FROM nmashop_activations 
-        WHERE is_synced = false
+        ORDER BY id ASC
       ''');
 
-      final syncedIds = <int>[];
+      final unSyncedIds = <int>[];
 
       for (final row in result) {
         final id = row[0] as int;
@@ -70,6 +71,8 @@ class AdminSyncService {
         final licenseKey = row[6] as String;
         final activatedAt = row[7] as DateTime;
         final expiresAt = row[8] as DateTime?;
+        final isActive = (row[9] as bool?) ?? true;
+        final isAlreadySynced = (row[10] as bool?) ?? false;
 
         final payload = {
           'businessName': businessName,
@@ -80,15 +83,18 @@ class AdminSyncService {
           'licenseKey': licenseKey,
           'activatedAt': activatedAt.toIso8601String(),
           'expiryDate': expiresAt?.toIso8601String(),
+          'isActive': isActive,
         };
 
         await _processActivationPayload(payload);
-        syncedIds.add(id);
+        if (!isAlreadySynced) {
+          unSyncedIds.add(id);
+        }
       }
 
-      // Marquer les activations traitées comme synchronisées sur Neon pour éviter les re-traitements
-      if (syncedIds.isNotEmpty) {
-        for (final id in syncedIds) {
+      // Marquer les activations non encore flaggées comme synchronisées
+      if (unSyncedIds.isNotEmpty) {
+        for (final id in unSyncedIds) {
           await connection.execute(
             Sql.named('UPDATE nmashop_activations SET is_synced = true WHERE id = @id'),
             parameters: {'id': id},
@@ -97,7 +103,6 @@ class AdminSyncService {
       }
 
       // Synchroniser les révocations / désactivations (is_active = false) depuis Neon
-      await connection.execute('ALTER TABLE nmashop_activations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;');
       final deactivatedResult = await connection.execute('''
         SELECT hardware_id, license_key 
         FROM nmashop_activations 
@@ -120,8 +125,8 @@ class AdminSyncService {
       }
 
       await connection.close();
-      if (syncedIds.isNotEmpty) {
-        debugPrint('${syncedIds.length} activations synchronisées avec succès !');
+      if (unSyncedIds.isNotEmpty) {
+        debugPrint('${unSyncedIds.length} nouvelles machines/activations synchronisées !');
       }
     } catch (e) {
       debugPrint('Impossible de récupérer les activations (hors-ligne ou erreur): $e');
@@ -135,8 +140,9 @@ class AdminSyncService {
       final ownerName = payload['ownerName'] ?? 'Gérant Inconnu';
       final phone = payload['phone'] ?? '';
       final address = payload['address'] ?? '';
-      final hardwareId = payload['hardwareId'] ?? '';
-      final licenseKey = payload['licenseKey'] ?? '';
+      final hardwareId = (payload['hardwareId'] ?? '').toString().trim().toUpperCase();
+      final licenseKey = (payload['licenseKey'] ?? '').toString().trim().toUpperCase();
+      final isActive = (payload['isActive'] as bool?) ?? true;
       
       final activatedAtStr = payload['activatedAt'];
       final expiryDateStr = payload['expiryDate'];
@@ -148,7 +154,7 @@ class AdminSyncService {
       final clients = _repository.getClients();
       ClientModel? existingClient;
       try {
-        existingClient = clients.firstWhere((c) => c.hardwareId == hardwareId);
+        existingClient = clients.firstWhere((c) => c.hardwareId.trim().toUpperCase() == hardwareId);
       } catch (_) {
         existingClient = null;
       }
@@ -169,26 +175,36 @@ class AdminSyncService {
       
       await _repository.saveClient(client);
 
-      // 2. Vérifier si la licence existe déjà
+      // 2. Déduire le type de licence
+      AdminLicenseType type = AdminLicenseType.annual;
+      if (licenseKey.startsWith('TRIAL-') || licenseKey == 'ESSAI-GRATUIT') {
+        type = AdminLicenseType.trial;
+      } else if (expiryDate == null || expiryDate.year >= 9999) {
+        type = AdminLicenseType.lifetime;
+      } else {
+        final diff = expiryDate.difference(activatedAt).inDays;
+        if (diff <= 10) {
+          type = AdminLicenseType.trial;
+        } else if (diff <= 35) {
+          type = AdminLicenseType.days30;
+        } else if (diff <= 95) {
+          type = AdminLicenseType.days90;
+        } else if (diff <= 370) {
+          type = AdminLicenseType.annual;
+        }
+      }
+
+      // 3. Vérifier si la licence existe déjà (par clé ou par machine en mode essai)
       final licenses = _repository.getLicenses();
-      final existingIndex = licenses.indexWhere((l) => l.licenseKey.trim().toUpperCase() == licenseKey.trim().toUpperCase());
+      final existingIndex = licenses.indexWhere((l) {
+        final sameKey = l.licenseKey.trim().toUpperCase() == licenseKey;
+        final sameMachineTrial = hardwareId.isNotEmpty &&
+            l.hardwareId.trim().toUpperCase() == hardwareId &&
+            (l.type == AdminLicenseType.trial || l.licenseKey.startsWith('TRIAL-'));
+        return sameKey || sameMachineTrial;
+      });
 
       if (existingIndex < 0) {
-        // Déduire le type de licence
-        AdminLicenseType type = AdminLicenseType.annual;
-        if (expiryDate == null || expiryDate.year >= 9999) {
-          type = AdminLicenseType.lifetime;
-        } else {
-          final diff = expiryDate.difference(activatedAt).inDays;
-          if (diff <= 35) {
-            type = AdminLicenseType.days30;
-          } else if (diff <= 95) {
-            type = AdminLicenseType.days90;
-          } else if (diff <= 370) {
-            type = AdminLicenseType.annual;
-          }
-        }
-
         final record = LicenseRecord(
           id: const Uuid().v4(),
           clientId: clientId,
@@ -199,18 +215,21 @@ class AdminSyncService {
           createdAt: activatedAt,
           expiresAt: expiryDate,
           amountPaid: 0.0,
-          isActive: true,
+          isActive: isActive,
         );
         
         await _repository.saveLicense(record);
       } else {
-        // La licence avait déjà été générée par l'Admin, on enrichit le record avec le hardwareId et clientName
+        // Enrichir le record existant (ex: mise à niveau d'un essai vers une clé payante ou MAJ statut)
         final existing = licenses[existingIndex];
         final updated = existing.copyWith(
           hardwareId: hardwareId.isNotEmpty ? hardwareId : existing.hardwareId,
           clientName: businessName != 'Boutique Inconnue' ? businessName : existing.clientName,
           clientId: clientId.isNotEmpty ? clientId : existing.clientId,
-          isActive: true,
+          licenseKey: licenseKey.isNotEmpty ? licenseKey : existing.licenseKey,
+          type: type,
+          expiresAt: expiryDate ?? existing.expiresAt,
+          isActive: isActive,
         );
         await _repository.saveLicense(updated);
       }

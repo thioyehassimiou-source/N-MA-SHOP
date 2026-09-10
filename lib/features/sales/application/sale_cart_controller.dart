@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/domain/payment_method.dart';
+import '../../auth/application/auth_providers.dart';
 import '../../business/application/business_providers.dart';
 import '../../dashboard/application/dashboard_providers.dart';
+import '../../equipe/application/sellers_providers.dart';
 import '../../stock/domain/entities/product.dart';
 import '../domain/entities/sale_draft.dart';
 import '../domain/errors.dart';
@@ -160,8 +162,11 @@ class SaleCartController extends Notifier<SaleCartState> {
             .getOrCreate(name, phone: state.customerPhone);
       }
 
+      final currentUser = ref.read(authProvider);
       final draft = SaleDraft(
         customerId: customerId,
+        userId: currentUser?.id,
+        sellerName: currentUser?.fullName,
         lines: [
           for (final l in state.lines)
             SaleDraftLine(
@@ -180,6 +185,8 @@ class SaleCartController extends Notifier<SaleCartState> {
         // Rafraîchit les vues qui dépendent des ventes.
         ref.invalidate(dashboardDataProvider);
         ref.invalidate(businessSummaryProvider);
+        ref.invalidate(sellerPerformancesProvider);
+        ref.invalidate(allSalesProvider);
         state = const SaleCartState();
       }
       return result;

@@ -493,16 +493,19 @@ class _PaymentItem extends StatelessWidget {
 
 // ─────────────────────────── Carte Alertes & Actions ───────────────────────────
 
-class _AlertsActionsCard extends StatelessWidget {
+class _AlertsActionsCard extends ConsumerWidget {
   const _AlertsActionsCard({required this.lowStockCount});
 
   final int lowStockCount;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider);
+    final isAdmin = user?.role == UserRole.admin;
+
     return _GlassCard(
       height: 360,
-      padding: EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -517,7 +520,7 @@ class _AlertsActionsCard extends StatelessWidget {
           const SizedBox(height: 16),
           if (lowStockCount > 0)
             Container(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.errorContainer,
                 borderRadius: BorderRadius.circular(8),
@@ -551,7 +554,7 @@ class _AlertsActionsCard extends StatelessWidget {
             )
           else
             Container(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(8),
@@ -559,8 +562,8 @@ class _AlertsActionsCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle_outline, color: AppColors.brandEmerald, size: 20),
-                  SizedBox(width: 10),
+                  const Icon(Icons.check_circle_outline, color: AppColors.brandEmerald, size: 20),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Tout est en ordre ! Bonnes ventes.',
@@ -589,11 +592,11 @@ class _AlertsActionsCard extends StatelessWidget {
               Expanded(
                 child: FilledButton.icon(
                   onPressed: () => context.go('/vendre'),
-                  icon: Icon(Icons.add_shopping_cart, size: 16),
-                  label: Text('Vente'),
+                  icon: const Icon(Icons.add_shopping_cart, size: 16),
+                  label: const Text('Vente'),
                   style: FilledButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
-                    padding: EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -603,11 +606,11 @@ class _AlertsActionsCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => context.go('/devis'),
-                  icon: Icon(Icons.receipt_outlined, size: 16),
-                  label: Text('Facture'),
+                  onPressed: () => context.go(isAdmin ? '/equipe' : '/devis'),
+                  icon: Icon(isAdmin ? Icons.people_outline : Icons.receipt_outlined, size: 16),
+                  label: Text(isAdmin ? 'Équipe' : 'Facture'),
                   style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -914,7 +917,7 @@ class _BannerStat extends ConsumerWidget {
 
 // ─────────────────────────── Grille des indicateurs ───────────────────────────
 
-class _MetricsGrid extends StatelessWidget {
+class _MetricsGrid extends ConsumerWidget {
   const _MetricsGrid({required this.data});
 
   final DashboardData data;
@@ -923,7 +926,10 @@ class _MetricsGrid extends StatelessWidget {
       v == null ? '+0%' : '${v >= 0 ? '+' : ''}${v.toStringAsFixed(0)}%';
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider);
+    final isAdmin = user?.isAdmin ?? false;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         int count;
@@ -970,14 +976,15 @@ class _MetricsGrid extends StatelessWidget {
             iconColor: AppColors.iconRed,
             iconBackgroundColor: AppColors.iconRedBg,
           ),
-          _GlassMetricCard(
-            title: 'Fournisseurs actifs',
-            value: formatGnfCompact(data.supplierDebt),
-            badgeText: 'Dettes fournisseurs',
-            icon: Icons.storefront_rounded,
-            iconColor: AppColors.iconNavy,
-            iconBackgroundColor: AppColors.iconNavyBg,
-          ),
+          if (isAdmin)
+            _GlassMetricCard(
+              title: 'Fournisseurs actifs',
+              value: formatGnfCompact(data.supplierDebt),
+              badgeText: 'Dettes fournisseurs',
+              icon: Icons.storefront_rounded,
+              iconColor: AppColors.iconNavy,
+              iconBackgroundColor: AppColors.iconNavyBg,
+            ),
           _GlassMetricCard(
             title: 'Ticket moyen',
             value: formatGnfCompact(data.avgTicket?.round() ?? 0),
@@ -1091,10 +1098,11 @@ class _RecentSalesCard extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Ventes récentes', style: theme.textTheme.titleMedium),
-                AppButton.secondary(
-                  onPressed: () => context.go('/mon-commerce'),
-                  label: 'Voir tout',
-                ),
+                if (isAdmin)
+                  AppButton.secondary(
+                    onPressed: () => context.go('/mon-commerce'),
+                    label: 'Voir tout',
+                  ),
               ],
             ),
           ),
@@ -1112,6 +1120,7 @@ class _RecentSalesCard extends ConsumerWidget {
             AppTable(
               columns: const [
                 DataColumn(label: Text('CLIENT / ARTICLE')),
+                DataColumn(label: Text('VENDEUR')),
                 DataColumn(label: Text('HEURE')),
                 DataColumn(label: Text('MONTANT')),
                 DataColumn(label: Text('STATUT')),
@@ -1177,6 +1186,15 @@ class _RecentSalesCard extends ConsumerWidget {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            sale.sellerName ?? 'Non attribué',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
                           ),
                         ),
                         DataCell(

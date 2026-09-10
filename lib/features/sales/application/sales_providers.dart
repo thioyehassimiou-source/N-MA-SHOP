@@ -47,3 +47,8 @@ final saleServiceProvider = Provider<SaleService>(
 final recordSaleUseCaseProvider = Provider<RecordSaleUseCase>(
   (ref) => RecordSaleUseCase(ref.watch(saleServiceProvider)),
 );
+
+/// Historique des ventes pour l'administration et le suivi complet.
+final allSalesProvider = FutureProvider<List<SaleHistoryItem>>((ref) {
+  return ref.watch(saleRepositoryProvider).getAllSales();
+});

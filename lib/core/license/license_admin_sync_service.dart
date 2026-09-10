@@ -81,7 +81,7 @@ class LicenseAdminSyncService {
       final cleanKey = payload.licenseKey.trim().toUpperCase();
       final cleanHwId = payload.hardwareId.trim().toUpperCase();
 
-      // 1. Tenter d'abord de mettre à jour la pré-activation existante pour cette clé
+      // 1. Tenter d'abord de mettre à jour la pré-activation existante pour cette clé ou convertir un enregistrement d'essai existant
       final updateResult = await connection.execute(
         Sql.named('''
           UPDATE nmashop_activations 
@@ -90,11 +90,13 @@ class LicenseAdminSyncService {
               phone = @phone,
               address = @address,
               hardware_id = @hardwareId,
+              license_key = @licenseKey,
               activated_at = @activatedAt,
               expires_at = @expiresAt,
               is_synced = false,
               is_active = true
-          WHERE license_key = @licenseKey;
+          WHERE license_key = @licenseKey 
+             OR (hardware_id = @hardwareId AND (license_key LIKE 'TRIAL-%' OR license_key = ''));
         '''),
         parameters: {
           'businessName': payload.businessName,
@@ -139,6 +141,120 @@ class LicenseAdminSyncService {
       debugPrint('Synchronisation activation réussie vers Neon PostgreSQL.');
     } catch (e) {
       debugPrint('Impossible de synchroniser l\'activation vers Neon (hors-ligne ou erreur): $e');
+    }
+  }
+
+  /// Déclare automatiquement une nouvelle machine ou installation en période d'essai
+  /// vers Neon PostgreSQL pour que l'administrateur la voie en temps réel sur l'application mobile.
+  /// 100% silencieux et non-bloquant : n'interrompt jamais l'application si hors-ligne.
+  static Future<void> reportTrialInstallation({
+    required String hardwareId,
+    required DateTime firstLaunch,
+    required DateTime trialExpiry,
+    String? businessName,
+    String? ownerName,
+    String? phone,
+    String? osInfo,
+  }) async {
+    try {
+      final config = NeonConfig.parseConnectionString();
+
+      final connection = await Connection.open(
+        Endpoint(
+          host: config['host'],
+          port: config['port'],
+          database: config['database'],
+          username: config['username'],
+          password: config['password'],
+        ),
+        settings: ConnectionSettings(
+          sslMode: config['is_secure'] ? SslMode.require : SslMode.disable,
+          connectTimeout: const Duration(seconds: 8),
+          queryTimeout: const Duration(seconds: 8),
+        ),
+      );
+
+      await connection.execute('''
+        CREATE TABLE IF NOT EXISTS nmashop_activations (
+          id SERIAL PRIMARY KEY,
+          business_name TEXT NOT NULL,
+          owner_name TEXT NOT NULL,
+          phone TEXT NOT NULL,
+          address TEXT,
+          hardware_id TEXT NOT NULL,
+          license_key TEXT NOT NULL,
+          activated_at TIMESTAMP NOT NULL,
+          expires_at TIMESTAMP,
+          is_synced BOOLEAN DEFAULT false
+        );
+      ''');
+      await connection.execute('ALTER TABLE nmashop_activations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;');
+
+      final cleanHwId = hardwareId.trim().toUpperCase();
+      final defaultKey = 'TRIAL-${cleanHwId.replaceAll('NMA-', '').replaceAll('-', '')}';
+
+      // 1. Vérifier si cette machine est déjà enregistrée
+      final existing = await connection.execute(
+        Sql.named('SELECT id, license_key, is_active FROM nmashop_activations WHERE hardware_id = @hwId ORDER BY id DESC LIMIT 1;'),
+        parameters: {'hwId': cleanHwId},
+      );
+
+      if (existing.isEmpty) {
+        // Nouvelle installation détectée : insertion d'interception
+        await connection.execute(
+          Sql.named('''
+            INSERT INTO nmashop_activations (
+              business_name, owner_name, phone, address,
+              hardware_id, license_key, activated_at, expires_at,
+              is_synced, is_active
+            ) VALUES (
+              @businessName, @ownerName, @phone, @address,
+              @hardwareId, @licenseKey, @activatedAt, @expiresAt,
+              false, true
+            );
+          '''),
+          parameters: {
+            'businessName': businessName ?? 'Poste $cleanHwId',
+            'ownerName': ownerName ?? 'Utilisateur Essai',
+            'phone': phone ?? '',
+            'address': osInfo ?? '',
+            'hardwareId': cleanHwId,
+            'licenseKey': defaultKey,
+            'activatedAt': firstLaunch,
+            'expiresAt': trialExpiry,
+          },
+        );
+        debugPrint('[TELEMETRY] Machine d\'essai $cleanHwId enregistrée sur Neon cloud.');
+      } else {
+        // Déjà existante : si c'est toujours une clé TRIAL, rafraîchir les métadonnées sans écraser is_active
+        final row = existing.first;
+        final currentKey = (row[1] as String?) ?? '';
+        if (currentKey.startsWith('TRIAL-') || currentKey.isEmpty) {
+          await connection.execute(
+            Sql.named('''
+              UPDATE nmashop_activations 
+              SET business_name = COALESCE(NULLIF(@businessName, ''), business_name),
+                  owner_name = COALESCE(NULLIF(@ownerName, ''), owner_name),
+                  phone = COALESCE(NULLIF(@phone, ''), phone),
+                  address = COALESCE(NULLIF(@address, ''), address),
+                  expires_at = @expiresAt
+              WHERE hardware_id = @hwId AND (license_key LIKE 'TRIAL-%' OR license_key = '');
+            '''),
+            parameters: {
+              'businessName': businessName ?? '',
+              'ownerName': ownerName ?? '',
+              'phone': phone ?? '',
+              'address': osInfo ?? '',
+              'expiresAt': trialExpiry,
+              'hwId': cleanHwId,
+            },
+          );
+        }
+      }
+
+      await connection.close();
+    } catch (e) {
+      debugPrint('[TELEMETRY] Télémétrie essai différée (hors-ligne ou indisponible): $e');
     }
   }
 

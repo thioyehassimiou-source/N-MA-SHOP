@@ -40,6 +40,9 @@ class Users extends Table {
   /// Condensat du code secret de récupération (hash PBKDF2).
   TextColumn get recoveryCodeHash => text().nullable()();
 
+  /// Taux de commission du vendeur en pourcentage (ex: 5.0 pour 5%).
+  RealColumn get commissionRate => real().withDefault(const Constant(0.0))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

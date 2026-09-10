@@ -141,8 +141,14 @@ class AppSidebar extends ConsumerWidget {
         path == '/' ? location == '/' : location.startsWith(path);
         
     final destinations = _mainDestinations.where((d) {
-      if (d.path == '/equipe' && user?.role.name == 'cashier') {
-        return false;
+      if (user?.isCashier == true) {
+        if (d.path == '/fournisseurs' ||
+            d.path == '/depenses' ||
+            d.path == '/rapports' ||
+            d.path == '/equipe' ||
+            d.path == '/reglages') {
+          return false;
+        }
       }
       return true;
     }).toList();

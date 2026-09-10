@@ -1,9 +1,9 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 import '../../features/stock/domain/entities/product.dart';
 import '../format/formatters.dart';
+import '../services/app_print_service.dart';
 
 class BarcodePrinterService {
   /// Imprime une ou plusieurs étiquettes thermiques pour un produit donné.
@@ -76,9 +76,9 @@ class BarcodePrinterService {
       );
     }
 
-    await Printing.layoutPdf(
+    await AppPrintService.printDocument(
       onLayout: (PdfPageFormat format) async => doc.save(),
-      name: 'Etiquettes_${product.name}',
+      documentName: 'Etiquettes_${product.name}',
     );
   }
 }

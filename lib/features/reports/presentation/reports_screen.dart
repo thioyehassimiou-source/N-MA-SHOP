@@ -13,8 +13,8 @@ import '../../../core/widgets/app_page_header.dart';
 import '../../../core/database/tables/expenses.dart';
 import '../application/reports_providers.dart';
 
-import 'package:printing/printing.dart';
 import '../../../core/providers/app_settings_provider.dart';
+import '../../../core/services/app_print_service.dart';
 import '../../../core/services/pdf_report_service.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -30,7 +30,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   Future<void> _exportPdf(ReportData data, ReportRange range) async {
     final settings = ref.read(appSettingsProvider);
-    await Printing.layoutPdf(
+    await AppPrintService.printDocument(
+      context: context,
+      documentName: 'Rapport_${range.label}',
       onLayout: (_) => PdfReportService.generateReportPdf(
         data: data,
         range: range,
@@ -39,7 +41,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         businessAddress: settings.businessAddress,
         businessNif: settings.businessNif,
       ),
-      name: 'Rapport_${range.label}.pdf',
     );
   }
 

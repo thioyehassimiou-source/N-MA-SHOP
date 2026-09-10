@@ -20,6 +20,12 @@ class Sales extends Table {
   TextColumn get customerId =>
       text().nullable().references(Customers, #id)();
 
+  /// Vendeur / collaborateur ayant réalisé la vente (null pour anciennes ventes).
+  TextColumn get userId => text().nullable()();
+
+  /// Nom du vendeur figé au moment de la vente (historisation immuable).
+  TextColumn get sellerName => text().nullable()();
+
   DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
 
   /// Montant total TTC de la vente (GNF).

@@ -90,10 +90,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/';
       }
 
-      // ── 4. Bloquer l'accès à l'équipe pour les vendeurs ───────────────────
+      // ── 4. Contrôle des Permissions : Bloquer les écrans Admin pour les vendeurs ─
       final user = ref.read(authProvider);
-      if (user != null && user.role.name == 'cashier' && location == '/equipe') {
-        return '/';
+      if (user != null && user.isCashier) {
+        const adminRoutes = [
+          '/equipe',
+          '/rapports',
+          '/depenses',
+          '/fournisseurs',
+          '/nouvel-achat',
+          '/reglages',
+          '/settings',
+          '/mon-commerce',
+        ];
+        for (final r in adminRoutes) {
+          if (location == r || location.startsWith('$r/')) {
+            return '/vendre';
+          }
+        }
       }
 
       return null;

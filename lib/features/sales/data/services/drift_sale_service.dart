@@ -113,6 +113,9 @@ class DriftSaleService implements SaleService {
       final dominant = _dominantMethod(draft);
 
       // ── 5-6. Créer la vente + ses lignes ──
+      final sellerId = draft.userId ?? _currentUser?.id;
+      final sellerName = draft.sellerName ?? _currentUser?.fullName;
+
       await _sales.createSale(
         NewSaleData(
           id: saleId,
@@ -123,6 +126,8 @@ class DriftSaleService implements SaleService {
           amountPaid: amountPaid,
           paymentMethod: dominant,
           note: draft.note,
+          userId: sellerId,
+          sellerName: sellerName,
         ),
       );
       await _sales.addLines(newLines);

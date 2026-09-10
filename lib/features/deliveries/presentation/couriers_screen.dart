@@ -11,12 +11,16 @@ import '../../../core/database/tables/deliveries.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
 
+import '../../auth/application/auth_providers.dart';
+
 class CouriersScreen extends ConsumerWidget {
   const CouriersScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncCouriers = ref.watch(couriersProvider);
+    final currentUser = ref.watch(authProvider);
+    final isAdmin = currentUser?.isAdmin ?? false;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -29,16 +33,17 @@ class CouriersScreen extends ConsumerWidget {
             icon: Icons.sports_motorsports_outlined,
             gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
             actions: [
-              FilledButton.icon(
-                onPressed: () => NewCourierDialog.show(context),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Nouveau Livreur'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFF59E0B),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              if (isAdmin)
+                FilledButton.icon(
+                  onPressed: () => NewCourierDialog.show(context),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Nouveau Livreur'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
-              ),
             ],
           ),
         ),

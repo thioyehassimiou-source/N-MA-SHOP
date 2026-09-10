@@ -212,6 +212,7 @@ class DriftDashboardRepository implements DashboardRepository {
             paid: s.amountPaid >= s.totalAmount,
             isCancelled: s.isCancelled,
             imageUrl: imageUrlBySale[s.id],
+            sellerName: s.sellerName,
           );
         })
         .toList(growable: false);

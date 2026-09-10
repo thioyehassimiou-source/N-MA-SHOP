@@ -50,6 +50,7 @@ abstract interface class AuthRepository {
     required String fullName,
     required String password,
     required UserRole role,
+    double commissionRate = 0.0,
     String? recoveryCode,
   });
 
@@ -58,6 +59,9 @@ abstract interface class AuthRepository {
 
   /// Active ou désactive un compte utilisateur.
   Future<void> toggleUserStatus(String id, bool isActive);
+
+  /// Met à jour le taux de commission d'un utilisateur.
+  Future<void> updateCommissionRate(String userId, double rate);
 
   /// Vérifie le nom complet et le mot de passe et met à jour la date de dernière ouverture.
   Future<AppUser> unlock({

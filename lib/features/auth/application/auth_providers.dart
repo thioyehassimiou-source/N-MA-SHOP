@@ -2,6 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/providers/database_provider.dart';
+import '../../business/application/business_providers.dart';
+import '../../dashboard/application/dashboard_providers.dart';
+import '../../equipe/application/sellers_providers.dart';
+import '../../sales/application/sales_providers.dart';
 import '../data/repositories/drift_auth_repository.dart';
 import '../domain/app_user.dart';
 import '../domain/repositories/auth_repository.dart';
@@ -106,6 +110,10 @@ class AuthNotifier extends Notifier<AppUser?> {
         .read(sharedPreferencesProvider)
         .setString(_kSessionUserId, user.id);
     state = user;
+    ref.invalidate(dashboardDataProvider);
+    ref.invalidate(businessSummaryProvider);
+    ref.invalidate(sellerPerformancesProvider);
+    ref.invalidate(allSalesProvider);
     return user;
   }
 
@@ -152,6 +160,10 @@ class AuthNotifier extends Notifier<AppUser?> {
   Future<void> lock() async {
     await ref.read(sharedPreferencesProvider).remove(_kSessionUserId);
     state = null;
+    ref.invalidate(dashboardDataProvider);
+    ref.invalidate(businessSummaryProvider);
+    ref.invalidate(sellerPerformancesProvider);
+    ref.invalidate(allSalesProvider);
   }
 
   /// Verrouille et supprime le compte (réinitialisation de la configuration).

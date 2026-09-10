@@ -6,9 +6,9 @@ import '../../../core/format/formatters.dart';
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/providers/database_provider.dart';
 import '../../../core/database/database.dart';
+import '../../../core/services/app_print_service.dart';
 import '../../../core/services/pdf_receipt_service.dart';
 import '../../../core/theme/app_colors.dart';
-import 'package:printing/printing.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_chip.dart';
@@ -375,8 +375,9 @@ class _DevisActionMenu extends ConsumerWidget {
               paymentMethodLabel: 'Proforma',
               customerName: doc.customerName,
             );
-            await Printing.layoutPdf(
-              name: 'Facture_${doc.reference}',
+            await AppPrintService.printDocument(
+              context: context,
+              documentName: 'Facture_${doc.reference}',
               onLayout: (_) => PdfReceiptService.generateReceiptPdf(receiptData),
             );
             break;

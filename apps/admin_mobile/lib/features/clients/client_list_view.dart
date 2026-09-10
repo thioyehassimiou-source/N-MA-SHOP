@@ -455,9 +455,20 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
     final bool isDeactivated = clientLicense != null && !clientLicense.isActive;
     final bool isStoreActive = clientLicense != null && clientLicense.isActive && !clientLicense.isExpired && clientLicense.type != AdminLicenseType.trial;
 
+    String trialLabel = 'Mode Essai';
+    if (clientLicense != null && clientLicense.expiresAt != null) {
+      final now = DateTime.now();
+      if (now.isAfter(clientLicense.expiresAt!)) {
+        trialLabel = 'Essai Expiré';
+      } else {
+        final days = clientLicense.expiresAt!.difference(now).inDays + 1;
+        trialLabel = 'Essai ($days j restants)';
+      }
+    }
+
     final String statusLabel = isDeactivated
         ? 'Désactivée'
-        : (isStoreActive ? 'Active' : 'Mode Essai');
+        : (isStoreActive ? 'Active' : trialLabel);
 
     final Color statusBg = isDeactivated
         ? AppTheme.roseBg
@@ -543,6 +554,33 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
                 ),
               ],
             ),
+            if (client.hardwareId.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.bgSlate,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.borderSlate),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.computer_rounded, size: 13, color: AppTheme.textSecondary),
+                    const SizedBox(width: 6),
+                    Text(
+                      'PC : ${client.hardwareId}',
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
 
             // Action Buttons Row: Direct Contact & Editing
@@ -573,19 +611,29 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
 
                 const Spacer(),
 
-                // Generate License Action
-                IconButton(
-                  icon: const Icon(Icons.vpn_key_rounded, color: AppTheme.emeraldActive, size: 20),
-                  tooltip: 'Générer une clé pour cette boutique',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => HardwareKeyGeneratorScreen(preselectedClient: client),
+                // Bouton Activer / Délivrer Licence (si en essai)
+                if (!isStoreActive)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => HardwareKeyGeneratorScreen(preselectedClient: client),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.vpn_key_rounded, size: 14),
+                      label: const Text('Activer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.emeraldActive,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        elevation: 1,
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  ),
 
                 // Edit Action
                 IconButton(

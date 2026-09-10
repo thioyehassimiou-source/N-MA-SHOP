@@ -477,14 +477,15 @@ class _UserProfileDialogState extends ConsumerState<UserProfileDialog> {
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  context.go('/reglages');
-                },
-                icon: const Icon(Icons.settings_outlined, size: 18),
-                label: const Text('Paramètres Boutique'),
-              ),
+              if (user.isAdmin)
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    context.go('/reglages');
+                  },
+                  icon: const Icon(Icons.settings_outlined, size: 18),
+                  label: const Text('Paramètres Boutique'),
+                ),
               OutlinedButton.icon(
                 onPressed: () async {
                   Navigator.pop(context);

@@ -1003,6 +1003,17 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
       requiredDuringInsert: false,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES customers (id)'));
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+      'user_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sellerNameMeta =
+      const VerificationMeta('sellerName');
+  @override
+  late final GeneratedColumn<String> sellerName = GeneratedColumn<String>(
+      'seller_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
   late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
@@ -1061,6 +1072,8 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
         id,
         reference,
         customerId,
+        userId,
+        sellerName,
         date,
         totalAmount,
         amountPaid,
@@ -1095,6 +1108,16 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
           _customerIdMeta,
           customerId.isAcceptableOrUnknown(
               data['customer_id']!, _customerIdMeta));
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta,
+          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    }
+    if (data.containsKey('seller_name')) {
+      context.handle(
+          _sellerNameMeta,
+          sellerName.isAcceptableOrUnknown(
+              data['seller_name']!, _sellerNameMeta));
     }
     if (data.containsKey('date')) {
       context.handle(
@@ -1141,6 +1164,10 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
           .read(DriftSqlType.string, data['${effectivePrefix}reference'])!,
       customerId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}customer_id']),
+      userId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}user_id']),
+      sellerName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}seller_name']),
       date: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
       totalAmount: attachedDatabase.typeMapping
@@ -1176,6 +1203,12 @@ class Sale extends DataClass implements Insertable<Sale> {
 
   /// Client rattaché — null pour une vente comptoir anonyme.
   final String? customerId;
+
+  /// Vendeur / collaborateur ayant réalisé la vente (null pour anciennes ventes).
+  final String? userId;
+
+  /// Nom du vendeur figé au moment de la vente (historisation immuable).
+  final String? sellerName;
   final DateTime date;
 
   /// Montant total TTC de la vente (GNF).
@@ -1193,6 +1226,8 @@ class Sale extends DataClass implements Insertable<Sale> {
       {required this.id,
       required this.reference,
       this.customerId,
+      this.userId,
+      this.sellerName,
       required this.date,
       required this.totalAmount,
       required this.amountPaid,
@@ -1207,6 +1242,12 @@ class Sale extends DataClass implements Insertable<Sale> {
     map['reference'] = Variable<String>(reference);
     if (!nullToAbsent || customerId != null) {
       map['customer_id'] = Variable<String>(customerId);
+    }
+    if (!nullToAbsent || userId != null) {
+      map['user_id'] = Variable<String>(userId);
+    }
+    if (!nullToAbsent || sellerName != null) {
+      map['seller_name'] = Variable<String>(sellerName);
     }
     map['date'] = Variable<DateTime>(date);
     map['total_amount'] = Variable<int>(totalAmount);
@@ -1230,6 +1271,11 @@ class Sale extends DataClass implements Insertable<Sale> {
       customerId: customerId == null && nullToAbsent
           ? const Value.absent()
           : Value(customerId),
+      userId:
+          userId == null && nullToAbsent ? const Value.absent() : Value(userId),
+      sellerName: sellerName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sellerName),
       date: Value(date),
       totalAmount: Value(totalAmount),
       amountPaid: Value(amountPaid),
@@ -1247,6 +1293,8 @@ class Sale extends DataClass implements Insertable<Sale> {
       id: serializer.fromJson<String>(json['id']),
       reference: serializer.fromJson<String>(json['reference']),
       customerId: serializer.fromJson<String?>(json['customerId']),
+      userId: serializer.fromJson<String?>(json['userId']),
+      sellerName: serializer.fromJson<String?>(json['sellerName']),
       date: serializer.fromJson<DateTime>(json['date']),
       totalAmount: serializer.fromJson<int>(json['totalAmount']),
       amountPaid: serializer.fromJson<int>(json['amountPaid']),
@@ -1264,6 +1312,8 @@ class Sale extends DataClass implements Insertable<Sale> {
       'id': serializer.toJson<String>(id),
       'reference': serializer.toJson<String>(reference),
       'customerId': serializer.toJson<String?>(customerId),
+      'userId': serializer.toJson<String?>(userId),
+      'sellerName': serializer.toJson<String?>(sellerName),
       'date': serializer.toJson<DateTime>(date),
       'totalAmount': serializer.toJson<int>(totalAmount),
       'amountPaid': serializer.toJson<int>(amountPaid),
@@ -1279,6 +1329,8 @@ class Sale extends DataClass implements Insertable<Sale> {
           {String? id,
           String? reference,
           Value<String?> customerId = const Value.absent(),
+          Value<String?> userId = const Value.absent(),
+          Value<String?> sellerName = const Value.absent(),
           DateTime? date,
           int? totalAmount,
           int? amountPaid,
@@ -1290,6 +1342,8 @@ class Sale extends DataClass implements Insertable<Sale> {
         id: id ?? this.id,
         reference: reference ?? this.reference,
         customerId: customerId.present ? customerId.value : this.customerId,
+        userId: userId.present ? userId.value : this.userId,
+        sellerName: sellerName.present ? sellerName.value : this.sellerName,
         date: date ?? this.date,
         totalAmount: totalAmount ?? this.totalAmount,
         amountPaid: amountPaid ?? this.amountPaid,
@@ -1304,6 +1358,9 @@ class Sale extends DataClass implements Insertable<Sale> {
       reference: data.reference.present ? data.reference.value : this.reference,
       customerId:
           data.customerId.present ? data.customerId.value : this.customerId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      sellerName:
+          data.sellerName.present ? data.sellerName.value : this.sellerName,
       date: data.date.present ? data.date.value : this.date,
       totalAmount:
           data.totalAmount.present ? data.totalAmount.value : this.totalAmount,
@@ -1325,6 +1382,8 @@ class Sale extends DataClass implements Insertable<Sale> {
           ..write('id: $id, ')
           ..write('reference: $reference, ')
           ..write('customerId: $customerId, ')
+          ..write('userId: $userId, ')
+          ..write('sellerName: $sellerName, ')
           ..write('date: $date, ')
           ..write('totalAmount: $totalAmount, ')
           ..write('amountPaid: $amountPaid, ')
@@ -1337,8 +1396,19 @@ class Sale extends DataClass implements Insertable<Sale> {
   }
 
   @override
-  int get hashCode => Object.hash(id, reference, customerId, date, totalAmount,
-      amountPaid, paymentMethod, note, createdAt, isCancelled);
+  int get hashCode => Object.hash(
+      id,
+      reference,
+      customerId,
+      userId,
+      sellerName,
+      date,
+      totalAmount,
+      amountPaid,
+      paymentMethod,
+      note,
+      createdAt,
+      isCancelled);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1346,6 +1416,8 @@ class Sale extends DataClass implements Insertable<Sale> {
           other.id == this.id &&
           other.reference == this.reference &&
           other.customerId == this.customerId &&
+          other.userId == this.userId &&
+          other.sellerName == this.sellerName &&
           other.date == this.date &&
           other.totalAmount == this.totalAmount &&
           other.amountPaid == this.amountPaid &&
@@ -1359,6 +1431,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
   final Value<String> id;
   final Value<String> reference;
   final Value<String?> customerId;
+  final Value<String?> userId;
+  final Value<String?> sellerName;
   final Value<DateTime> date;
   final Value<int> totalAmount;
   final Value<int> amountPaid;
@@ -1371,6 +1445,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     this.id = const Value.absent(),
     this.reference = const Value.absent(),
     this.customerId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.sellerName = const Value.absent(),
     this.date = const Value.absent(),
     this.totalAmount = const Value.absent(),
     this.amountPaid = const Value.absent(),
@@ -1384,6 +1460,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     required String id,
     required String reference,
     this.customerId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.sellerName = const Value.absent(),
     this.date = const Value.absent(),
     this.totalAmount = const Value.absent(),
     this.amountPaid = const Value.absent(),
@@ -1398,6 +1476,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     Expression<String>? id,
     Expression<String>? reference,
     Expression<String>? customerId,
+    Expression<String>? userId,
+    Expression<String>? sellerName,
     Expression<DateTime>? date,
     Expression<int>? totalAmount,
     Expression<int>? amountPaid,
@@ -1411,6 +1491,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
       if (id != null) 'id': id,
       if (reference != null) 'reference': reference,
       if (customerId != null) 'customer_id': customerId,
+      if (userId != null) 'user_id': userId,
+      if (sellerName != null) 'seller_name': sellerName,
       if (date != null) 'date': date,
       if (totalAmount != null) 'total_amount': totalAmount,
       if (amountPaid != null) 'amount_paid': amountPaid,
@@ -1426,6 +1508,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
       {Value<String>? id,
       Value<String>? reference,
       Value<String?>? customerId,
+      Value<String?>? userId,
+      Value<String?>? sellerName,
       Value<DateTime>? date,
       Value<int>? totalAmount,
       Value<int>? amountPaid,
@@ -1438,6 +1522,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
       id: id ?? this.id,
       reference: reference ?? this.reference,
       customerId: customerId ?? this.customerId,
+      userId: userId ?? this.userId,
+      sellerName: sellerName ?? this.sellerName,
       date: date ?? this.date,
       totalAmount: totalAmount ?? this.totalAmount,
       amountPaid: amountPaid ?? this.amountPaid,
@@ -1460,6 +1546,12 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     }
     if (customerId.present) {
       map['customer_id'] = Variable<String>(customerId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (sellerName.present) {
+      map['seller_name'] = Variable<String>(sellerName.value);
     }
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
@@ -1495,6 +1587,8 @@ class SalesCompanion extends UpdateCompanion<Sale> {
           ..write('id: $id, ')
           ..write('reference: $reference, ')
           ..write('customerId: $customerId, ')
+          ..write('userId: $userId, ')
+          ..write('sellerName: $sellerName, ')
           ..write('date: $date, ')
           ..write('totalAmount: $totalAmount, ')
           ..write('amountPaid: $amountPaid, ')
@@ -4164,6 +4258,14 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
   late final GeneratedColumn<String> recoveryCodeHash = GeneratedColumn<String>(
       'recovery_code_hash', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _commissionRateMeta =
+      const VerificationMeta('commissionRate');
+  @override
+  late final GeneratedColumn<double> commissionRate = GeneratedColumn<double>(
+      'commission_rate', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -4175,7 +4277,8 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         createdAt,
         lastLoginAt,
         avatarPath,
-        recoveryCodeHash
+        recoveryCodeHash,
+        commissionRate
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4240,6 +4343,12 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
           recoveryCodeHash.isAcceptableOrUnknown(
               data['recovery_code_hash']!, _recoveryCodeHashMeta));
     }
+    if (data.containsKey('commission_rate')) {
+      context.handle(
+          _commissionRateMeta,
+          commissionRate.isAcceptableOrUnknown(
+              data['commission_rate']!, _commissionRateMeta));
+    }
     return context;
   }
 
@@ -4269,6 +4378,8 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
           .read(DriftSqlType.string, data['${effectivePrefix}avatar_path']),
       recoveryCodeHash: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}recovery_code_hash']),
+      commissionRate: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}commission_rate'])!,
     );
   }
 
@@ -4308,6 +4419,9 @@ class User extends DataClass implements Insertable<User> {
 
   /// Condensat du code secret de récupération (hash PBKDF2).
   final String? recoveryCodeHash;
+
+  /// Taux de commission du vendeur en pourcentage (ex: 5.0 pour 5%).
+  final double commissionRate;
   const User(
       {required this.id,
       required this.fullName,
@@ -4318,7 +4432,8 @@ class User extends DataClass implements Insertable<User> {
       required this.createdAt,
       this.lastLoginAt,
       this.avatarPath,
-      this.recoveryCodeHash});
+      this.recoveryCodeHash,
+      required this.commissionRate});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -4340,6 +4455,7 @@ class User extends DataClass implements Insertable<User> {
     if (!nullToAbsent || recoveryCodeHash != null) {
       map['recovery_code_hash'] = Variable<String>(recoveryCodeHash);
     }
+    map['commission_rate'] = Variable<double>(commissionRate);
     return map;
   }
 
@@ -4361,6 +4477,7 @@ class User extends DataClass implements Insertable<User> {
       recoveryCodeHash: recoveryCodeHash == null && nullToAbsent
           ? const Value.absent()
           : Value(recoveryCodeHash),
+      commissionRate: Value(commissionRate),
     );
   }
 
@@ -4379,6 +4496,7 @@ class User extends DataClass implements Insertable<User> {
       lastLoginAt: serializer.fromJson<DateTime?>(json['lastLoginAt']),
       avatarPath: serializer.fromJson<String?>(json['avatarPath']),
       recoveryCodeHash: serializer.fromJson<String?>(json['recoveryCodeHash']),
+      commissionRate: serializer.fromJson<double>(json['commissionRate']),
     );
   }
   @override
@@ -4395,6 +4513,7 @@ class User extends DataClass implements Insertable<User> {
       'lastLoginAt': serializer.toJson<DateTime?>(lastLoginAt),
       'avatarPath': serializer.toJson<String?>(avatarPath),
       'recoveryCodeHash': serializer.toJson<String?>(recoveryCodeHash),
+      'commissionRate': serializer.toJson<double>(commissionRate),
     };
   }
 
@@ -4408,7 +4527,8 @@ class User extends DataClass implements Insertable<User> {
           DateTime? createdAt,
           Value<DateTime?> lastLoginAt = const Value.absent(),
           Value<String?> avatarPath = const Value.absent(),
-          Value<String?> recoveryCodeHash = const Value.absent()}) =>
+          Value<String?> recoveryCodeHash = const Value.absent(),
+          double? commissionRate}) =>
       User(
         id: id ?? this.id,
         fullName: fullName ?? this.fullName,
@@ -4422,6 +4542,7 @@ class User extends DataClass implements Insertable<User> {
         recoveryCodeHash: recoveryCodeHash.present
             ? recoveryCodeHash.value
             : this.recoveryCodeHash,
+        commissionRate: commissionRate ?? this.commissionRate,
       );
   User copyWithCompanion(UsersCompanion data) {
     return User(
@@ -4443,6 +4564,9 @@ class User extends DataClass implements Insertable<User> {
       recoveryCodeHash: data.recoveryCodeHash.present
           ? data.recoveryCodeHash.value
           : this.recoveryCodeHash,
+      commissionRate: data.commissionRate.present
+          ? data.commissionRate.value
+          : this.commissionRate,
     );
   }
 
@@ -4458,14 +4582,25 @@ class User extends DataClass implements Insertable<User> {
           ..write('createdAt: $createdAt, ')
           ..write('lastLoginAt: $lastLoginAt, ')
           ..write('avatarPath: $avatarPath, ')
-          ..write('recoveryCodeHash: $recoveryCodeHash')
+          ..write('recoveryCodeHash: $recoveryCodeHash, ')
+          ..write('commissionRate: $commissionRate')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, fullName, passwordHash, passwordSalt,
-      role, isActive, createdAt, lastLoginAt, avatarPath, recoveryCodeHash);
+  int get hashCode => Object.hash(
+      id,
+      fullName,
+      passwordHash,
+      passwordSalt,
+      role,
+      isActive,
+      createdAt,
+      lastLoginAt,
+      avatarPath,
+      recoveryCodeHash,
+      commissionRate);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4479,7 +4614,8 @@ class User extends DataClass implements Insertable<User> {
           other.createdAt == this.createdAt &&
           other.lastLoginAt == this.lastLoginAt &&
           other.avatarPath == this.avatarPath &&
-          other.recoveryCodeHash == this.recoveryCodeHash);
+          other.recoveryCodeHash == this.recoveryCodeHash &&
+          other.commissionRate == this.commissionRate);
 }
 
 class UsersCompanion extends UpdateCompanion<User> {
@@ -4493,6 +4629,7 @@ class UsersCompanion extends UpdateCompanion<User> {
   final Value<DateTime?> lastLoginAt;
   final Value<String?> avatarPath;
   final Value<String?> recoveryCodeHash;
+  final Value<double> commissionRate;
   final Value<int> rowid;
   const UsersCompanion({
     this.id = const Value.absent(),
@@ -4505,6 +4642,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.lastLoginAt = const Value.absent(),
     this.avatarPath = const Value.absent(),
     this.recoveryCodeHash = const Value.absent(),
+    this.commissionRate = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   UsersCompanion.insert({
@@ -4518,6 +4656,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.lastLoginAt = const Value.absent(),
     this.avatarPath = const Value.absent(),
     this.recoveryCodeHash = const Value.absent(),
+    this.commissionRate = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         fullName = Value(fullName),
@@ -4534,6 +4673,7 @@ class UsersCompanion extends UpdateCompanion<User> {
     Expression<DateTime>? lastLoginAt,
     Expression<String>? avatarPath,
     Expression<String>? recoveryCodeHash,
+    Expression<double>? commissionRate,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4547,6 +4687,7 @@ class UsersCompanion extends UpdateCompanion<User> {
       if (lastLoginAt != null) 'last_login_at': lastLoginAt,
       if (avatarPath != null) 'avatar_path': avatarPath,
       if (recoveryCodeHash != null) 'recovery_code_hash': recoveryCodeHash,
+      if (commissionRate != null) 'commission_rate': commissionRate,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4562,6 +4703,7 @@ class UsersCompanion extends UpdateCompanion<User> {
       Value<DateTime?>? lastLoginAt,
       Value<String?>? avatarPath,
       Value<String?>? recoveryCodeHash,
+      Value<double>? commissionRate,
       Value<int>? rowid}) {
     return UsersCompanion(
       id: id ?? this.id,
@@ -4574,6 +4716,7 @@ class UsersCompanion extends UpdateCompanion<User> {
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
       avatarPath: avatarPath ?? this.avatarPath,
       recoveryCodeHash: recoveryCodeHash ?? this.recoveryCodeHash,
+      commissionRate: commissionRate ?? this.commissionRate,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4611,6 +4754,9 @@ class UsersCompanion extends UpdateCompanion<User> {
     if (recoveryCodeHash.present) {
       map['recovery_code_hash'] = Variable<String>(recoveryCodeHash.value);
     }
+    if (commissionRate.present) {
+      map['commission_rate'] = Variable<double>(commissionRate.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4630,6 +4776,7 @@ class UsersCompanion extends UpdateCompanion<User> {
           ..write('lastLoginAt: $lastLoginAt, ')
           ..write('avatarPath: $avatarPath, ')
           ..write('recoveryCodeHash: $recoveryCodeHash, ')
+          ..write('commissionRate: $commissionRate, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -9618,6 +9765,8 @@ typedef $$SalesTableCreateCompanionBuilder = SalesCompanion Function({
   required String id,
   required String reference,
   Value<String?> customerId,
+  Value<String?> userId,
+  Value<String?> sellerName,
   Value<DateTime> date,
   Value<int> totalAmount,
   Value<int> amountPaid,
@@ -9631,6 +9780,8 @@ typedef $$SalesTableUpdateCompanionBuilder = SalesCompanion Function({
   Value<String> id,
   Value<String> reference,
   Value<String?> customerId,
+  Value<String?> userId,
+  Value<String?> sellerName,
   Value<DateTime> date,
   Value<int> totalAmount,
   Value<int> amountPaid,
@@ -9701,6 +9852,12 @@ class $$SalesTableFilterComposer extends Composer<_$AppDatabase, $SalesTable> {
 
   ColumnFilters<String> get reference => $composableBuilder(
       column: $table.reference, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get userId => $composableBuilder(
+      column: $table.userId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sellerName => $composableBuilder(
+      column: $table.sellerName, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnFilters(column));
@@ -9803,6 +9960,12 @@ class $$SalesTableOrderingComposer
   ColumnOrderings<String> get reference => $composableBuilder(
       column: $table.reference, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get userId => $composableBuilder(
+      column: $table.userId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sellerName => $composableBuilder(
+      column: $table.sellerName, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnOrderings(column));
 
@@ -9860,6 +10023,12 @@ class $$SalesTableAnnotationComposer
 
   GeneratedColumn<String> get reference =>
       $composableBuilder(column: $table.reference, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get sellerName => $composableBuilder(
+      column: $table.sellerName, builder: (column) => column);
 
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
@@ -9973,6 +10142,8 @@ class $$SalesTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String> reference = const Value.absent(),
             Value<String?> customerId = const Value.absent(),
+            Value<String?> userId = const Value.absent(),
+            Value<String?> sellerName = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
             Value<int> totalAmount = const Value.absent(),
             Value<int> amountPaid = const Value.absent(),
@@ -9986,6 +10157,8 @@ class $$SalesTableTableManager extends RootTableManager<
             id: id,
             reference: reference,
             customerId: customerId,
+            userId: userId,
+            sellerName: sellerName,
             date: date,
             totalAmount: totalAmount,
             amountPaid: amountPaid,
@@ -9999,6 +10172,8 @@ class $$SalesTableTableManager extends RootTableManager<
             required String id,
             required String reference,
             Value<String?> customerId = const Value.absent(),
+            Value<String?> userId = const Value.absent(),
+            Value<String?> sellerName = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
             Value<int> totalAmount = const Value.absent(),
             Value<int> amountPaid = const Value.absent(),
@@ -10012,6 +10187,8 @@ class $$SalesTableTableManager extends RootTableManager<
             id: id,
             reference: reference,
             customerId: customerId,
+            userId: userId,
+            sellerName: sellerName,
             date: date,
             totalAmount: totalAmount,
             amountPaid: amountPaid,
@@ -12689,6 +12866,7 @@ typedef $$UsersTableCreateCompanionBuilder = UsersCompanion Function({
   Value<DateTime?> lastLoginAt,
   Value<String?> avatarPath,
   Value<String?> recoveryCodeHash,
+  Value<double> commissionRate,
   Value<int> rowid,
 });
 typedef $$UsersTableUpdateCompanionBuilder = UsersCompanion Function({
@@ -12702,6 +12880,7 @@ typedef $$UsersTableUpdateCompanionBuilder = UsersCompanion Function({
   Value<DateTime?> lastLoginAt,
   Value<String?> avatarPath,
   Value<String?> recoveryCodeHash,
+  Value<double> commissionRate,
   Value<int> rowid,
 });
 
@@ -12744,6 +12923,10 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
 
   ColumnFilters<String> get recoveryCodeHash => $composableBuilder(
       column: $table.recoveryCodeHash,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get commissionRate => $composableBuilder(
+      column: $table.commissionRate,
       builder: (column) => ColumnFilters(column));
 }
 
@@ -12788,6 +12971,10 @@ class $$UsersTableOrderingComposer
   ColumnOrderings<String> get recoveryCodeHash => $composableBuilder(
       column: $table.recoveryCodeHash,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get commissionRate => $composableBuilder(
+      column: $table.commissionRate,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$UsersTableAnnotationComposer
@@ -12828,6 +13015,9 @@ class $$UsersTableAnnotationComposer
 
   GeneratedColumn<String> get recoveryCodeHash => $composableBuilder(
       column: $table.recoveryCodeHash, builder: (column) => column);
+
+  GeneratedColumn<double> get commissionRate => $composableBuilder(
+      column: $table.commissionRate, builder: (column) => column);
 }
 
 class $$UsersTableTableManager extends RootTableManager<
@@ -12863,6 +13053,7 @@ class $$UsersTableTableManager extends RootTableManager<
             Value<DateTime?> lastLoginAt = const Value.absent(),
             Value<String?> avatarPath = const Value.absent(),
             Value<String?> recoveryCodeHash = const Value.absent(),
+            Value<double> commissionRate = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               UsersCompanion(
@@ -12876,6 +13067,7 @@ class $$UsersTableTableManager extends RootTableManager<
             lastLoginAt: lastLoginAt,
             avatarPath: avatarPath,
             recoveryCodeHash: recoveryCodeHash,
+            commissionRate: commissionRate,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -12889,6 +13081,7 @@ class $$UsersTableTableManager extends RootTableManager<
             Value<DateTime?> lastLoginAt = const Value.absent(),
             Value<String?> avatarPath = const Value.absent(),
             Value<String?> recoveryCodeHash = const Value.absent(),
+            Value<double> commissionRate = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               UsersCompanion.insert(
@@ -12902,6 +13095,7 @@ class $$UsersTableTableManager extends RootTableManager<
             lastLoginAt: lastLoginAt,
             avatarPath: avatarPath,
             recoveryCodeHash: recoveryCodeHash,
+            commissionRate: commissionRate,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

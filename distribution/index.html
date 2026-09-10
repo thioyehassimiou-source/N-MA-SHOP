@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- SEO & Référencement Guinée -->
+  <title>N’MaShop — Le Logiciel de Gestion Commerciale & Caisse pour PC en Guinée</title>
+  <meta name="description" content="N’MaShop est le logiciel de caisse et de gestion commerciale n°1 pour boutiques et commerçants en Guinée. Ventes, stock, crédits clients et comptabilité SYSCOHADA sur PC Windows, 100% hors-ligne.">
+  <meta name="keywords" content="N'MaShop, logiciel gestion commerce guinée, caisse enregistreuse pc conakry, logiciel boutique madina, gestion crédit client guinée, logiciel stock hors ligne conakry">
+  <meta name="author" content="N’MaShop">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://nmashop.com">
+
+  <!-- Open Graph / Réseaux Sociaux & WhatsApp -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://nmashop.com">
+  <meta property="og:title" content="N’MaShop — Gérer · Vendre · Grandir | Logiciel Windows">
+  <meta property="og:description" content="Le logiciel de gestion commerciale pensé pour les commerçants de Guinée. Remplacez le cahier de crédit papier, fonctionne 100% sans connexion internet.">
+  <meta property="og:image" content="assets/img/nmashop_brand_header.png">
+  <meta property="og:locale" content="fr_FR">
+
+  <!-- Twitter Meta -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="N’MaShop — Logiciel de Gestion Commerciale Windows">
+  <meta name="twitter:description" content="Téléchargez N'MaShop pour PC Windows. 100% hors-ligne, zéro coupure.">
+  <meta name="twitter:image" content="assets/img/nmashop_brand_header.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/img/logo_transparent.png">
+  <meta name="theme-color" content="#0F1B3D">
+
+  <!-- Polices Google Fonts (Plus Jakarta Sans) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Feuille de style principale -->
+  <link rel="stylesheet" href="assets/css/style.css">
+
+  <!-- Données structurées Schema.org -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "N’MaShop",
+    "operatingSystem": "Windows 10, Windows 11",
+    "applicationCategory": "BusinessApplication",
+    "offers": {
+      "@type": "AggregateOffer",
+      "priceCurrency": "GNF",
+      "lowPrice": "0",
+      "highPrice": "3500000"
+    },
+    "description": "Logiciel de gestion commerciale, caisse et comptabilité SYSCOHADA pour ordinateurs Windows en Guinée, 100% hors-ligne."
+  }
+  </script>
+
+  <!-- Script d'initialisation immédiate du thème (évite le flash blanc/sombre) -->
+  <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('nmashop_theme');
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+          document.documentElement.setAttribute('data-theme', savedTheme);
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+</head>
+<body>
+
+  <!-- ── Header Épuré & Aéré ───────────────────────────────────── -->
+  <header class="site-header">
+    <div class="container header-container">
+      <!-- Logo Officiel N'MaShop -->
+      <a href="#accueil" class="brand-link" aria-label="N'MaShop Accueil">
+        <img src="assets/img/nmashop_brand_header.png" alt="N’MaShop Logo Officiel" class="brand-logo-img">
+      </a>
+
+      <!-- Navigation Simplifiée & Fluide -->
+      <nav class="nav-links" aria-label="Navigation principale">
+        <a href="#fonctionnalites">Fonctionnalités</a>
+        <a href="#demo">Démonstration</a>
+        <a href="#temoignages">Avis Clients</a>
+        <a href="#tarifs">Tarifs GNF</a>
+        <a href="#faq">FAQ</a>
+        <a href="#assistance">Assistance</a>
+      </nav>
+
+      <!-- Bouton d'Action Unique -->
+      <div class="header-actions">
+        <!-- Commutateur de Thème Segmenté (Clair / Sombre - Sans Ambiguïté) -->
+        <div class="theme-segmented-switch" id="header-theme-switch" role="group" aria-label="Choix du thème d'affichage">
+          <button type="button" class="theme-segment-btn is-active" data-theme-choice="light" title="Activer le Mode Clair" aria-pressed="true">
+            <span class="segment-icon">☀️</span>
+            <span class="segment-label">Clair</span>
+          </button>
+          <button type="button" class="theme-segment-btn" data-theme-choice="dark" title="Activer le Mode Sombre" aria-pressed="false">
+            <span class="segment-icon">🌙</span>
+            <span class="segment-label">Sombre</span>
+          </button>
+        </div>
+
+        <a href="#telecharger" class="btn-header-download" data-action="download">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+          Télécharger (Windows)
+        </a>
+
+        <button class="btn-hamburger" id="mobile-menu-toggle" aria-label="Ouvrir le menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Hero Section SaaS Elite (Inspiré ThemeForest & Pinterest Best-Sellers) ── -->
+  <section class="hero-section" id="accueil">
+    <!-- Éléments d'ambiance lumineuse ThemeForest -->
+    <div class="hero-ambient-glow"></div>
+    <div class="hero-grid-pattern"></div>
+
+    <div class="container hero-container">
+      <!-- En-tête éditorial du Hero -->
+      <div class="hero-header">
+        <!-- Badge pilule lumineux -->
+        <a href="#demo" class="hero-badge-pill" aria-label="Découvrir N’MaShop V1">
+          <span class="badge-flag">🇬🇳</span>
+          <span class="badge-glow-tag">ÉDITION 2026</span>
+          <span class="badge-text">Conçu pour les commerces en Guinée · 100% Hors-Ligne</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+
+        <!-- Titre Impactant avec Dégradé Vibrant -->
+        <h1 class="hero-title">
+          La caisse & gestion commerciale <br>
+          <span class="hero-gradient-text">qui ne vous lâche jamais en Guinée.</span>
+        </h1>
+
+        <!-- Sous-titre Épuré & Vendeur -->
+        <p class="hero-subtitle">
+          Remplacez définitivement les cahiers de crédit froissés, les calculatrices lentes et les pertes de caisse. N’MaShop gère vos ventes, vos stocks et votre comptabilité SYSCOHADA sur PC Windows — <strong>à une vitesse fulgurante et sans jamais dépendre d'Internet.</strong>
+        </p>
+
+        <!-- Groupe de Boutons CTA Primés -->
+        <div class="hero-cta-group">
+          <a href="#telecharger" class="btn-hero-primary btn-shimmer" data-action="download">
+            <div class="btn-hero-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+            </div>
+            <div class="btn-hero-text">
+              <span class="btn-main-label">Télécharger pour Windows</span>
+              <span class="btn-sub-label">Version 1.0.0 (64-bit) · 7 jours d'essai gratuit</span>
+            </div>
+          </a>
+
+          <a href="#demo" class="btn-hero-glass">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Voir la Démo Vidéo avec Son</span>
+          </a>
+        </div>
+
+        <!-- Micro-Garanties & Réassurance Immédiate -->
+        <div class="hero-security-notes">
+          <span class="sec-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> 100% Hors-Ligne Garanti</span>
+          <span class="sec-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Essai 7 Jours Sans Carte</span>
+          <span class="sec-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Installateur Windows (.exe)</span>
+        </div>
+
+        <!-- Preuve Sociale & Étoiles (Social Proof Cluster) -->
+        <div class="hero-social-proof">
+          <div class="avatar-stack">
+            <div class="avatar-circle" style="background:#E85D04;">M</div>
+            <div class="avatar-circle" style="background:#10B981;">D</div>
+            <div class="avatar-circle" style="background:#3B82F6;">B</div>
+            <div class="avatar-circle" style="background:#8B5CF6;">S</div>
+            <div class="avatar-circle avatar-plus">+450</div>
+          </div>
+          <div class="proof-text">
+            <div class="stars-row">★★★★★ <strong>4.9/5</strong></div>
+            <span>Choisi par les boutiques à Madina, Kaloum, Matoto, Kankan, Labé</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Showcase Central Logiciel avec Cartes Flottantes (Signature Pinterest/ThemeForest) ── -->
+      <div class="hero-showcase-wrapper">
+        <!-- Carte Flottante 1 : Recette en direct (Haut-Droit) -->
+        <div class="floating-stat-card card-top-right">
+          <div class="stat-icon-wrap" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          </div>
+          <div class="stat-meta">
+            <span class="stat-label">Recette du Jour</span>
+            <strong class="stat-val">3 850 000 GNF</strong>
+            <span class="stat-trend" style="color: #10B981;">▲ +24% vs hier · 48 ventes</span>
+          </div>
+        </div>
+
+        <!-- Carte Flottante 2 : Alerte Stock Critique (Bas-Gauche) -->
+        <div class="floating-stat-card card-bottom-left">
+          <div class="stat-icon-wrap" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="stat-meta">
+            <span class="stat-label">Alerte Stock Minimum</span>
+            <strong class="stat-val">Sac Riz Blanc 50kg</strong>
+            <span class="stat-trend" style="color: #F59E0B;">Reste 6 sacs · Seuil atteint</span>
+          </div>
+        </div>
+
+        <!-- Carte Flottante 3 : 100% Autonome Hors-Ligne (Bas-Droit) -->
+        <div class="floating-stat-card card-bottom-right">
+          <div class="stat-icon-wrap" style="background: rgba(59, 130, 246, 0.15); color: #3B82F6;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+          </div>
+          <div class="stat-meta">
+            <span class="stat-label">100% Autonome</span>
+            <strong class="stat-val">Zéro Internet Requis</strong>
+            <span class="stat-trend" style="color: #38BDF8;">Base SQLite locale active</span>
+          </div>
+        </div>
+
+        <!-- Fenêtre du Logiciel Desktop Stylisée Élite -->
+        <div class="elite-app-window">
+          <!-- Barre Supérieure Windows Style Moderne -->
+          <div class="elite-window-titlebar">
+            <div class="titlebar-left">
+              <div class="traffic-lights">
+                <span class="dot close"></span>
+                <span class="dot min"></span>
+                <span class="dot max"></span>
+              </div>
+              <span class="titlebar-text">N’MaShop V1.0 — Boutique Conakry | Session Admin</span>
+            </div>
+            <div class="titlebar-right">
+              <span class="badge-status-offline">
+                <span class="pulse-indicator"></span> 100% Hors-Ligne (SQLite)
+              </span>
+            </div>
+          </div>
+
+          <!-- Onglets Interactifs du Showcase -->
+          <div class="showcase-nav-tabs" role="tablist">
+            <button class="showcase-tab-btn active" data-view="dashboard" type="button">
+              <span>📊 Tableau de Bord</span>
+            </button>
+            <button class="showcase-tab-btn" data-view="pos" type="button">
+              <span>🏪 Caisse & POS</span>
+            </button>
+            <button class="showcase-tab-btn" data-view="stock" type="button">
+              <span>📦 Stocks & CMP</span>
+            </button>
+            <button class="showcase-tab-btn" data-view="credit" type="button">
+              <span>💳 Carnet de Crédits</span>
+            </button>
+            <button class="showcase-tab-btn" data-view="syscohada" type="button">
+              <span>📑 SYSCOHADA & IA</span>
+            </button>
+          </div>
+
+          <!-- Vue 1 (Par défaut) : Le VRAI Tableau de Bord N'MaShop (Fidèle à l'application Flutter) -->
+          <div class="showcase-view-panel active" id="view-dashboard">
+            <div class="real-dashboard-wrap">
+              <!-- En-tête supérieur du Dashboard -->
+              <div class="dash-top-header">
+                <div class="dash-header-title">
+                  <div class="dash-title-row">
+                    <span class="dash-shop-badge">🇬🇳 Boutique Madina</span>
+                    <h4>Tableau de Bord d'Activité</h4>
+                  </div>
+                  <span class="dash-timestamp">Dernière mise à jour : Aujourd'hui à 15h42 · 48 transactions enregistrées</span>
+                </div>
+                <div class="dash-header-actions">
+                  <div class="dash-period-chips">
+                    <span class="period-chip active">Aujourd'hui</span>
+                    <span class="period-chip">7 Jours</span>
+                    <span class="period-chip">Ce Mois</span>
+                  </div>
+                  <div class="dash-sync-pill">
+                    <span class="sync-dot"></span> 100% Hors-Ligne (0ms)
+                  </div>
+                </div>
+              </div>
+
+              <!-- Grille des 4 Métriques Clés (KPI Directs) -->
+              <div class="real-kpi-grid">
+                <div class="real-kpi-card kpi-emerald">
+                  <div class="kpi-icon-wrap">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                  </div>
+                  <div class="kpi-body">
+                    <span class="kpi-label">Ventes du Jour</span>
+                    <strong class="kpi-value">3 850 000 GNF</strong>
+                    <div class="kpi-badge badge-green">▲ +24% vs hier · 48 ventes</div>
+                  </div>
+                </div>
+
+                <div class="real-kpi-card kpi-blue">
+                  <div class="kpi-icon-wrap">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                  </div>
+                  <div class="kpi-body">
+                    <span class="kpi-label">Solde Caisse Espèces</span>
+                    <strong class="kpi-value">2 450 000 GNF</strong>
+                    <div class="kpi-badge badge-blue">Trésorerie Disponible</div>
+                  </div>
+                </div>
+
+                <div class="real-kpi-card kpi-orange">
+                  <div class="kpi-icon-wrap">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                  </div>
+                  <div class="kpi-body">
+                    <span class="kpi-label">Crédits à Recouvrer</span>
+                    <strong class="kpi-value">1 400 000 GNF</strong>
+                    <div class="kpi-badge badge-amber">4 clients en attente</div>
+                  </div>
+                </div>
+
+                <div class="real-kpi-card kpi-red">
+                  <div class="kpi-icon-wrap">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  </div>
+                  <div class="kpi-body">
+                    <span class="kpi-label">Produits en Alerte</span>
+                    <strong class="kpi-value">2 articles</strong>
+                    <div class="kpi-badge badge-red">Stock critique atteint</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Corps 2 Colonnes du Dashboard -->
+              <div class="real-dash-split">
+                <!-- Colonne Gauche (Graphique & Dernières Ventes) -->
+                <div class="dash-main-col">
+                  <!-- Carte Courbe CA 7 Jours -->
+                  <div class="dash-chart-card">
+                    <div class="card-top-bar">
+                      <div>
+                        <h5>Évolution du Chiffre d'Affaires (7 Derniers Jours)</h5>
+                        <span class="card-sub-info">Chiffre hebdomadaire consolidé · Pic de vente dimanche</span>
+                      </div>
+                      <span class="chart-growth-pill">▲ +18.4% ce mois</span>
+                    </div>
+                    <div class="chart-svg-wrap">
+                      <svg viewBox="0 0 540 160" class="revenue-chart-svg" preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="chartGradOrange" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#e85d04" stop-opacity="0.28"/>
+                            <stop offset="100%" stop-color="#e85d04" stop-opacity="0.0"/>
+                          </linearGradient>
+                        </defs>
+                        <!-- Lignes de repère -->
+                        <line x1="0" y1="30" x2="540" y2="30" stroke="rgba(15, 27, 61, 0.06)" stroke-dasharray="3 3"/>
+                        <line x1="0" y1="70" x2="540" y2="70" stroke="rgba(15, 27, 61, 0.06)" stroke-dasharray="3 3"/>
+                        <line x1="0" y1="110" x2="540" y2="110" stroke="rgba(15, 27, 61, 0.06)" stroke-dasharray="3 3"/>
+                        <line x1="0" y1="150" x2="540" y2="150" stroke="rgba(15, 27, 61, 0.1)"/>
+                        
+                        <!-- Remplissage zone dégradée -->
+                        <path d="M 0 120 C 45 110, 90 95, 135 100 C 180 105, 225 65, 270 70 C 315 75, 360 45, 405 50 C 450 55, 495 20, 540 25 L 540 150 L 0 150 Z" fill="url(#chartGradOrange)" class="chart-fill"/>
+                        
+                        <!-- Ligne de courbe fluide -->
+                        <path d="M 0 120 C 45 110, 90 95, 135 100 C 180 105, 225 65, 270 70 C 315 75, 360 45, 405 50 C 450 55, 495 20, 540 25" fill="none" stroke="#e85d04" stroke-width="3.5" stroke-linecap="round" class="chart-stroke"/>
+                        
+                        <!-- Points de vente -->
+                        <circle cx="0" cy="120" r="4" fill="#e85d04"/>
+                        <circle cx="90" cy="98" r="4" fill="#e85d04"/>
+                        <circle cx="180" cy="102" r="4" fill="#e85d04"/>
+                        <circle cx="270" cy="70" r="4" fill="#e85d04"/>
+                        <circle cx="360" cy="48" r="4" fill="#e85d04"/>
+                        <circle cx="450" cy="52" r="4" fill="#e85d04"/>
+                        <circle cx="540" cy="25" r="6" fill="#e85d04" stroke="#ffffff" stroke-width="2.5"/>
+                      </svg>
+                      <!-- Tooltip Épinglé sur le pic actuel -->
+                      <div class="chart-pinned-tooltip">
+                        <strong>Aujourd'hui (Dimanche)</strong>
+                        <span>3 850 000 GNF (48 ventes)</span>
+                      </div>
+                      <!-- Jours de la semaine -->
+                      <div class="chart-x-labels">
+                        <span>Lun (1.8M)</span>
+                        <span>Mar (2.2M)</span>
+                        <span>Mer (2.9M)</span>
+                        <span>Jeu (3.1M)</span>
+                        <span>Ven (3.4M)</span>
+                        <span>Sam (4.1M)</span>
+                        <span class="active-day">Dim (3.85M)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Carte Tableau des Dernières Ventes -->
+                  <div class="dash-recent-sales-card">
+                    <div class="card-top-bar">
+                      <div>
+                        <h5>Dernières Ventes Enregistrées</h5>
+                        <span class="card-sub-info">Synchronisation caisse instantanée · Prêt pour impression</span>
+                      </div>
+                      <span class="badge-live-tag">En Direct</span>
+                    </div>
+                    <div class="dash-table-container">
+                      <table class="dash-table">
+                        <thead>
+                          <tr>
+                            <th>N° Ticket</th>
+                            <th>Heure</th>
+                            <th>Client</th>
+                            <th>Articles</th>
+                            <th>Mode</th>
+                            <th>Montant GNF</th>
+                            <th>Statut</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><strong>#V-0048</strong></td>
+                            <td>15:42</td>
+                            <td>Client Comptoir</td>
+                            <td>Sac Riz 50kg, Huile 20L</td>
+                            <td><span class="pay-chip cash">💵 Espèces</span></td>
+                            <td><strong>640 000 GNF</strong></td>
+                            <td><span class="tag-success">✓ Encaissé</span></td>
+                          </tr>
+                          <tr>
+                            <td><strong>#V-0047</strong></td>
+                            <td>14:30</td>
+                            <td>Elhadj Diallo (Madina)</td>
+                            <td>2x Lait Bonnet Rouge</td>
+                            <td><span class="pay-chip om">📱 Orange M.</span></td>
+                            <td><strong>330 000 GNF</strong></td>
+                            <td><span class="tag-success">✓ Encaissé</span></td>
+                          </tr>
+                          <tr>
+                            <td><strong>#V-0046</strong></td>
+                            <td>12:15</td>
+                            <td>Mamadou Barry</td>
+                            <td>Sac Sucre 50kg</td>
+                            <td><span class="pay-chip credit">📒 Acompte 200k</span></td>
+                            <td><strong>395 000 GNF</strong></td>
+                            <td><span class="tag-warning">Crédit partiel</span></td>
+                          </tr>
+                          <tr>
+                            <td><strong>#V-0045</strong></td>
+                            <td>10:50</td>
+                            <td>Kadiatou Bah</td>
+                            <td>Savon Diama, Tomate 2.2kg</td>
+                            <td><span class="pay-chip cash">💵 Espèces</span></td>
+                            <td><strong>145 000 GNF</strong></td>
+                            <td><span class="tag-success">✓ Encaissé</span></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Colonne Droite (Modes de Paiement & Alertes) -->
+                <div class="dash-side-col">
+                  <!-- Carte Modes de Paiement -->
+                  <div class="dash-payments-card">
+                    <div class="card-top-bar">
+                      <h5>Modes d'Encaissement</h5>
+                      <span class="card-sub-info">Répartition du jour</span>
+                    </div>
+                    <div class="payment-bars-list">
+                      <div class="pay-stat-item">
+                        <div class="pay-stat-head">
+                          <span class="pay-label">💵 Espèces (Cash)</span>
+                          <span class="pay-val">2 450 000 GNF (64%)</span>
+                        </div>
+                        <div class="pay-progress-bar">
+                          <div class="bar-fill fill-green" style="width: 64%;"></div>
+                        </div>
+                      </div>
+
+                      <div class="pay-stat-item">
+                        <div class="pay-stat-head">
+                          <span class="pay-label">📱 Orange Money</span>
+                          <span class="pay-val">950 000 GNF (25%)</span>
+                        </div>
+                        <div class="pay-progress-bar">
+                          <div class="bar-fill fill-orange" style="width: 25%;"></div>
+                        </div>
+                      </div>
+
+                      <div class="pay-stat-item">
+                        <div class="pay-stat-head">
+                          <span class="pay-label">📲 MTN MoMo</span>
+                          <span class="pay-val">450 000 GNF (11%)</span>
+                        </div>
+                        <div class="pay-progress-bar">
+                          <div class="bar-fill fill-yellow" style="width: 11%;"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Carte Alertes & Actions Rapides -->
+                  <div class="dash-alerts-card">
+                    <div class="card-top-bar">
+                      <h5>Alertes & Actions Rapides</h5>
+                    </div>
+                    <div class="alerts-items-list">
+                      <div class="alert-box-item alert-critical">
+                        <div class="alert-box-icon">⚠️</div>
+                        <div class="alert-box-text">
+                          <strong>Stock Critique</strong>
+                          <p>Sac Riz Blanc 50kg : reste 6 sacs (seuil min. 10)</p>
+                          <span class="alert-action-link">Créer bon de commande →</span>
+                        </div>
+                      </div>
+
+                      <div class="alert-box-item alert-warning">
+                        <div class="alert-box-icon">📒</div>
+                        <div class="alert-box-text">
+                          <strong>Crédit Client Échu</strong>
+                          <p>Mamadou Saliou : 400 000 GNF de reste (échéance hier)</p>
+                          <span class="alert-action-link">Envoyer rappel WhatsApp →</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vue 2 : La Caisse Enregistreuse POS Tactile (Interactive) -->
+          <div class="showcase-view-panel" id="view-pos">
+            <div class="pos-showcase-grid">
+              <!-- Colonne Articles -->
+              <div class="pos-items-pane">
+                <div class="pane-header">
+                  <span>Rayon Produits (Conakry)</span>
+                  <span class="shortcut-tip">F3 Recherche Rapide</span>
+                </div>
+                <div class="pos-catalog-grid">
+                  <div class="pos-card-item">
+                    <div class="p-emoji">🍚</div>
+                    <div class="p-title">Sac Riz Blanc 50kg</div>
+                    <div class="p-qty">Stock: 42 disp.</div>
+                    <div class="p-price-tag">350 000 GNF</div>
+                  </div>
+                  <div class="pos-card-item">
+                    <div class="p-emoji">🛢️</div>
+                    <div class="p-title">Bidon Huile 20L</div>
+                    <div class="p-qty">Stock: 18 disp.</div>
+                    <div class="p-price-tag">290 000 GNF</div>
+                  </div>
+                  <div class="pos-card-item">
+                    <div class="p-emoji">🍬</div>
+                    <div class="p-title">Sac Sucre 50kg</div>
+                    <div class="p-qty">Stock: 12 disp.</div>
+                    <div class="p-price-tag">395 000 GNF</div>
+                  </div>
+                  <div class="pos-card-item">
+                    <div class="p-emoji">🥛</div>
+                    <div class="p-title">Lait Bonnet Rouge</div>
+                    <div class="p-qty">Stock: 30 disp.</div>
+                    <div class="p-price-tag">165 000 GNF</div>
+                  </div>
+                  <div class="pos-card-item">
+                    <div class="p-emoji">🧼</div>
+                    <div class="p-title">Savon Diama Cartouche</div>
+                    <div class="p-qty">Stock: 55 disp.</div>
+                    <div class="p-price-tag">85 000 GNF</div>
+                  </div>
+                  <div class="pos-card-item">
+                    <div class="p-emoji">🥫</div>
+                    <div class="p-title">Tomate Boîte 2.2kg</div>
+                    <div class="p-qty">Stock: 24 disp.</div>
+                    <div class="p-price-tag">60 000 GNF</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Colonne Ticket de Caisse Direct -->
+              <div class="pos-receipt-pane">
+                <div class="pane-header">
+                  <span>Ticket en Cours</span>
+                  <span class="receipt-num">#V-2026-0042</span>
+                </div>
+                <div class="ticket-lines" id="pos-ticket-lines">
+                  <div class="ticket-line">
+                    <span>1× Sac Riz Blanc 50kg</span>
+                    <strong>350 000 GNF</strong>
+                  </div>
+                  <div class="ticket-line">
+                    <span>2× Bidon Huile 20L</span>
+                    <strong>580 000 GNF</strong>
+                  </div>
+                  <div class="ticket-line">
+                    <span>1× Carton Lait Bonnet R.</span>
+                    <strong>165 000 GNF</strong>
+                  </div>
+                </div>
+                <div class="ticket-total-box">
+                  <div class="total-row">
+                    <span>TOTAL À ENCAISSER :</span>
+                    <strong class="total-gnf" id="pos-ticket-total">1 095 000 GNF</strong>
+                  </div>
+                  <div class="pay-methods-row">
+                    <span class="pay-tag active">💵 Espèces</span>
+                    <span class="pay-tag">📱 Orange Money</span>
+                    <span class="pay-tag">📒 Crédit</span>
+                  </div>
+                  <button class="btn-pos-print" id="btn-showcase-checkout" type="button">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    <span>Encaisser & Imprimer Ticket (F2)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vue 3 : Gestion de Stocks -->
+          <div class="showcase-view-panel" id="view-stock">
+            <div class="stock-overview-pane">
+              <div class="stock-banner">
+                <div class="s-info">
+                  <strong>Valorisation Totale du Stock : 42 800 000 GNF</strong>
+                  <span>Calculée selon la méthode officielle du Coût Moyen Pondéré (CMP)</span>
+                </div>
+                <span class="tag-warning">⚠️ 3 articles sous le seuil d'alerte</span>
+              </div>
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Désignation Article</th>
+                    <th>Catégorie</th>
+                    <th>Stock Actuel</th>
+                    <th>Seuil Alerte</th>
+                    <th>Prix Achat (CMP)</th>
+                    <th>Prix Vente GNF</th>
+                    <th>État</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Sac Riz Blanc 50kg</strong></td>
+                    <td>Céréales</td>
+                    <td><span style="color:#ef4444;font-weight:bold;">6 sacs</span></td>
+                    <td>10 sacs</td>
+                    <td>310 000 GNF</td>
+                    <td><strong>350 000 GNF</strong></td>
+                    <td><span class="tag-danger">Commander</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Bidon Huile Végétale 20L</strong></td>
+                    <td>Huiles</td>
+                    <td>18 bidons</td>
+                    <td>5 bidons</td>
+                    <td>255 000 GNF</td>
+                    <td><strong>290 000 GNF</strong></td>
+                    <td><span class="tag-success">En Stock</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Sac Sucre en Poudre 50kg</strong></td>
+                    <td>Sucre</td>
+                    <td>12 sacs</td>
+                    <td>8 sacs</td>
+                    <td>360 000 GNF</td>
+                    <td><strong>395 000 GNF</strong></td>
+                    <td><span class="tag-success">En Stock</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Vue 4 : Carnet de Crédits Clients -->
+          <div class="showcase-view-panel" id="view-credit">
+            <div class="credit-overview-pane">
+              <div class="credit-banner">
+                <div>
+                  <strong>Total des Crédits Clients en Cours : 1 850 000 GNF</strong>
+                  <span>Horodatage et historique certifiés de chaque remboursement</span>
+                </div>
+                <span class="tag-info">2 clients débiteurs</span>
+              </div>
+              <table class="dash-table">
+                <thead>
+                  <tr>
+                    <th>Nom du Client</th>
+                    <th>Téléphone</th>
+                    <th>Date d'Octroi</th>
+                    <th>Total Dû</th>
+                    <th>Acompte Reçu</th>
+                    <th>Reste à Payer</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Mamadou Saliou Camara</strong></td>
+                    <td>+224 622 10 20 30</td>
+                    <td>09 Sept 2026</td>
+                    <td>1 200 000 GNF</td>
+                    <td>800 000 GNF</td>
+                    <td><strong style="color:#E85D04;">400 000 GNF</strong></td>
+                    <td><span class="tag-info">Encaisser</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Boutique Oumar & Frères</strong></td>
+                    <td>+224 624 55 44 33</td>
+                    <td>05 Sept 2026</td>
+                    <td>1 450 000 GNF</td>
+                    <td>0 GNF</td>
+                    <td><strong style="color:#ef4444;">1 450 000 GNF</strong></td>
+                    <td><span class="tag-info">Relancer</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Vue 5 : Comptabilité Conforme SYSCOHADA & Assistant IA (La Force de N'MaShop) -->
+          <div class="showcase-view-panel" id="view-syscohada">
+            <div class="dash-preview-card" style="margin-bottom: 1rem;">
+              <div class="dash-card-header">
+                <div>
+                  <strong>Bilan Financier & Compte de Résultat Simplifié (SYSCOHADA Révisé)</strong>
+                  <span>Génération automatique à partir des ventes et achats réels · Normes OHADA</span>
+                </div>
+                <span class="tag-success">✓ Écritures Équilibrées</span>
+              </div>
+              <div class="compta-kpi-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 14px;">
+                <div class="compta-box" style="background: var(--bg-page); padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border-light);">
+                  <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Chiffre d'Affaires (701)</span>
+                  <strong style="font-size: 1.15rem; color: var(--navy);">3 850 000 GNF</strong>
+                </div>
+                <div class="compta-box" style="background: var(--bg-page); padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border-light);">
+                  <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Achats Marchandises (601)</span>
+                  <strong style="font-size: 1.15rem; color: #ef4444;">2 730 000 GNF</strong>
+                </div>
+                <div class="compta-box" style="background: var(--bg-page); padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border-light);">
+                  <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Charges d'Exploitation (61/62)</span>
+                  <strong style="font-size: 1.15rem; color: #f59e0b;">320 000 GNF</strong>
+                </div>
+                <div class="compta-box" style="background: #f0fdf4; padding: 12px 14px; border-radius: 10px; border: 1.5px solid #bbf7d0;">
+                  <span style="font-size: 0.75rem; color: #166534; display: block; font-weight: 700;">Bénéfice Net Réel (131)</span>
+                  <strong style="font-size: 1.25rem; color: #15803d;">+800 000 GNF</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Journal Comptable des Écritures & Synthèse Assistant IA -->
+            <div style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px;" class="syscohada-grid-split">
+              <div class="dash-preview-card">
+                <div class="dash-card-header">
+                  <strong>Journal des Écritures Automatisées</strong>
+                  <span class="tag-info">Grand Livre & Balance</span>
+                </div>
+                <table class="dash-table">
+                  <thead>
+                    <tr>
+                      <th>Compte</th>
+                      <th>Intitulé de l'Opération</th>
+                      <th>Débit (GNF)</th>
+                      <th>Crédit (GNF)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>5711</code></td>
+                      <td>Encaissement Ventes Comptoir (Espèces)</td>
+                      <td style="color:#10B981;font-weight:700;">2 450 000</td>
+                      <td>-</td>
+                    </tr>
+                    <tr>
+                      <td><code>5712</code></td>
+                      <td>Encaissement Orange Money / MoMo</td>
+                      <td style="color:#10B981;font-weight:700;">1 400 000</td>
+                      <td>-</td>
+                    </tr>
+                    <tr>
+                      <td><code>7011</code></td>
+                      <td>Ventes de Marchandises (Compte Produits)</td>
+                      <td>-</td>
+                      <td style="color:#3B82F6;font-weight:700;">3 850 000</td>
+                    </tr>
+                    <tr>
+                      <td><code>6051</code></td>
+                      <td>Frais Électricité EDG & Énergie Boutique</td>
+                      <td style="color:#ef4444;font-weight:700;">120 000</td>
+                      <td>-</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Synthèse de l'Assistant IA N'MaShop -->
+              <div class="dash-preview-card" style="background: linear-gradient(145deg, rgba(232, 93, 4, 0.05), rgba(59, 130, 246, 0.05)); border: 1.5px solid var(--primary-border);">
+                <div class="dash-card-header">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:1.2rem;">🤖</span>
+                    <strong style="color:var(--primary);">Assistant IA N’MaShop</strong>
+                  </div>
+                  <span class="tag-warning" style="background:rgba(232,93,4,0.12);color:var(--primary);border-color:rgba(232,93,4,0.3);">Analyse Quotidienne</span>
+                </div>
+                <div style="font-size: 0.85rem; line-height: 1.6; color: var(--navy); margin-top: 10px;">
+                  <p style="margin-bottom: 8px;">
+                    💡 <em>« Bonjour gérant ! Votre marge commerciale nette est de <strong>20.8%</strong> aujourd’hui. Vos ventes en espèces couvrent 3 fois vos charges de la semaine. »</em>
+                  </p>
+                  <div style="background: rgba(255,255,255,0.7); padding: 10px; border-radius: 8px; border: 1px solid var(--border-light); margin-top: 8px;">
+                    <strong style="font-size: 0.8rem; color: #166534; display:block; margin-bottom: 3px;">✅ Recommandation IA :</strong>
+                    <span style="font-size: 0.78rem; color: var(--text-secondary);">Le stock de Riz Blanc 50kg s'épuise 2x plus vite que la moyenne. Lancez la commande réapprovisionnement auprès de votre fournisseur dès demain matin.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Barre de Statistiques & Impact (ThemeForest 4-Grid Counter) ── -->
+      <div class="hero-impact-strip">
+        <div class="impact-col">
+          <span class="impact-num">100%</span>
+          <span class="impact-label">Hors-Ligne Garanti</span>
+          <span class="impact-sub">Zéro dépendance réseau</span>
+        </div>
+        <div class="impact-col">
+          <span class="impact-num">&lt; 3s</span>
+          <span class="impact-label">Vente & Ticket</span>
+          <span class="impact-sub">Encaissement ultra-rapide</span>
+        </div>
+        <div class="impact-col">
+          <span class="impact-num">SYSCOHADA</span>
+          <span class="impact-label">Normes Comptables</span>
+          <span class="impact-sub">Bilan & Journal automatiques</span>
+        </div>
+        <div class="impact-col">
+          <span class="impact-num">0 GNF</span>
+          <span class="impact-label">Frais Cachés</span>
+          <span class="impact-sub">Aucune commission sur vos ventes</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Ruban Marquee Défilant des Marchés (Trust Ribbon) ── -->
+    <div class="hero-marquee-bar">
+      <div class="marquee-track">
+        <span>Marché Madina</span> · <span>Kaloum Centre</span> · <span>Grand Marché de Kankan</span> · <span>Labé Centre</span> · <span>Matoto</span> · <span>Kindia</span> · <span>Mamou</span> · <span>Siguiri</span> · <span>Dixinn</span> · <span>Ratoma</span> · <span>Marché Madina</span> · <span>Kaloum Centre</span> · <span>Grand Marché de Kankan</span> · <span>Labé Centre</span> · <span>Matoto</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION DUEL : Pourquoi les commerçants changent immédiatement ── -->
+  <section class="duel-section">
+    <div class="container">
+      <div class="duel-comparison-card">
+        <div class="duel-header">
+          <span class="duel-tag">Le Duel du Quotidien</span>
+          <h3>Pourquoi les commerçants de Guinée abandonnent le cahier</h3>
+        </div>
+
+        <div class="duel-grid">
+          <!-- Côté AVANT -->
+          <div class="duel-side duel-before">
+            <div class="duel-side-title">
+              <span class="duel-icon-danger">❌</span>
+              <h4>AVANT N’MASHOP (Le vieux cahier)</h4>
+            </div>
+            <ul class="duel-list">
+              <li>
+                <span class="bullet-cross">✕</span>
+                <span><strong>Crédits oubliés ou contestés :</strong> Des millions perdus dans des pages déchirées ou mal écrites.</span>
+              </li>
+              <li>
+                <span class="bullet-cross">✕</span>
+                <span><strong>Écarts de caisse inexpliqués :</strong> Différence entre l'argent dans le tiroir et les ventes réelles.</span>
+              </li>
+              <li>
+                <span class="bullet-cross">✕</span>
+                <span><strong>Ruptures de stock par surprise :</strong> Découvrir qu'un article phare est épuisé devant le client.</span>
+              </li>
+              <li>
+                <span class="bullet-cross">✕</span>
+                <span><strong>Blocage en cas de coupure Internet :</strong> Les applications web cloud ne s'ouvrent plus.</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Côté AVEC N'MASHOP -->
+          <div class="duel-side duel-after">
+            <div class="duel-side-title">
+              <span class="duel-icon-success">✅</span>
+              <h4>AVEC N’MASHOP (La sérénité totale)</h4>
+            </div>
+            <ul class="duel-list">
+              <li>
+                <span class="bullet-check">✓</span>
+                <span><strong>Carnet de crédit numérique infalsifiable :</strong> Chaque GNF emprunté ou remboursé est daté et prouvé.</span>
+              </li>
+              <li>
+                <span class="bullet-check">✓</span>
+                <span><strong>Caisse carrée chaque soir :</strong> Suivi exact des espèces, Orange Money et bénéfice net en 1 clic.</span>
+              </li>
+              <li>
+                <span class="bullet-check">✓</span>
+                <span><strong>Alertes de réapprovisionnement :</strong> Le logiciel vous prévient avant la rupture de vos produits clés.</span>
+              </li>
+              <li>
+                <span class="bullet-check">✓</span>
+                <span><strong>100% Fonctionnel hors-ligne 24h/24 :</strong> Zéro coupure, même sous délestage ou sans connexion.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section Fonctionnalités (VRAIES CARDS VISIBLES & ÉLÉGANTES) ── -->
+  <section class="features-section" id="fonctionnalites">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Boîte à outils complète</span>
+        <h2 class="section-title">Tout pour piloter votre commerce en toute sérénité</h2>
+        <p class="section-subtitle">
+          Une suite logicielle complète qui s'adapte à tous les types de commerces : alimentation générale, quincaillerie, pièces détachées, prêt-à-porter, pharmacie...
+        </p>
+      </div>
+
+      <!-- Grille de vraies cartes avec bordures nettes, ombres douces et icônes vibrantes -->
+      <div class="features-grid">
+        <!-- Card 1: Caisse POS -->
+        <article class="feature-card">
+          <div class="feature-icon-badge" style="background:#FFF3EC;color:#E85D04;">🛒</div>
+          <h3>Caisse & Vente Rapide</h3>
+          <p>Enregistrez vos ventes en quelques secondes, appliquez des remises et imprimez des tickets de caisse thermiques ou factures A4/A5.</p>
+        </article>
+
+        <!-- Card 2: Stock CMP -->
+        <article class="feature-card">
+          <div class="feature-icon-badge" style="background:#EFF6FF;color:#1D4ED8;">📦</div>
+          <h3>Gestion des Stocks</h3>
+          <p>Suivez les quantités exactes, valorisez votre stock au Coût Moyen Pondéré (CMP) et recevez des alertes avant toute rupture.</p>
+        </article>
+
+        <!-- Card 3: Crédits Clients -->
+        <article class="feature-card">
+          <div class="feature-icon-badge" style="background:#FEF3C7;color:#D97706;">💳</div>
+          <h3>Crédits Clients</h3>
+          <p>Enregistrez les ventes à crédit avec identification précise du client, suivez les remboursements partiels et les soldes restants.</p>
+        </article>
+
+        <!-- Card 4: 100% Hors Ligne -->
+        <article class="feature-card">
+          <div class="feature-icon-badge" style="background:#ECFDF5;color:#059669;">📶</div>
+          <h3>100% Hors-Ligne</h3>
+          <p>Travaillez sans interruption même sans connexion Internet. Vos données sont hébergées sur votre machine dans une base SQLite ultrarapide.</p>
+        </article>
+
+        <!-- Card 5: Fournisseurs -->
+        <article class="feature-card">
+          <div class="feature-icon-badge" style="background:#F3E8FF;color:#7E22CE;">🚚</div>
+          <h3>Fournisseurs & Achats</h3>
+          <p>Gérez vos commandes d'approvisionnement, vos coûts d'achat et le suivi de vos dettes fournisseurs en toute transparence.</p>
+        </article>
+
+        <!-- Card 6: Dépenses & Caisses -->
+        <article class="feature-card">
+          <div class="feature-icon-badge" style="background:#FEE2E2;color:#DC2626;">💰</div>
+          <h3>Dépenses & Recettes</h3>
+          <p>Saisissez les dépenses quotidiennes (loyer, transport, salaires) pour calculer votre bénéfice net réel à la fin de chaque mois.</p>
+        </article>
+
+        <!-- Card 7: SYSCOHADA -->
+        <article class="feature-card">
+          <div class="feature-icon-badge" style="background:#E0E7FF;color:#4338CA;">⚖️</div>
+          <h3>Normes SYSCOHADA</h3>
+          <p>Écritures comptables générées automatiquement (classes 1 à 8), journal, grand livre et balance générale conformes à la réglementation.</p>
+        </article>
+
+        <!-- Card 8: Équipe & Vendeurs -->
+        <article class="feature-card">
+          <div class="feature-icon-badge" style="background:#CCFBF1;color:#0F766E;">👥</div>
+          <h3>Équipe & Permissions</h3>
+          <p>Attribuez des comptes caissiers/vendeurs avec permissions restreintes, suivi individuel des ventes et calcul des commissions.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section VRAIE Démo Vidéo (Issues de audio_demo) ──────── -->
+  <section class="demo-section" id="demo">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Vidéo officielle du logiciel</span>
+        <h2 class="section-title">Voyez N’MaShop fonctionner en conditions réelles</h2>
+        <p class="section-subtitle">
+          Découvrez en vidéo comment enregistrer une vente, décompter le stock, noter un crédit client et clôturer votre journée avec la voix-off complète.
+        </p>
+      </div>
+
+      <div class="video-player-container">
+        <!-- Barre de contrôle de la vidéo -->
+        <div class="video-header-bar">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:10px;height:10px;background:#E85D04;border-radius:2px;"></div>
+            <span>Démonstration Complète du Logiciel N’MaShop (Windows)</span>
+          </div>
+          <span class="video-live-tag">
+            <span class="pulse-indicator"></span> Vidéo Officielle avec Son
+          </span>
+        </div>
+
+        <!-- Lecteur Vidéo HTML5 natif avec Master Play Overlay -->
+        <div class="real-video-wrapper">
+          <video 
+            id="main-demo-video" 
+            class="real-video-element" 
+            controls 
+            playsinline 
+            preload="auto"
+            poster="assets/img/nmashop_brand_header.png">
+            <source src="assets/video/nmashop_demo.mp4" type="video/mp4">
+            <source src="assets/video/nmashop_demo.mkv" type="video/x-matroska">
+            Votre navigateur ne supporte pas la lecture directe de cette vidéo.
+          </video>
+
+          <!-- Master Play Overlay -->
+          <div id="video-play-overlay" class="video-play-overlay">
+            <div class="play-pulse-ring"></div>
+            <button class="btn-big-play" id="btn-master-play" type="button" aria-label="Lancer la démonstration avec le son">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+            </button>
+            <div class="play-overlay-labels">
+              <span class="label-primary">Lancer la Démo Vidéo avec le Son</span>
+              <span class="label-sub">Voix-off explicative complète en français · Démonstration pas à pas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barre de synchronisation de la Voix-Off -->
+        <div class="video-audio-sync-bar">
+          <div class="audio-sync-info">
+            <div class="audio-visualizer-wave" id="audio-wave">
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <span id="sound-status-text">🔊 <strong>Son & Voix-off Active :</strong> Explications pas à pas en direct</span>
+          </div>
+
+          <audio id="demo-voiceover-audio" preload="auto">
+            <source src="assets/audio/voix_off_complete.mp3" type="audio/mpeg">
+          </audio>
+
+          <div class="audio-controls-cluster">
+            <button id="btn-toggle-mute" class="btn-toggle-voiceover" type="button">
+              <span>🔊 Couper le Son</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chapitres rapides -->
+        <div class="video-chapters-row">
+          <button class="video-chapter-btn active" data-time="0" type="button">
+            <span class="badge-chap">01</span>
+            <span>Introduction & Caisse POS</span>
+          </button>
+          <button class="video-chapter-btn" data-time="20" type="button">
+            <span class="badge-chap">02</span>
+            <span>Gestion Stock & Alertes</span>
+          </button>
+          <button class="video-chapter-btn" data-time="45" type="button">
+            <span class="badge-chap">03</span>
+            <span>Crédits Clients & Reçus</span>
+          </button>
+          <button class="video-chapter-btn" data-time="60" type="button">
+            <span class="badge-chap">04</span>
+            <span>Comptabilité & Bilan GNF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section Témoignages & Avis Commerçants Guinéens (#temoignages) ── -->
+  <section class="testimonials-section" id="temoignages">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Avis Vérifiés · Conakry & Régions</span>
+        <h2 class="section-title">Ils ont transformé leur boutique avec N’MaShop</h2>
+        <p class="section-subtitle">
+          Découvrez comment les gérants de commerces en Guinée sécurisent leur caisse, éliminent les pertes et gagnent du temps chaque jour.
+        </p>
+      </div>
+
+      <div class="testimonials-grid">
+        <!-- Carte 1 : Marché Madina -->
+        <div class="testimonial-card">
+          <div class="testimonial-top">
+            <div class="stars-badge">★★★★★ <span class="rating-text">5.0</span></div>
+            <span class="verified-client-tag">✓ Client Vérifié</span>
+          </div>
+          <p class="testimonial-quote">
+            « Avant N’MaShop, tout était noté sur des cahiers qui se perdaient ou prenaient l’eau. Aujourd’hui, même quand EDG coupe le courant, mon PC portable sur batterie encaisse sans arrêt. Les tickets s'impriment en 2 secondes et je sais exactement ce qu'il y a dans ma caisse chaque soir ! »
+          </p>
+          <div class="testimonial-impact-pill">
+            <span class="impact-emoji">⚡</span>
+            <span><strong>+35% de rapidité</strong> en caisse aux heures de pointe</span>
+          </div>
+          <div class="testimonial-author">
+            <div class="author-avatar" style="background: linear-gradient(135deg, #E85D04, #F48C06);">EB</div>
+            <div class="author-info">
+              <h4 class="author-name">Elhadj Ousmane Barry</h4>
+              <p class="author-role">Grossiste Alimentation Générale · Marché Madina</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Carte 2 : Dixinn Mode -->
+        <div class="testimonial-card">
+          <div class="testimonial-top">
+            <div class="stars-badge">★★★★★ <span class="rating-text">5.0</span></div>
+            <span class="verified-client-tag">✓ Cliente Vérifiée</span>
+          </div>
+          <p class="testimonial-quote">
+            « Le carnet de crédits clients est une merveille ! En un clic, je vois qui me doit et depuis combien de temps. J'envoie les rappels de paiement sur WhatsApp directement avec le détail du ticket. En deux mois, j'ai récupéré plus de 4 millions GNF de créances en attente. »
+          </p>
+          <div class="testimonial-impact-pill">
+            <span class="impact-emoji">💰</span>
+            <span><strong>4 200 000 GNF</strong> de crédits recouvrés sans dispute</span>
+          </div>
+          <div class="testimonial-author">
+            <div class="author-avatar" style="background: linear-gradient(135deg, #10B981, #059669);">FD</div>
+            <div class="author-info">
+              <h4 class="author-name">Fatoumata Binta Diallo</h4>
+              <p class="author-role">Boutique Prêt-à-Porter & Cosmétiques · Dixinn</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Carte 3 : Kaloum Quincaillerie -->
+        <div class="testimonial-card">
+          <div class="testimonial-top">
+            <div class="stars-badge">★★★★★ <span class="rating-text">5.0</span></div>
+            <span class="verified-client-tag">✓ Client Vérifié</span>
+          </div>
+          <p class="testimonial-quote">
+            « Gérer plus de 1 800 références de quincaillerie avec des prix d’achat qui changent était un cauchemar. Le calcul automatique du CMP (Coût Moyen Pondéré) et les alertes de rupture m’évitent de vendre à perte. C'est du solide, rapide et sans besoin d'Internet. »
+          </p>
+          <div class="testimonial-impact-pill">
+            <span class="impact-emoji">📦</span>
+            <span><strong>1 850 articles</strong> gérés au stock réel sans bug</span>
+          </div>
+          <div class="testimonial-author">
+            <div class="author-avatar" style="background: linear-gradient(135deg, #3B82F6, #1D4ED8);">MC</div>
+            <div class="author-info">
+              <h4 class="author-name">Mamadou Cellou Camara</h4>
+              <p class="author-role">Quincaillerie & Matériaux · Kaloum</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Carte 4 : Kankan Électronique -->
+        <div class="testimonial-card">
+          <div class="testimonial-top">
+            <div class="stars-badge">★★★★★ <span class="rating-text">5.0</span></div>
+            <span class="verified-client-tag">✓ Client Vérifié</span>
+          </div>
+          <p class="testimonial-quote">
+            « Le renouvellement de licence par Orange Money directement depuis la Guinée est ultra pratique, pas besoin de carte bancaire internationale. Le support WhatsApp nous a configuré l’imprimante thermique USB à distance en 10 minutes. Service impeccable ! »
+          </p>
+          <div class="testimonial-impact-pill">
+            <span class="impact-emoji">📱</span>
+            <span><strong>Paiement OM/MoMo</strong> instantané sans carte bancaire</span>
+          </div>
+          <div class="testimonial-author">
+            <div class="author-avatar" style="background: linear-gradient(135deg, #8B5CF6, #6D28D9);">IS</div>
+            <div class="author-info">
+              <h4 class="author-name">Ibrahima Sory Soumah</h4>
+              <p class="author-role">Smartphones & Accessoires · Kankan</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section Grille Tarifaire Compacte (4 Formules avec Période d'Essai) ── -->
+  <section class="pricing-section" id="tarifs">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Tarifs clairs & transparents</span>
+        <h2 class="section-title">Choisissez la formule adaptée à votre commerce</h2>
+        <p class="section-subtitle">
+          Tarifs officiels en Francs Guinéens (GNF). Aucune carte bancaire requise : réglez simplement par Orange Money, MTN MoMo ou espèces.
+        </p>
+      </div>
+
+      <!-- Grille 4 colonnes compacte et équilibrée avec Essai Inclus -->
+      <div class="pricing-grid-container">
+        <!-- Formule 1 : Essai Découverte (7 jours) -->
+        <div class="pricing-plan-card">
+          <div class="plan-header">
+            <span class="plan-badge-tag" style="background:#ECFDF5;color:#059669;">DÉCOUVERTE</span>
+            <h3>Essai Gratuit</h3>
+            <p>Testez N’MaShop immédiatement dans votre boutique.</p>
+            <div class="plan-price-block">
+              <span class="plan-price-num">0 GNF</span>
+              <span class="plan-price-period">/ 7 jours</span>
+            </div>
+            <span class="plan-savings-pill" style="background:#ECFDF5;color:#065f46;">100% Hors-Ligne · Sans CB</span>
+          </div>
+
+          <ul class="plan-features-list">
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Toutes les fonctionnalités actives</span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Ventes et caisse illimitées</span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Gestion de stock & seuils</span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Carnet de crédits numérique</span>
+            </li>
+          </ul>
+
+          <a href="#telecharger" class="btn-plan-cta btn-plan-outline" data-action="download">
+            Télécharger l'Essai
+          </a>
+        </div>
+
+        <!-- Formule 2 : Mensuelle (150 000 GNF) -->
+        <div class="pricing-plan-card">
+          <div class="plan-header">
+            <span class="plan-badge-tag">FLEXIBILITÉ</span>
+            <h3>Mensuelle</h3>
+            <p>La liberté de gérer mois par mois avec budget maîtrisé.</p>
+            <div class="plan-price-block">
+              <span class="plan-price-num">150 000 GNF</span>
+              <span class="plan-price-period">/ mois</span>
+            </div>
+            <span class="plan-savings-pill" style="background:#F1F5F9;color:#475569;">Période de 30 jours</span>
+          </div>
+
+          <ul class="plan-features-list">
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Ventes, encaissements et caisse</span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Tickets de caisse & reçus PDF</span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Stock en direct (CMP) & alertes</span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Suivi complet des dettes clients</span>
+            </li>
+          </ul>
+
+          <a href="#assistance" class="btn-plan-cta btn-plan-outline" data-action="whatsapp" data-plan="monthly">
+            Prendre le Mois
+          </a>
+        </div>
+
+        <!-- Formule 3 : Annuelle (1 500 000 GNF) -->
+        <div class="pricing-plan-card is-popular">
+          <div class="popular-badge-pill">2 MOIS OFFERTS · RECOMMANDÉ</div>
+          <div class="plan-header">
+            <span class="plan-badge-tag" style="background:#FFF3EC;color:#E85D04;">MEILLEUR CHOIX</span>
+            <h3>Annuelle</h3>
+            <p>La formule choisie par les boutiques pour 1 an de sérénité.</p>
+            <div class="plan-price-block">
+              <span class="plan-price-num" style="color:var(--primary);">1 500 000 GNF</span>
+              <span class="plan-price-period">/ an</span>
+            </div>
+            <span class="plan-savings-pill">Économisez 300 000 GNF (2 mois offerts)</span>
+          </div>
+
+          <ul class="plan-features-list">
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span><strong>Tout ce qui est dans Mensuelle</strong></span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span><strong>Comptabilité SYSCOHADA complète</strong></span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Gestion multi-caissiers & commissions</span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Support prioritaire WhatsApp 7j/7</span>
+            </li>
+          </ul>
+
+          <a href="#assistance" class="btn-plan-cta btn-plan-primary" data-action="whatsapp" data-plan="annual">
+            Prendre l'Année
+          </a>
+        </div>
+
+        <!-- Formule 4 : À Vie (3 500 000 GNF) -->
+        <div class="pricing-plan-card">
+          <div class="plan-header">
+            <span class="plan-badge-tag" style="background:#FEF3C7;color:#B45309;">DÉFINITIF</span>
+            <h3>À Vie</h3>
+            <p>Paiement unique définitif. Aucun abonnement récurrent.</p>
+            <div class="plan-price-block">
+              <span class="plan-price-num">3 500 000 GNF</span>
+            </div>
+            <span class="plan-savings-pill" style="background:#FEF3C7;color:#B45309;">Licence perpétuelle sans limite</span>
+          </div>
+
+          <ul class="plan-features-list">
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span><strong>Usage perpétuel sur votre PC</strong></span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Zéro abonnement à vie</span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Toutes les fonctionnalités incluses</span>
+            </li>
+            <li>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Accompagnement VIP dédié</span>
+            </li>
+          </ul>
+
+          <a href="#assistance" class="btn-plan-cta btn-plan-outline" data-action="whatsapp" data-plan="lifetime">
+            Licence Définitive
+          </a>
+        </div>
+      </div>
+
+      <!-- Bandeau Paiement Mobile Guinéen -->
+      <div class="local-payment-banner">
+        <div class="payment-text">
+          <h4>Paiement simple et direct en Guinée</h4>
+          <p>Activation immédiate de votre clé de licence</p>
+        </div>
+        <div class="payment-badges">
+          <div class="pay-badge">
+            <span style="color:#FF7900;font-weight:900;">●</span> Orange Money
+          </div>
+          <div class="pay-badge">
+            <span style="color:#FFCC00;font-weight:900;">●</span> MTN MoMo
+          </div>
+          <div class="pay-badge">
+            <span style="color:#10B981;font-weight:900;">●</span> Espèces (Conakry & Labé)
+          </div>
+        </div>
+      </div>
+
+      <!-- Garantie Satisfait ou Remboursé 30 Jours -->
+      <div class="pricing-guarantee-bar">
+        <div class="guarantee-badge">
+          <span class="shield-icon">🛡️</span>
+          <div class="guarantee-text">
+            <strong>Garantie Satisfait ou Remboursé sous 30 Jours</strong>
+            <p>Si N’MaShop ne transforme pas la gestion de votre boutique, nous vous remboursons intégralement sans discussion.</p>
+          </div>
+        </div>
+        <div class="guarantee-features">
+          <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Support WhatsApp 7j/7</span>
+          <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Mises à jour gratuites</span>
+          <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Formation vidéo incluse</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section Foire Aux Questions (#faq) ───────────────────── -->
+  <section class="faq-section" id="faq">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Réponses claires & directes</span>
+        <h2 class="section-title">Questions Fréquemment Posées</h2>
+        <p class="section-subtitle">
+          Tout ce que vous devez savoir pour équiper votre commerce avec N’MaShop en toute confiance.
+        </p>
+      </div>
+
+      <div class="faq-accordion-wrapper">
+        <div class="faq-accordion" id="faq-accordion">
+          <!-- Item 1 -->
+          <div class="faq-item is-open">
+            <button type="button" class="faq-question" aria-expanded="true">
+              <span>Le logiciel fonctionne-t-il vraiment à 100% sans connexion Internet ?</span>
+              <span class="faq-toggle-icon">−</span>
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-inner">
+                <strong>Absolument OUI.</strong> N’MaShop est une application de bureau native installée directement sur votre ordinateur Windows. Toutes vos données (ventes, caisse, stocks, crédits clients) sont enregistrées localement dans une base de données ultra-sécurisée et instantanée (0 ms de latence). Vous n'avez jamais besoin d'Internet pour vendre, imprimer des tickets ou faire votre bilan.
+              </div>
+            </div>
+          </div>
+
+          <!-- Item 2 -->
+          <div class="faq-item">
+            <button type="button" class="faq-question" aria-expanded="false">
+              <span>Comment puis-je régler mon abonnement ou ma licence en Guinée ?</span>
+              <span class="faq-toggle-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-inner">
+                Nous acceptons tous les moyens de paiement les plus populaires en Guinée : <strong>Orange Money Guinée</strong>, <strong>MTN Mobile Money (MoMo)</strong>, virement bancaire ou en espèces auprès de nos conseillers à Conakry et en région. Aucune carte bancaire internationale Visa ou Mastercard n'est requise.
+              </div>
+            </div>
+          </div>
+
+          <!-- Item 3 -->
+          <div class="faq-item">
+            <button type="button" class="faq-question" aria-expanded="false">
+              <span>Que se passe-t-il si le courant se coupe brusquement ou si mon PC s'éteint ?</span>
+              <span class="faq-toggle-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-inner">
+                N’MaShop applique le protocole transactionnel ACID : chaque article ajouté au ticket et chaque vente validée est sauvegardée instantanément sur votre disque dur en moins d'une milliseconde. Si votre PC s'éteint brutalement suite à une coupure d'électricité, vous ne perdez absolument aucune donnée. De plus, une fonction de sauvegarde en un clic vous permet d'exporter vos données sur clé USB à tout moment.
+              </div>
+            </div>
+          </div>
+
+          <!-- Item 4 -->
+          <div class="faq-item">
+            <button type="button" class="faq-question" aria-expanded="false">
+              <span>N’MaShop est-il compatible avec ma douchette code-barres et mon imprimante ticket ?</span>
+              <span class="faq-toggle-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-inner">
+                <strong>Oui, à 100%.</strong> Le logiciel est nativement compatible avec tous les lecteurs de code-barres USB (1D et 2D) sans aucune configuration complexe. Il fonctionne également avec toutes les imprimantes de caisse thermiques standard (rouleaux de 58 mm et 80 mm ESC/POS) connectées par câble USB ou Bluetooth, ainsi que les imprimantes bureautiques classiques au format A4 pour vos factures complètes.
+              </div>
+            </div>
+          </div>
+
+          <!-- Item 5 -->
+          <div class="faq-item">
+            <button type="button" class="faq-question" aria-expanded="false">
+              <span>Comment se déroule l'essai gratuit de 7 jours ? Y a-t-il un engagement ?</span>
+              <span class="faq-toggle-icon">+</span>
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-inner">
+                L'essai est <strong>100% gratuit, sans carte bancaire et sans aucun engagement</strong>. Vous téléchargez le fichier installateur (<code>NMaShop-Setup-v1.0.0.exe</code>), vous lancez l'application en 1 minute et vous avez accès à l'intégralité des fonctionnalités professionnelles sans restriction pendant 7 jours. Si vous souhaitez continuer, vous activez simplement votre formule préférée.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section Téléchargement Officiel Windows (Le CTA Central) ─ -->
+  <section class="download-section" id="telecharger">
+    <div class="container">
+      <div class="download-master-card">
+        <span class="section-tag" style="background:rgba(232,93,4,0.25);color:#ff9248;border-color:rgba(232,93,4,0.4);">Distribution Officielle Windows</span>
+        <h2>Téléchargez N’MaShop pour PC</h2>
+        <p class="desc">
+          Installez le logiciel sur votre ordinateur et profitez immédiatement de 7 jours d'essai complet et gratuit, sans engagement.
+        </p>
+
+        <!-- Fiche technique de l'exécutable -->
+        <div class="tech-spec-grid">
+          <div class="spec-item">
+            <span class="spec-label">Système d'exploitation</span>
+            <span class="spec-value" data-config="APP_OS">Windows 10 / 11 (64-bit)</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Version actuelle</span>
+            <span class="spec-value" data-config="APP_VERSION">1.0.0</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Taille du fichier</span>
+            <span class="spec-value" data-config="APP_SIZE">48 Mo</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Licence initiale</span>
+            <span class="spec-value" style="color:#34d399;">7 jours offerts</span>
+          </div>
+        </div>
+
+        <!-- Boutons de téléchargement réels & multiplateformes -->
+        <div class="download-buttons-wrapper">
+          <a href="#" class="btn-download-primary btn-shimmer" data-action="download">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+            <span>Télécharger pour Windows (.exe · 64-bit)</span>
+          </a>
+
+          <!-- Plateformes complémentaires (Bientôt Disponibles) -->
+          <div class="upcoming-platforms-wrapper">
+            <span class="upcoming-title">Autres systèmes pris en charge (En cours de finalisation) :</span>
+            <div class="upcoming-platform-pills">
+              <div class="platform-pill">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.68-.05-.85.26l-1.88 3.24C14.99 8.35 13.53 8 12 8c-1.53 0-2.99.35-4.45.95L5.67 5.71c-.17-.31-.56-.41-.85-.26-.3.16-.42.54-.26.85l1.84 3.18C3.8 11.23 2 14.36 2 18h20c0-3.64-1.8-6.77-4.4-8.52zM7 15.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25zm10 0c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z"/></svg>
+                <span>App Mobile (Android)</span>
+                <span class="pill-badge-coming-soon">Bientôt disponible</span>
+              </div>
+              <div class="platform-pill">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14h2v2h-2zm0-10h2v8h-2z"/></svg>
+                <span>Version Linux 64-bit</span>
+                <span class="pill-badge-coming-soon">Bientôt disponible</span>
+              </div>
+              <div class="platform-pill">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.85c.66-.8 1.11-1.92.99-3.04-.96.04-2.13.64-2.82 1.44-.61.71-1.15 1.86-.99 2.97 1.07.08 2.16-.57 2.82-1.37z"/></svg>
+                <span>macOS / iOS</span>
+                <span class="pill-badge-coming-soon">Bientôt disponible</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section Support VIP & Assistance Directe ───────────── -->
+  <section class="support-section" id="assistance">
+    <div class="container">
+      <div class="support-banner-card">
+        <div class="support-badge">
+          <span class="pulse-indicator" style="background:#25d366;"></span>
+          <span>Support Technique & Déploiement Direct en Guinée</span>
+        </div>
+        <h2>Besoin d'aide, d'une formation ou d'activer votre licence ?</h2>
+        <p>
+          Échangez directement avec le concepteur du logiciel pour équiper votre commerce, configurer votre caisse et démarrer vos ventes en toute sérénité.
+        </p>
+
+        <div class="support-cta-actions">
+          <a href="https://wa.me/224624193069?text=Bonjour%20Hassimiou%20Thioye%2C%20je%20souhaite%20activer%20N%27MaShop%20pour%20mon%20commerce." class="btn-whatsapp-large" target="_blank" rel="noopener noreferrer">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.07-.12-.23-.19-.48-.31z"/></svg>
+            <span>WhatsApp Concepteur (+224 624 19 30 69)</span>
+          </a>
+          <a href="mailto:thioyehassimiou@gmail.com" class="btn-email-direct">
+            <span>✉️ Envoyer un Email</span>
+          </a>
+        </div>
+
+        <div class="support-reassurance">
+          <span class="status-pulse-dot"></span>
+          <span>Assistance technique & formation sur site à Conakry & Labé ou à distance 7j/7</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer Moderne & Équilibré (4 Colonnes Pro) ─────────── -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        
+        <!-- Colonne 1 : Marque & Description -->
+        <div class="footer-col footer-col-brand">
+          <a href="#" class="footer-brand-logo">
+            <img src="assets/img/nmashop_brand_header.png" alt="N'MaShop Logo" height="42">
+          </a>
+          <p class="footer-brand-desc">
+            Le logiciel de gestion commerciale, caisse et comptabilité SYSCOHADA taillé pour la réussite des commerçants de Guinée et d'Afrique de l'Ouest.
+          </p>
+          <div class="footer-brand-badge">
+            <span class="badge-dot"></span>
+            <span>🇬🇳 Développé avec fierté en Guinée</span>
+          </div>
+        </div>
+
+        <!-- Colonne 2 : Liens de Navigation -->
+        <div class="footer-col">
+          <h4 class="footer-col-title">Navigation</h4>
+          <ul class="footer-col-links">
+            <li><a href="#fonctionnalites">Fonctionnalités clés</a></li>
+            <li><a href="#demo">Démonstration vidéo</a></li>
+            <li><a href="#temoignages">Avis commerçants</a></li>
+            <li><a href="#tarifs">Tarifs en GNF</a></li>
+            <li><a href="#faq">Questions fréquentes</a></li>
+            <li><a href="#telecharger">Télécharger (Windows)</a></li>
+          </ul>
+        </div>
+
+        <!-- Colonne 3 : Concepteur & Auteur Officiel -->
+        <div class="footer-col">
+          <h4 class="footer-col-title">Concepteur Officiel</h4>
+          <div class="footer-dev-card">
+            <div class="footer-dev-header">
+              <div class="footer-dev-avatar">HT</div>
+              <div class="footer-dev-meta">
+                <div class="footer-dev-name">Hassimiou Thioye</div>
+                <div class="footer-dev-role">✓ Concepteur & Développeur</div>
+              </div>
+            </div>
+            <p class="footer-dev-bio">
+              🎓 Étudiant en Informatique<br>
+              <strong>Université de Labé (Guinée)</strong>
+            </p>
+            <div class="footer-dev-location">
+              <span>📍 Labé & Conakry, Guinée</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Colonne 4 : Coordonnées Directes & Contact -->
+        <div class="footer-col">
+          <h4 class="footer-col-title">Coordonnées Directes</h4>
+          <ul class="footer-contact-list">
+            <li>
+              <a href="https://wa.me/224624193069?text=Bonjour%20Hassimiou%20Thioye%2C%20je%20vous%20contacte%20concernant%20N%27MaShop." target="_blank" rel="noopener noreferrer" class="footer-contact-link link-whatsapp">
+                <span class="f-icon">💬</span>
+                <div class="f-info">
+                  <span class="f-label">WhatsApp & Tél Officiel</span>
+                  <span class="f-val">+224 624 19 30 69</span>
+                </div>
+              </a>
+            </li>
+            <li>
+              <a href="mailto:thioyehassimiou@gmail.com" class="footer-contact-link link-email">
+                <span class="f-icon">✉️</span>
+                <div class="f-info">
+                  <span class="f-label">Email Officiel</span>
+                  <span class="f-val">thioyehassimiou@gmail.com</span>
+                </div>
+              </a>
+            </li>
+            <li>
+              <div class="footer-availability">
+                <span class="status-indicator"></span>
+                <span>Support & Déploiement 7j/7</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
+      <!-- Pied inférieur -->
+      <div class="footer-bottom">
+        <p>&copy; <span id="current-year">2026</span> N’MaShop — Conçu & développé par <strong>Hassimiou Thioye</strong>. Tous droits réservés.</p>
+        <p class="footer-slogan">Gérer · Vendre · Grandir — Solution 100% Locale & Cloud</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ── Menu Mobile Latéral (Isolé en fin de document) ────────── -->
+  <div class="nav-backdrop" id="nav-backdrop"></div>
+  <aside class="nav-drawer" id="nav-drawer">
+    <div class="nav-drawer-header">
+      <img src="assets/img/nmashop_brand_header.png" alt="N'MaShop Logo" height="34">
+    </div>
+    <nav class="nav-drawer-links">
+      <a href="#fonctionnalites">Fonctionnalités</a>
+      <a href="#demo">Démonstration</a>
+      <a href="#temoignages">Avis Commerçants</a>
+      <a href="#tarifs">Nos Tarifs GNF</a>
+      <a href="#faq">Foire Aux Questions</a>
+      <a href="#telecharger">Télécharger le logiciel</a>
+      <a href="#assistance">Assistance WhatsApp</a>
+    </nav>
+    <div class="nav-drawer-footer">
+      <div class="theme-segmented-switch mobile-theme-switch" id="drawer-theme-switch" role="group" aria-label="Choix du thème">
+        <button type="button" class="theme-segment-btn is-active" data-theme-choice="light" title="Activer le Mode Clair" aria-pressed="true">
+          <span class="segment-icon">☀️</span>
+          <span class="segment-label">Mode Clair</span>
+        </button>
+        <button type="button" class="theme-segment-btn" data-theme-choice="dark" title="Activer le Mode Sombre" aria-pressed="false">
+          <span class="segment-icon">🌙</span>
+          <span class="segment-label">Mode Sombre</span>
+        </button>
+      </div>
+      <a href="#telecharger" class="btn-hero-windows" data-action="download" style="width:100%; margin-top: 10px;">
+        Télécharger pour Windows (.exe)
+      </a>
+    </div>
+  </aside>
+
+  <!-- ── Boutons Flottants d'Action Rapide ──────────────────────── -->
+  <button class="btn-back-to-top" id="btn-back-to-top" aria-label="Retourner en haut de page" title="Haut de page">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m18 15-6-6-6 6"/></svg>
+  </button>
+
+  <a href="#assistance" class="floating-whatsapp-assistant" data-action="whatsapp" aria-label="Discuter avec un conseiller N'MaShop sur WhatsApp" title="Assistance WhatsApp 7j/7">
+    <div class="whatsapp-ping-pulse"></div>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.585 1.961.914 2.791.914 3.179 0 5.767-2.587 5.767-5.766.001-3.187-2.575-5.77-5.767-5.77zm3.385 8.163c-.145.411-.744.757-1.026.804-.268.045-.615.083-1.782-.401-1.492-.62-2.454-2.146-2.53-2.247-.074-.102-.607-.807-.607-1.54 0-.733.384-1.093.52-1.242.136-.149.298-.186.397-.186.099 0 .198.002.284.006.091.004.213-.035.333.253.124.298.423 1.031.46 1.106.037.075.062.162.012.261-.05.099-.075.161-.149.248-.075.087-.157.194-.224.261-.075.074-.153.155-.066.304.087.149.387.638.83 1.032.57.508 1.051.666 1.2.74.149.074.236.062.323-.037.087-.099.372-.434.471-.583.099-.149.198-.124.335-.074.136.05 1.029.485 1.206.573.177.088.298.131.341.206.043.075.043.435-.102.846z"/></svg>
+    <span class="floating-assistant-label">Besoin d'aide ? WhatsApp</span>
+  </a>
+
+  <!-- ── Modal Toast Haute Conversion de Téléchargement ───────── -->
+  <div class="download-modal-backdrop" id="download-modal-backdrop">
+    <div class="download-modal" role="dialog" aria-modal="true" aria-labelledby="dl-modal-title">
+      <button class="btn-close-modal" id="btn-close-modal" aria-label="Fermer la fenêtre">✕</button>
+      <div class="modal-icon-wrap">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E85D04" stroke-width="2.3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </div>
+      <span class="modal-pill">Téléchargement Lancé</span>
+      <h3 id="dl-modal-title">N’MaShop V1.0.0 pour PC</h3>
+      <p class="modal-desc">
+        Votre téléchargement de <strong>NMaShop-Setup-v1.0.0.exe (68 Mo)</strong> a démarré. Voici les 3 étapes rapides pour commencer :
+      </p>
+      <div class="modal-steps-list">
+        <div class="modal-step-item">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>Ouvrez le fichier téléchargé</strong>
+            <span>Double-cliquez sur le fichier dans votre dossier Téléchargements.</span>
+          </div>
+        </div>
+        <div class="modal-step-item">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>Installez en 1 clic</strong>
+            <span>L'assistant installe N’MaShop en moins d'une minute sur votre PC.</span>
+          </div>
+        </div>
+        <div class="modal-step-item">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>Profitez de vos 7 jours gratuits</strong>
+            <span>Commencez immédiatement à encaisser sans carte bancaire !</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer-actions">
+        <a href="#assistance" class="btn-modal-whatsapp" data-action="whatsapp">
+          <span>💬 Besoin d'aide pour l'installation ? WhatsApp</span>
+        </a>
+        <button class="btn-modal-dismiss" id="btn-modal-dismiss">Continuer sur le site</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/main.js"></script>
+</body>
+</html>

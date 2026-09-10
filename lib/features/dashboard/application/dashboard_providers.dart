@@ -21,6 +21,7 @@ class RecentSaleView {
     required this.paid,
     required this.isCancelled,
     this.imageUrl,
+    this.sellerName,
   });
 
   final String id;
@@ -32,6 +33,7 @@ class RecentSaleView {
   final bool paid;
   final bool isCancelled;
   final String? imageUrl;
+  final String? sellerName;
 }
 
 /// Toutes les données de l'écran Accueil.
@@ -84,9 +86,9 @@ final dashboardRepositoryProvider = Provider<DashboardRepository>(
 );
 
 final dashboardDataProvider = FutureProvider<DashboardData>((ref) async {
-  final snapshot = await ref
-      .watch(dashboardRepositoryProvider)
-      .load(DateTime.now());
+  final now = DateTime.now();
+  final repo = ref.watch(dashboardRepositoryProvider);
+  final snapshot = await repo.load(now);
 
   double? growth(int current, int previous) =>
       previous <= 0 ? null : (current - previous) / previous * 100;
@@ -109,6 +111,7 @@ final dashboardDataProvider = FutureProvider<DashboardData>((ref) async {
         paid: s.paid,
         isCancelled: s.isCancelled,
         imageUrl: s.imageUrl,
+        sellerName: s.sellerName,
       );
     }).toList(),
     salesGrowth: growth(snapshot.todaySales, snapshot.yesterdaySales),

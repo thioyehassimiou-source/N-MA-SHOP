@@ -56,3 +56,5 @@ audio_demo/
 .env.g.dart
 releases/
 *.apk
+scratch/
+*.wav

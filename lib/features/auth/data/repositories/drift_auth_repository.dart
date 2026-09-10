@@ -48,6 +48,7 @@ class DriftAuthRepository implements AuthRepository {
     required String fullName,
     required String password,
     required UserRole role,
+    double commissionRate = 0.0,
     String? recoveryCode,
   }) async {
     final salt = PasswordHasher.generateSalt();
@@ -65,6 +66,7 @@ class DriftAuthRepository implements AuthRepository {
             recoveryCodeHash: Value(recoveryHash),
             role: Value(role),
             isActive: const Value(true),
+            commissionRate: Value(commissionRate),
           ),
         );
     return _toDomain(row);
@@ -82,6 +84,13 @@ class DriftAuthRepository implements AuthRepository {
   Future<void> toggleUserStatus(String id, bool isActive) async {
     await (_db.update(_db.users)..where((u) => u.id.equals(id))).write(
       UsersCompanion(isActive: Value(isActive)),
+    );
+  }
+
+  @override
+  Future<void> updateCommissionRate(String userId, double rate) async {
+    await (_db.update(_db.users)..where((u) => u.id.equals(userId))).write(
+      UsersCompanion(commissionRate: Value(rate)),
     );
   }
 
@@ -248,5 +257,6 @@ class DriftAuthRepository implements AuthRepository {
     role: row.role,
     isActive: row.isActive,
     avatarPath: row.avatarPath,
+    commissionRate: row.commissionRate,
   );
 }

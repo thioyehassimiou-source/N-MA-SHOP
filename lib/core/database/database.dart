@@ -52,12 +52,14 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
+          await customStatement('CREATE INDEX IF NOT EXISTS idx_sales_user_id ON sales(user_id);');
+          await customStatement('CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date);');
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
@@ -177,6 +179,19 @@ class AppDatabase extends _$AppDatabase {
             if (!await _hasColumn('users', 'recovery_code_hash')) {
               await m.addColumn(users, users.recoveryCodeHash);
             }
+          }
+          if (from < 20) {
+            if (!await _hasColumn('sales', 'user_id')) {
+              await m.addColumn(sales, sales.userId);
+            }
+            if (!await _hasColumn('sales', 'seller_name')) {
+              await m.addColumn(sales, sales.sellerName);
+            }
+            if (!await _hasColumn('users', 'commission_rate')) {
+              await m.addColumn(users, users.commissionRate);
+            }
+            await customStatement('CREATE INDEX IF NOT EXISTS idx_sales_user_id ON sales(user_id);');
+            await customStatement('CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date);');
           }
         },
         beforeOpen: (details) async {

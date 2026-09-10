@@ -36,6 +36,8 @@ class DriftSaleRepository implements SaleRepository {
             amountPaid: Value(data.amountPaid),
             paymentMethod: Value(data.paymentMethod),
             note: Value(data.note),
+            userId: Value(data.userId),
+            sellerName: Value(data.sellerName),
           ),
         );
   }
@@ -58,5 +60,58 @@ class DriftSaleRepository implements SaleRepository {
           ),
       ]);
     });
+  }
+
+  @override
+  Future<List<SaleHistoryItem>> getAllSales({int limit = 200}) async {
+    final sales = await (_db.select(_db.sales)
+          ..orderBy([
+            (s) => OrderingTerm(expression: s.date, mode: OrderingMode.desc),
+          ])
+          ..limit(limit))
+        .get();
+
+    if (sales.isEmpty) return const [];
+
+    final customerIds =
+        sales.map((s) => s.customerId).whereType<String>().toSet().toList();
+    final customerMap = <String, String>{};
+    if (customerIds.isNotEmpty) {
+      final custs = await (_db.select(
+        _db.customers,
+      )..where((c) => c.id.isIn(customerIds))).get();
+      for (final c in custs) {
+        customerMap[c.id] = c.name;
+      }
+    }
+
+    final saleIds = sales.map((s) => s.id).toList();
+    final itemRows = await (_db.select(
+      _db.saleItems,
+    )..where((it) => it.saleId.isIn(saleIds))).get();
+    final itemsMap = <String, List<String>>{};
+    for (final it in itemRows) {
+      itemsMap.putIfAbsent(it.saleId, () => []).add('${it.quantity}x ${it.label}');
+    }
+
+    return sales.map((s) {
+      final items = itemsMap[s.id] ?? const [];
+      final summary = items.isNotEmpty ? items.join(', ') : 'Vente';
+      return SaleHistoryItem(
+        id: s.id,
+        reference: s.reference,
+        date: s.date,
+        customerName: s.customerId != null
+            ? (customerMap[s.customerId] ?? 'Client')
+            : 'Client comptoir',
+        totalAmount: s.totalAmount,
+        amountPaid: s.amountPaid,
+        paymentMethod: s.paymentMethod,
+        isCancelled: s.isCancelled,
+        sellerName: s.sellerName,
+        userId: s.userId,
+        itemsSummary: summary,
+      );
+    }).toList();
   }
 }

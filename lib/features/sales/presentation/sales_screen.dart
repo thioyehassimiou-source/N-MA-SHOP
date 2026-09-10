@@ -3,11 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:printing/printing.dart';
-
 import '../../../core/domain/payment_method.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/providers/app_settings_provider.dart';
+import '../../../core/services/app_print_service.dart';
 import '../../../core/services/pdf_receipt_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -880,18 +879,33 @@ class _SubmitButton extends ConsumerWidget {
       builder: (dialogContext) {
         return AppFormDialog(
           title: 'Vente enregistrée !',
-          subtitle: 'Souhaitez-vous imprimer ou exporter le reçu PDF ?',
+          subtitle: 'Imprimez le reçu ou enregistrez-le directement en PDF.',
           icon: Icons.check_circle_outline,
           gradientColors: const [AppColors.brandEmerald, Color(0xFF059669)],
-          width: 400,
-          primaryLabel: 'Imprimer / PDF',
+          width: 460,
+          primaryLabel: 'Imprimer Ticket',
           primaryIcon: Icons.print_outlined,
-          onPrimary: () {
+          onPrimary: () async {
             Navigator.of(dialogContext).pop();
-            Printing.layoutPdf(
-              name: 'Recu_${receiptData.reference}',
+            await AppPrintService.printDocument(
+              context: context,
+              documentName: 'Recu_${receiptData.reference}',
               onLayout: (_) => PdfReceiptService.generateReceiptPdf(receiptData),
             );
+          },
+          secondaryLabel: 'Enregistrer PDF',
+          secondaryIcon: Icons.save_alt_rounded,
+          onSecondary: () async {
+            Navigator.of(dialogContext).pop();
+            final bytes =
+                await PdfReceiptService.generateReceiptPdf(receiptData);
+            if (context.mounted) {
+              await AppPrintService.savePdfWithDialog(
+                context: context,
+                bytes: bytes,
+                defaultFileName: 'Recu_${receiptData.reference}.pdf',
+              );
+            }
           },
           onCancel: () => Navigator.of(dialogContext).pop(),
           body: Column(

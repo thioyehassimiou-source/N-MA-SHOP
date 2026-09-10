@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:printing/printing.dart';
 
 
 import '../../../core/format/formatters.dart';
 import '../../../core/providers/app_settings_provider.dart';
+import '../../../core/services/app_print_service.dart';
 import '../../../core/services/pdf_receipt_service.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_button.dart';
@@ -99,8 +99,9 @@ class _NewInvoiceDialogState extends ConsumerState<NewInvoiceDialog> {
       customerName: customerName.isNotEmpty ? customerName : null,
     );
 
-    await Printing.layoutPdf(
-      name: 'Facture_$ref_',
+    await AppPrintService.printDocument(
+      context: context,
+      documentName: 'Facture_$ref_',
       onLayout: (_) => PdfReceiptService.generateReceiptPdf(receiptData),
     );
   }

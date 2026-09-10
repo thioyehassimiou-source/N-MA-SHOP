@@ -13,6 +13,7 @@ class AppUser {
     required this.isActive,
     this.lastLoginAt,
     this.avatarPath,
+    this.commissionRate = 0.0,
   });
 
   final String id;
@@ -22,6 +23,10 @@ class AppUser {
   final UserRole role;
   final bool isActive;
   final String? avatarPath;
+  final double commissionRate;
+
+  bool get isAdmin => role == UserRole.admin;
+  bool get isCashier => role == UserRole.cashier;
 
   /// Initiales affichées dans l'avatar (« Mamadou Diallo » → « MD »).
   String get initials {

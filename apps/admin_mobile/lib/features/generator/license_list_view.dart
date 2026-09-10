@@ -199,20 +199,37 @@ Voici votre clé d'activation officielle N'MaShop PC :
         ? DateFormat('dd/MM/yyyy').format(lic.expiresAt!)
         : 'À Vie (Illimitée)';
 
+    final isTrial = lic.type == AdminLicenseType.trial || lic.licenseKey.startsWith('TRIAL-');
     final isPending = lic.hardwareId.isEmpty;
     final isActive = lic.isActive;
 
     Color statusColor;
     Color statusBgColor;
+    String statusText;
+
     if (isPending) {
       statusColor = Colors.orange;
       statusBgColor = Colors.orange.withValues(alpha: 0.15);
-    } else if (isActive) {
-      statusColor = AppTheme.emeraldActive;
-      statusBgColor = AppTheme.emeraldBg;
-    } else {
+      statusText = 'En attente';
+    } else if (!isActive) {
       statusColor = AppTheme.roseAlert;
       statusBgColor = AppTheme.roseBg;
+      statusText = 'Désactivée';
+    } else if (isTrial) {
+      statusColor = AppTheme.amberTrial;
+      statusBgColor = AppTheme.amberBg;
+      if (lic.expiresAt != null && DateTime.now().isAfter(lic.expiresAt!)) {
+        statusText = 'Essai expiré';
+      } else if (lic.expiresAt != null) {
+        final days = lic.expiresAt!.difference(DateTime.now()).inDays + 1;
+        statusText = 'Essai ($days j)';
+      } else {
+        statusText = 'Essai (7j)';
+      }
+    } else {
+      statusColor = AppTheme.emeraldActive;
+      statusBgColor = AppTheme.emeraldBg;
+      statusText = 'Active';
     }
 
     return Card(
@@ -255,7 +272,7 @@ Voici votre clé d'activation officielle N'MaShop PC :
                     ),
                   ),
                   child: Text(
-                    isPending ? 'En attente' : (isActive ? 'Active' : 'Désactivée'),
+                    statusText,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -354,6 +371,50 @@ Voici votre clé d'activation officielle N'MaShop PC :
                   style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
+
+                // Bouton rapide de conversion d'essai en clé Pro
+                if (isTrial)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final clients = ref.read(clientsProvider);
+                        ClientModel? matchingClient;
+                        try {
+                          matchingClient = clients.firstWhere(
+                            (c) => (c.hardwareId.isNotEmpty && c.hardwareId == lic.hardwareId) || c.id == lic.clientId,
+                          );
+                        } catch (_) {}
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => HardwareKeyGeneratorScreen(
+                              preselectedClient: matchingClient ??
+                                  ClientModel(
+                                    id: lic.clientId,
+                                    storeName: lic.clientName,
+                                    ownerName: 'Client',
+                                    phone: '',
+                                    city: '',
+                                    address: '',
+                                    hardwareId: lic.hardwareId,
+                                    createdAt: lic.createdAt,
+                                  ),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.vpn_key_rounded, size: 13),
+                      label: const Text('Activer Pro', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryIndigo,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        elevation: 1,
+                      ),
+                    ),
+                  ),
 
                 // Copy Action
                 IconButton(

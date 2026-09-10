@@ -43,6 +43,8 @@ class SaleDraft {
     required this.tenders,
     this.note,
     this.date,
+    this.userId,
+    this.sellerName,
   });
 
   /// Client rattaché (obligatoire si une part reste à crédit).
@@ -53,6 +55,12 @@ class SaleDraft {
 
   /// Date de la vente ; par défaut « maintenant » côté moteur.
   final DateTime? date;
+
+  /// Utilisateur/Vendeur ayant effectué la vente.
+  final String? userId;
+
+  /// Nom figé du vendeur au moment de la vente.
+  final String? sellerName;
 
   /// Montant total de la vente (GNF).
   int get total => lines.fold(0, (sum, l) => sum + l.lineTotal);

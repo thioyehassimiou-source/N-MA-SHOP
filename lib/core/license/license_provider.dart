@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/application/auth_providers.dart';
@@ -57,6 +58,11 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
 
     // Vérification bloquante : anti-tamper + device binding + période d'essai
     final info = await _svc.checkAsync(prefs);
+
+    // Si la machine démarre en mode essai, enregistrement silencieux sur Neon Cloud (non bloquant)
+    if (info.isTrial) {
+      _reportTrialInstallationAsync(info);
+    }
 
     // Démarre l'écoute instantanée P2P (LAN UDP) et Cloud Realtime (Neon LISTEN)
     _startRealtimeListener();
@@ -143,26 +149,29 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
         licenseKey: storedKey,
       );
 
-      if (remoteInfo == null) return; // Hors-ligne → état local conservé
+      if (remoteInfo == null) {
+        if (current.isTrial) {
+          _reportTrialInstallationAsync(current);
+        }
+        return; // Hors-ligne → état local conservé
+      }
 
       if (!remoteInfo.isActive) {
-        // L'administrateur a révoqué ou désactivé cette licence depuis Mobile Admin.
-        if (current.isLicensed || (storedKey != null && storedKey.isNotEmpty)) {
-          await _svc.revokeLicense(prefs);
-          if (!current.isExpired) {
-            await ref.read(authProvider.notifier).lock();
-          }
-          state = const AsyncData(LicenseInfo(
-            status: LicenseStatus.expired,
-            type: LicenseType.trial,
-            expiryDate: null,
-            daysLeft: 0,
-          ));
+        // L'administrateur a révoqué ou désactivé cette machine (en essai ou sous licence) depuis Mobile Admin.
+        await _svc.revokeLicense(prefs);
+        if (!current.isExpired) {
+          await ref.read(authProvider.notifier).lock();
         }
+        state = const AsyncData(LicenseInfo(
+          status: LicenseStatus.expired,
+          type: LicenseType.trial,
+          expiryDate: null,
+          daysLeft: 0,
+        ));
       } else if (remoteInfo.isActive) {
-        // L'administrateur a activé ou réactivé la licence depuis Mobile Admin
+        // L'administrateur a activé ou attribué une licence officielle depuis Mobile Admin
         final keyToUse = remoteInfo.licenseKey.isNotEmpty ? remoteInfo.licenseKey : storedKey;
-        if (keyToUse != null && keyToUse.isNotEmpty) {
+        if (keyToUse != null && keyToUse.isNotEmpty && !keyToUse.startsWith('TRIAL-')) {
           if (!current.isLicensed || current.isExpired || storedKey != keyToUse) {
             await _svc.unrevokeLicense(prefs);
             final res = await _svc.activateAsync(keyToUse, prefs);
@@ -178,6 +187,52 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       // Vérification distante : échec silencieux (hors-ligne acceptable)
       // L'état local reste prioritaire
     }
+  }
+
+  /// Enregistrement silencieux et non-bloquant de la machine en essai sur Neon PostgreSQL.
+  void _reportTrialInstallationAsync(LicenseInfo info) {
+    Future.microtask(() async {
+      try {
+        final prefs = ref.read(sharedPreferencesProvider);
+        final firstLaunchStr = prefs.getString('lic_first_launch');
+        final firstLaunch = firstLaunchStr != null
+            ? (DateTime.tryParse(firstLaunchStr) ?? DateTime.now())
+            : DateTime.now();
+        final expiry = info.expiryDate ?? firstLaunch.add(const Duration(days: 7));
+
+        final settings = ref.read(appSettingsProvider);
+        final user = ref.read(authProvider);
+        final hwId = await HardwareIdService.getHardwareId();
+
+        final os = Platform.operatingSystem.toUpperCase();
+        final hostname = Platform.environment['COMPUTERNAME'] ?? Platform.localHostname;
+        final osUser = Platform.environment['USERNAME'] ??
+            Platform.environment['USER'] ??
+            '';
+        final cores = Platform.numberOfProcessors;
+        final osInfo = '$os ($cores cœurs) - Hôte: $hostname';
+
+        final storeName = (settings.businessName.isNotEmpty && settings.businessName != 'N\'MaShop')
+            ? settings.businessName
+            : 'Poste $hostname ($os)';
+
+        final owner = (user != null && user.fullName.isNotEmpty)
+            ? user.fullName
+            : (osUser.isNotEmpty ? osUser : 'Utilisateur Essai');
+
+        await LicenseAdminSyncService.reportTrialInstallation(
+          hardwareId: hwId,
+          firstLaunch: firstLaunch,
+          trialExpiry: expiry,
+          businessName: storeName,
+          ownerName: owner,
+          phone: settings.businessPhone,
+          osInfo: osInfo,
+        );
+      } catch (_) {
+        // Hors-ligne ou erreur réseau : échec silencieux, l'essai continue en local sans interruption
+      }
+    });
   }
 
   // ── API publique ────────────────────────────────────────────────────────────

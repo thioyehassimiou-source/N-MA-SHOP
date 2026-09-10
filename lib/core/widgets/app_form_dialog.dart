@@ -25,6 +25,9 @@ class AppFormDialog extends StatelessWidget {
     this.onPrimary,
     this.onCancel,
     this.isPrimaryLoading = false,
+    this.secondaryLabel,
+    this.secondaryIcon,
+    this.onSecondary,
     this.sections,
   });
 
@@ -58,6 +61,10 @@ class AppFormDialog extends StatelessWidget {
 
   /// Affiche un loader sur le bouton principal.
   final bool isPrimaryLoading;
+
+  final String? secondaryLabel;
+  final IconData? secondaryIcon;
+  final VoidCallback? onSecondary;
 
   /// Sections de formulaire (alternative au body).
   final List<FormSection>? sections;
@@ -103,6 +110,9 @@ class AppFormDialog extends StatelessWidget {
               primaryLabel: primaryLabel,
               primaryIcon: primaryIcon,
               onPrimary: onPrimary,
+              secondaryLabel: secondaryLabel,
+              secondaryIcon: secondaryIcon,
+              onSecondary: onSecondary,
               onCancel: onCancel ?? () => Navigator.of(context).pop(),
               isPrimaryLoading: isPrimaryLoading,
               gradientColors: gradientColors,
@@ -265,6 +275,9 @@ class _ActionBar extends StatelessWidget {
     required this.primaryLabel,
     required this.primaryIcon,
     required this.onPrimary,
+    this.secondaryLabel,
+    this.secondaryIcon,
+    this.onSecondary,
     required this.onCancel,
     required this.isPrimaryLoading,
     required this.gradientColors,
@@ -273,6 +286,9 @@ class _ActionBar extends StatelessWidget {
   final String primaryLabel;
   final IconData primaryIcon;
   final VoidCallback? onPrimary;
+  final String? secondaryLabel;
+  final IconData? secondaryIcon;
+  final VoidCallback? onSecondary;
   final VoidCallback onCancel;
   final bool isPrimaryLoading;
   final List<Color> gradientColors;
@@ -294,17 +310,33 @@ class _ActionBar extends StatelessWidget {
           TextButton(
             onPressed: onCancel,
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
             child: Text(
-              'Annuler',
+              'Fermer',
               style: TextStyle(
                 color: context.colors.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AppSpacing.sm),
+
+          // Bouton secondaire optionnel
+          if (secondaryLabel != null && onSecondary != null) ...[
+            OutlinedButton.icon(
+              onPressed: onSecondary,
+              icon: Icon(secondaryIcon ?? Icons.save_alt_rounded, size: 18),
+              label: Text(secondaryLabel!),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+          ],
 
           // Bouton principal gradient
           _GradientButton(
