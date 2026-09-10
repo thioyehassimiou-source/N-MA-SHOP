@@ -209,9 +209,20 @@ Merci pour votre confiance.
         ? _selectedClient!.storeName
         : (_storeNameCtrl.text.trim().isNotEmpty ? _storeNameCtrl.text.trim() : 'Boutique Client');
 
+    final existingLicenses = ref.read(licensesProvider);
+    final cleanHwId = hwId.trim().toUpperCase();
+
+    // Vérifier si cette machine ou ce client possédait déjà une licence (ex: période d'essai)
+    final existingIndex = existingLicenses.indexWhere((l) =>
+        (cleanHwId.isNotEmpty && l.hardwareId.trim().toUpperCase() == cleanHwId) ||
+        (_selectedClient != null && l.clientId == _selectedClient!.id));
+
+    final recordId = existingIndex >= 0 ? existingLicenses[existingIndex].id : const Uuid().v4();
+    final clientId = _selectedClient?.id ?? (existingIndex >= 0 ? existingLicenses[existingIndex].clientId : 'guest');
+
     final record = LicenseRecord(
-      id: const Uuid().v4(),
-      clientId: _selectedClient?.id ?? 'guest',
+      id: recordId,
+      clientId: clientId,
       clientName: clientName,
       hardwareId: hwId,
       licenseKey: _generatedKey!,

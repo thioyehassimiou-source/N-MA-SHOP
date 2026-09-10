@@ -29,11 +29,15 @@ class RemoteLicenseStatus {
   final bool isActive;
   final String licenseKey;
   final DateTime? expiryDate;
+  final DateTime? activatedAt;
+  final DateTime? serverTime;
 
   RemoteLicenseStatus({
     required this.isActive,
     required this.licenseKey,
     this.expiryDate,
+    this.activatedAt,
+    this.serverTime,
   });
 }
 
@@ -230,6 +234,7 @@ class LicenseAdminSyncService {
         final row = existing.first;
         final currentKey = (row[1] as String?) ?? '';
         if (currentKey.startsWith('TRIAL-') || currentKey.isEmpty) {
+          final isTrialStillValid = trialExpiry.isAfter(DateTime.now());
           await connection.execute(
             Sql.named('''
               UPDATE nmashop_activations 
@@ -237,7 +242,8 @@ class LicenseAdminSyncService {
                   owner_name = COALESCE(NULLIF(@ownerName, ''), owner_name),
                   phone = COALESCE(NULLIF(@phone, ''), phone),
                   address = COALESCE(NULLIF(@address, ''), address),
-                  expires_at = @expiresAt
+                  expires_at = @expiresAt,
+                  is_active = CASE WHEN @isTrialValid THEN true ELSE is_active END
               WHERE hardware_id = @hwId AND (license_key LIKE 'TRIAL-%' OR license_key = '');
             '''),
             parameters: {
@@ -246,6 +252,7 @@ class LicenseAdminSyncService {
               'phone': phone ?? '',
               'address': osInfo ?? '',
               'expiresAt': trialExpiry,
+              'isTrialValid': isTrialStillValid,
               'hwId': cleanHwId,
             },
           );
@@ -258,8 +265,15 @@ class LicenseAdminSyncService {
     }
   }
 
-  /// Notifie Neon qu'une licence a été désactivée ou révoquée sur le PC client (retour en mode essai).
+  /// Notifie Neon qu'une licence officielle a été révoquée/réinitialisée.
+  /// Sécurité : n'agit JAMAIS sur un poste d'essai ou sans clé payante explicite.
   static Future<void> notifyDeactivation(String hardwareId, {String? licenseKey}) async {
+    final cleanKey = (licenseKey ?? '').trim().toUpperCase();
+    if (cleanKey.isEmpty || cleanKey.startsWith('TRIAL-') || cleanKey == 'ESSAI-GRATUIT') {
+      // Les postes en mode essai ne doivent JAMAIS se faire bannir du cloud par le client PC.
+      return;
+    }
+
     try {
       final config = NeonConfig.parseConnectionString();
 
@@ -280,30 +294,15 @@ class LicenseAdminSyncService {
 
       await connection.execute('ALTER TABLE nmashop_activations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;');
 
-      final cleanKey = (licenseKey ?? '').trim().toUpperCase();
-      final cleanHwId = hardwareId.trim().toUpperCase();
-
-      if (cleanKey.isNotEmpty) {
-        // Désactiver uniquement cette clé précise
-        await connection.execute(
-          Sql.named('''
-            UPDATE nmashop_activations 
-            SET is_active = false 
-            WHERE license_key = @key;
-          '''),
-          parameters: {'key': cleanKey},
-        );
-      } else if (cleanHwId.isNotEmpty) {
-        // Fallback si aucune clé n'est fournie
-        await connection.execute(
-          Sql.named('''
-            UPDATE nmashop_activations 
-            SET is_active = false 
-            WHERE hardware_id = @hwId;
-          '''),
-          parameters: {'hwId': cleanHwId},
-        );
-      }
+      // Désactiver uniquement cette clé précise
+      await connection.execute(
+        Sql.named('''
+          UPDATE nmashop_activations 
+          SET is_active = false 
+          WHERE license_key = @key;
+        '''),
+        parameters: {'key': cleanKey},
+      );
 
       await connection.close();
       debugPrint('Désactivation transmise avec succès à Neon PostgreSQL.');
@@ -347,7 +346,8 @@ class LicenseAdminSyncService {
         // 1. Poste sous licence : vérifier l'état le plus récent de cette clé ou machine
         result = await connection.execute(
           Sql.named('''
-            SELECT is_active, license_key, expires_at FROM nmashop_activations 
+            SELECT is_active, license_key, expires_at, activated_at, (NOW() AT TIME ZONE 'UTC') as server_time 
+            FROM nmashop_activations 
             WHERE license_key = @key OR (hardware_id = @hwId AND @hwId != '')
             ORDER BY id DESC LIMIT 1
           '''),
@@ -360,7 +360,8 @@ class LicenseAdminSyncService {
         // 2. Poste en essai : vérifier le statut le plus récent associé à cet appareil
         result = await connection.execute(
           Sql.named('''
-            SELECT is_active, license_key, expires_at FROM nmashop_activations 
+            SELECT is_active, license_key, expires_at, activated_at, (NOW() AT TIME ZONE 'UTC') as server_time 
+            FROM nmashop_activations 
             WHERE hardware_id = @hwId AND license_key != ''
             ORDER BY id DESC LIMIT 1
           '''),
@@ -378,11 +379,15 @@ class LicenseAdminSyncService {
         final isActive = (row[0] as bool?) ?? true;
         final licKey = (row[1] as String?) ?? '';
         final expiresAt = row[2] as DateTime?;
+        final activatedAt = row[3] as DateTime?;
+        final serverTime = row[4] as DateTime?;
 
         return RemoteLicenseStatus(
           isActive: isActive,
           licenseKey: licKey,
           expiryDate: expiresAt,
+          activatedAt: activatedAt,
+          serverTime: serverTime,
         );
       }
     } catch (e) {

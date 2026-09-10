@@ -3107,12 +3107,46 @@ html[data-theme="dark"] .plan-header {
   border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
-html[data-theme="dark"] .plan-price-box {
+html[data-theme="dark"] .plan-price-box,
+html[data-theme="dark"] .plan-price-block {
   color: #ffffff !important;
 }
 
+html[data-theme="dark"] .plan-price-num {
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .plan-price-period,
 html[data-theme="dark"] .plan-period {
   color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .pricing-plan-card.is-popular .plan-price-num {
+  color: var(--primary) !important;
+}
+
+html[data-theme="dark"] .plan-badge-tag {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+html[data-theme="dark"] .pricing-plan-card.is-popular .plan-badge-tag {
+  background: rgba(232, 93, 4, 0.2) !important;
+  color: #ff9248 !important;
+  border-color: rgba(232, 93, 4, 0.4) !important;
+}
+
+html[data-theme="dark"] .plan-savings-pill {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #cbd5e1 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+html[data-theme="dark"] .pricing-plan-card.is-popular .plan-savings-pill {
+  background: rgba(232, 93, 4, 0.18) !important;
+  color: #fed7aa !important;
+  border-color: rgba(232, 93, 4, 0.35) !important;
 }
 
 html[data-theme="dark"] .plan-features-list li {

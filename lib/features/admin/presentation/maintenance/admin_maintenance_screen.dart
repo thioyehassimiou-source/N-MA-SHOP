@@ -28,7 +28,42 @@ class _AdminMaintenanceScreenState extends ConsumerState<AdminMaintenanceScreen>
   }
 
   void _verifyKey() {
-    final info = LicenseCore.validateKey(_verifyKeyCtrl.text.trim());
+    final raw = _verifyKeyCtrl.text.trim().toUpperCase();
+    final parts = raw.split('-');
+    
+    // Si c'est une clé liée au matériel (4 parties : NMAS-HWID-YYYYMMDD-HMAC)
+    if (parts.length == 4 && parts[0] == 'NMAS') {
+      final hwHash = parts[1];
+      final expiryStr = parts[2];
+      final providedHmac = parts[3];
+      final expectedHmac = LicenseCore.generateHmac('NMAS-$hwHash-$expiryStr');
+      
+      if (providedHmac == expectedHmac && expiryStr.length == 8) {
+        final year = int.tryParse(expiryStr.substring(0, 4));
+        final month = int.tryParse(expiryStr.substring(4, 6));
+        final day = int.tryParse(expiryStr.substring(6, 8));
+        if (year != null && month != null && day != null) {
+          final expiry = DateTime(year, month, day, 23, 59, 59);
+          final isLifetime = year >= 9999;
+          final isExpired = !isLifetime && DateTime.now().isAfter(expiry);
+          final expiryStr = isLifetime ? 'Illimitée (À vie)' : expiry.toLocal().toString().split(' ')[0];
+          final daysLeft = isLifetime ? null : (isExpired ? 0 : expiry.difference(DateTime.now()).inDays + 1);
+
+          setState(() {
+            _verifyIsValid = !isExpired;
+            _verifyResult = '✅ Clé liée au matériel valide\n'
+                '  • Machine (Hash) : $hwHash\n'
+                '  • Statut : ${isExpired ? 'Expirée' : 'Active'}\n'
+                '  • Type : ${isLifetime ? 'À vie' : 'Annuelle / Mensuelle'}\n'
+                '  • Expiration : $expiryStr\n'
+                '  • Jours restants : ${daysLeft ?? '∞'}';
+          });
+          return;
+        }
+      }
+    }
+
+    final info = LicenseCore.validateKey(raw);
     setState(() {
       if (info == null) {
         _verifyResult = '❌ Clé invalide ou format incorrect.';
@@ -40,7 +75,7 @@ class _AdminMaintenanceScreenState extends ConsumerState<AdminMaintenanceScreen>
             : info.expiryDate!.year >= 9999
                 ? 'Illimitée (À vie)'
                 : info.expiryDate!.toLocal().toString().split(' ')[0];
-        _verifyResult = '✅ Clé valide\n'
+        _verifyResult = '✅ Clé universelle valide\n'
             '  • Statut : ${info.status.name}\n'
             '  • Type : ${info.type.name}\n'
             '  • Expiration : $expiryStr\n'

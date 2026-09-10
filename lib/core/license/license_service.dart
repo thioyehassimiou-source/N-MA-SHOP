@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/hardware_id_service.dart';
 import 'license_admin_sync_service.dart';
@@ -70,6 +73,22 @@ class LicenseService {
       final info = LicenseCore.validateKey(stored, deviceHwId: hwId);
       if (info != null) return info;
 
+      // Vérifier si la clé enregistrée est authentique mais dédiée à un autre appareil
+      final parts = stored.trim().toUpperCase().split('-');
+      if (parts.length == 4 && parts[0] == 'NMAS') {
+        final keyHwHash = parts[1];
+        final expiryStr = parts[2];
+        final hmac = parts[3];
+        final expectedHmac = LicenseCore.generateHmac('NMAS-$keyHwHash-$expiryStr');
+        if (hmac == expectedHmac) {
+          return const LicenseInfo(
+            status: LicenseStatus.deviceMismatch,
+            type: LicenseType.trial,
+            daysLeft: 0,
+          );
+        }
+      }
+
       // Clé invalide ou falsifiée → suppression
       await prefs.remove(_prefKey);
       await prefs.remove(_prefBoundHwId);
@@ -87,9 +106,19 @@ class LicenseService {
       await prefs.remove(_prefFirstLaunch);
     }
 
+    // Protection anti-réinitialisation hors-ligne : vérifier l'ancre de sécurité locale
+    if (firstLaunch == null && !wasRevokedByAdmin) {
+      final anchorDate = await _readSecurityAnchor(hwId);
+      if (anchorDate != null) {
+        firstLaunch = anchorDate;
+        await prefs.setString(_prefFirstLaunch, firstLaunch.toIso8601String());
+      }
+    }
+
     if (firstLaunch == null) {
-      // Premier lancement
+      // Premier lancement légitime
       await prefs.setString(_prefFirstLaunch, now.toIso8601String());
+      await _writeSecurityAnchor(now.toIso8601String(), hwId);
       final expiry = LicenseCore.computeTrialExpiry(now);
       return LicenseInfo(
         status: LicenseStatus.trial,
@@ -97,6 +126,9 @@ class LicenseService {
         expiryDate: expiry,
         daysLeft: LicenseCore.trialDays,
       );
+    } else {
+      // Maintenir l'ancre synchronisée
+      await _writeSecurityAnchor(firstLaunch.toIso8601String(), hwId);
     }
 
     final expiry = LicenseCore.computeTrialExpiry(firstLaunch);
@@ -124,6 +156,14 @@ class LicenseService {
   LicenseInfo check(SharedPreferences prefs) {
     final stored = prefs.getString(_prefKey);
     if (stored != null) {
+      final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
+      if (wasRevokedByAdmin) {
+        return const LicenseInfo(
+          status: LicenseStatus.expired,
+          type: LicenseType.trial,
+          daysLeft: 0,
+        );
+      }
       final info = LicenseCore.validateKey(stored);
       if (info != null) return info;
     }
@@ -176,6 +216,17 @@ class LicenseService {
     final info = LicenseCore.validateKey(rawKey, deviceHwId: hwId);
 
     if (info == null) {
+      // Vérifier si la clé est authentique mais générée pour un autre ordinateur
+      final parts = rawKey.trim().toUpperCase().split('-');
+      if (parts.length == 4 && parts[0] == 'NMAS') {
+        final keyHwHash = parts[1];
+        final expiryStr = parts[2];
+        final hmac = parts[3];
+        final expectedHmac = LicenseCore.generateHmac('NMAS-$keyHwHash-$expiryStr');
+        if (hmac == expectedHmac) {
+          return (result: LicenseActivationResult.deviceMismatch, info: null);
+        }
+      }
       return (result: LicenseActivationResult.invalidKey, info: null);
     }
 
@@ -196,6 +247,16 @@ class LicenseService {
   ) {
     final info = LicenseCore.validateKey(rawKey);
     if (info == null) {
+      final parts = rawKey.trim().toUpperCase().split('-');
+      if (parts.length == 4 && parts[0] == 'NMAS') {
+        final keyHwHash = parts[1];
+        final expiryStr = parts[2];
+        final hmac = parts[3];
+        final expectedHmac = LicenseCore.generateHmac('NMAS-$keyHwHash-$expiryStr');
+        if (hmac == expectedHmac) {
+          return (result: LicenseActivationResult.deviceMismatch, info: null);
+        }
+      }
       return (result: LicenseActivationResult.invalidKey, info: null);
     }
     if (info.isExpired) {
@@ -217,26 +278,85 @@ class LicenseService {
     await prefs.remove(_prefLastKnownTime);
     await prefs.remove('lic_was_revoked_by_admin');
 
-    // Notifier la désactivation à Neon PostgreSQL
-    LicenseAdminSyncService.notifyDeactivation(hwId, licenseKey: storedKey);
+    try {
+      final file = await _getSecurityAnchorFile();
+      if (file != null && await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {}
+
+    // Notifier la désactivation uniquement si une vraie clé payante était présente
+    if (storedKey != null && storedKey.isNotEmpty && !storedKey.startsWith('TRIAL-')) {
+      LicenseAdminSyncService.notifyDeactivation(hwId, licenseKey: storedKey);
+    }
   }
 
   /// Révoque la licence à la demande de l'administrateur (désactivation à distance depuis Mobile Admin).
   /// Verrouille l'application en état expiré mais CONSERVE la clé pour permettre la réactivation distante ultérieure.
   Future<void> revokeLicense(SharedPreferences prefs) async {
-    final hwId = await HardwareIdService.getHardwareId();
-    final storedKey = prefs.getString(_prefKey);
-
     await prefs.setBool('lic_was_revoked_by_admin', true);
-    // Forcer la date de premier lancement dans le passé pour empêcher un nouvel essai gratuit
-    await prefs.setString(_prefFirstLaunch, DateTime(2020, 1, 1).toIso8601String());
-
-    // Notifier Neon
-    LicenseAdminSyncService.notifyDeactivation(hwId, licenseKey: storedKey);
+    final pastDate = DateTime(2020, 1, 1).toIso8601String();
+    await prefs.setString(_prefFirstLaunch, pastDate);
+    final hwId = await HardwareIdService.getHardwareId();
+    await _writeSecurityAnchor(pastDate, hwId);
   }
 
   /// Réactive la licence locale suite à la réactivation par l'administrateur.
   Future<void> unrevokeLicense(SharedPreferences prefs) async {
     await prefs.remove('lic_was_revoked_by_admin');
+    final firstLaunchStr = prefs.getString(_prefFirstLaunch);
+    final hwId = await HardwareIdService.getHardwareId();
+    if (firstLaunchStr != null) {
+      final parsed = DateTime.tryParse(firstLaunchStr);
+      if (parsed != null && parsed.year <= 2020) {
+        final nowStr = DateTime.now().toIso8601String();
+        await prefs.setString(_prefFirstLaunch, nowStr);
+        await _writeSecurityAnchor(nowStr, hwId);
+      }
+    }
+  }
+
+  // ── Ancre de sécurité locale (Anti-réinitialisation hors-ligne) ─────────────
+
+  static Future<File?> _getSecurityAnchorFile() async {
+    try {
+      final appDir = await getApplicationSupportDirectory();
+      return File('${appDir.path}/.nma_sys_sec');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String _generateAnchorChecksum(String firstLaunch, String hwId) {
+    return LicenseCore.generateHmac('ANCHOR-$firstLaunch-$hwId');
+  }
+
+  static Future<void> _writeSecurityAnchor(String firstLaunch, String hwId) async {
+    try {
+      final file = await _getSecurityAnchorFile();
+      if (file == null) return;
+      final checksum = _generateAnchorChecksum(firstLaunch, hwId);
+      final content = '$firstLaunch#$hwId#$checksum';
+      await file.writeAsString(base64Encode(utf8.encode(content)));
+    } catch (_) {}
+  }
+
+  static Future<DateTime?> _readSecurityAnchor(String hwId) async {
+    try {
+      final file = await _getSecurityAnchorFile();
+      if (file == null || !await file.exists()) return null;
+      final raw = await file.readAsString();
+      final decoded = utf8.decode(base64Decode(raw.trim()));
+      final parts = decoded.split('#');
+      if (parts.length == 3) {
+        final dateStr = parts[0];
+        final fileHwId = parts[1];
+        final checksum = parts[2];
+        if (fileHwId == hwId && checksum == _generateAnchorChecksum(dateStr, fileHwId)) {
+          return DateTime.tryParse(dateStr);
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 }

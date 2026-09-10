@@ -357,65 +357,71 @@ Voici votre clé d'activation officielle N'MaShop PC :
             ],
             const SizedBox(height: 12),
 
-            // Footer Expiry & Actions
+            // Footer Expiry & Activer Pro Row
             Row(
               children: [
                 Icon(
                   lic.isLifetime ? Icons.all_inclusive_rounded : Icons.timer_outlined,
-                  size: 16,
+                  size: 15,
                   color: AppTheme.textSecondary,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  'Expiration : $expiryText',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                Expanded(
+                  child: Text(
+                    'Expiration : $expiryText',
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const Spacer(),
 
                 // Bouton rapide de conversion d'essai en clé Pro
                 if (isTrial)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        final clients = ref.read(clientsProvider);
-                        ClientModel? matchingClient;
-                        try {
-                          matchingClient = clients.firstWhere(
-                            (c) => (c.hardwareId.isNotEmpty && c.hardwareId == lic.hardwareId) || c.id == lic.clientId,
-                          );
-                        } catch (_) {}
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => HardwareKeyGeneratorScreen(
-                              preselectedClient: matchingClient ??
-                                  ClientModel(
-                                    id: lic.clientId,
-                                    storeName: lic.clientName,
-                                    ownerName: 'Client',
-                                    phone: '',
-                                    city: '',
-                                    address: '',
-                                    hardwareId: lic.hardwareId,
-                                    createdAt: lic.createdAt,
-                                  ),
-                            ),
-                          ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final clients = ref.read(clientsProvider);
+                      ClientModel? matchingClient;
+                      try {
+                        matchingClient = clients.firstWhere(
+                          (c) => (c.hardwareId.isNotEmpty && c.hardwareId == lic.hardwareId) || c.id == lic.clientId,
                         );
-                      },
-                      icon: const Icon(Icons.vpn_key_rounded, size: 13),
-                      label: const Text('Activer Pro', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryIndigo,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        elevation: 1,
-                      ),
+                      } catch (_) {}
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => HardwareKeyGeneratorScreen(
+                            preselectedClient: matchingClient ??
+                                ClientModel(
+                                  id: lic.clientId,
+                                  storeName: lic.clientName,
+                                  ownerName: 'Client',
+                                  phone: '',
+                                  city: '',
+                                  address: '',
+                                  hardwareId: lic.hardwareId,
+                                  createdAt: lic.createdAt,
+                                ),
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.vpn_key_rounded, size: 13),
+                    label: const Text('Activer Pro', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryIndigo,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      elevation: 1,
                     ),
                   ),
+              ],
+            ),
+            const SizedBox(height: 6),
 
+            // Secondary Actions Row (Copy, WhatsApp, Delete)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 // Copy Action
                 IconButton(
                   icon: const Icon(Icons.copy_rounded, color: AppTheme.primaryIndigo, size: 18),
@@ -578,14 +584,23 @@ Voici votre clé d'activation officielle N'MaShop PC :
       expiresAt = DateTime.now().add(const Duration(days: 365));
     }
 
+    final cleanHwId = (targetClient?.hardwareId ?? '').trim().toUpperCase();
+    final cleanKey = _generatedKey!.trim().toUpperCase();
+    final existingLicenses = ref.read(licensesProvider);
+    final existingRecord = existingLicenses.where((l) =>
+        (cleanHwId.isNotEmpty && l.hardwareId.trim().toUpperCase() == cleanHwId) ||
+        (cleanKey.isNotEmpty && l.licenseKey.trim().toUpperCase() == cleanKey) ||
+        (targetClient != null && targetClient.id != 'guest' && l.clientId == targetClient.id)
+    ).firstOrNull;
+
     final record = LicenseRecord(
-      id: const Uuid().v4(),
+      id: existingRecord?.id ?? const Uuid().v4(),
       clientId: targetClient?.id ?? 'guest',
       clientName: clientName,
       hardwareId: targetClient?.hardwareId ?? '',
       licenseKey: _generatedKey!,
       type: type,
-      createdAt: DateTime.now(),
+      createdAt: existingRecord?.createdAt ?? DateTime.now(),
       expiresAt: expiresAt,
       amountPaid: 0.0,
       isActive: true,

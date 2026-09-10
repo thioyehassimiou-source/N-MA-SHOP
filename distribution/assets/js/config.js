@@ -80,7 +80,7 @@ const CONFIG = {
       DESC: "La formule favorite des boutiques et magasins pour toute une année de sérénité.",
       FEATURES: [
         "Tous les avantages de la licence mensuelle",
-        "Comptabilité complète SYSCOHADA (Journal, Balance)",
+        "Rapports financiers détaillés & Bilan des marges (PDF/CSV)",
         "Gestion multi-vendeurs avec commissions",
         "2 mois complets offerts (1 500 000 au lieu de 1 800 000)",
         "Sauvegardes automatiques sécurisées",
@@ -101,7 +101,7 @@ const CONFIG = {
         "Aucun abonnement mensuel ni annuel",
         "Base de données locale définitivement à vous",
         "Toutes les fonctionnalités présentes et futures",
-        "Gestion complète Stock, Ventes, Crédits, Compta",
+        "Gestion complète Stock, Ventes, Crédits, Rapports",
         "Accompagnement VIP et formation sur mesure"
       ],
       CTA: "Acquérir la Licence À Vie",

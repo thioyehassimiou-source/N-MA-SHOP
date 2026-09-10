@@ -97,12 +97,14 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       onActivated: (key) async {
         final prefs = ref.read(sharedPreferencesProvider);
         await _svc.unrevokeLicense(prefs);
-        final res = await _svc.activateAsync(key, prefs);
-        if (res.result == LicenseActivationResult.success && res.info != null) {
-          state = AsyncData(res.info!);
-        } else {
-          state = AsyncData(await _svc.checkAsync(prefs));
+        if (key.isNotEmpty && !key.startsWith('TRIAL-')) {
+          final res = await _svc.activateAsync(key, prefs);
+          if (res.result == LicenseActivationResult.success && res.info != null) {
+            state = AsyncData(res.info!);
+            return;
+          }
         }
+        state = AsyncData(await _svc.checkAsync(prefs));
       },
     )..start();
   }
@@ -156,6 +158,40 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
         return; // Hors-ligne → état local conservé
       }
 
+      // ── A. Contrôle d'horloge absolue contre l'heure atomique du serveur Neon ──
+      if (remoteInfo.serverTime != null) {
+        final diffHours = DateTime.now().toUtc().difference(remoteInfo.serverTime!).inHours.abs();
+        if (diffHours > 24) {
+          // Altération majeure détectée : l'horloge système a été décalée pour contourner les délais
+          await _svc.revokeLicense(prefs);
+          if (!current.isExpired) {
+            await ref.read(authProvider.notifier).lock();
+          }
+          state = const AsyncData(LicenseInfo(
+            status: LicenseStatus.tampered,
+            type: LicenseType.trial,
+            expiryDate: null,
+            daysLeft: 0,
+          ));
+          return;
+        }
+      }
+
+      // ── B. Contrôle d'expiration d'essai Cloud (Anti-Réinitialisation par effacement de cache) ──
+      if (current.isTrial && remoteInfo.expiryDate != null && DateTime.now().isAfter(remoteInfo.expiryDate!)) {
+        if (remoteInfo.activatedAt != null) {
+          await prefs.setString('lic_first_launch', remoteInfo.activatedAt!.toIso8601String());
+        }
+        await ref.read(authProvider.notifier).lock();
+        state = AsyncData(LicenseInfo(
+          status: LicenseStatus.expired,
+          type: LicenseType.trial,
+          expiryDate: remoteInfo.expiryDate,
+          daysLeft: 0,
+        ));
+        return;
+      }
+
       if (!remoteInfo.isActive) {
         // L'administrateur a révoqué ou désactivé cette machine (en essai ou sous licence) depuis Mobile Admin.
         await _svc.revokeLicense(prefs);
@@ -169,11 +205,16 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
           daysLeft: 0,
         ));
       } else if (remoteInfo.isActive) {
+        // Si la machine avait été marquée révoquée localement mais est active sur le cloud :
+        final wasRevoked = prefs.getBool('lic_was_revoked_by_admin') ?? false;
+        if (wasRevoked || current.isExpired) {
+          await _svc.unrevokeLicense(prefs);
+        }
+
         // L'administrateur a activé ou attribué une licence officielle depuis Mobile Admin
         final keyToUse = remoteInfo.licenseKey.isNotEmpty ? remoteInfo.licenseKey : storedKey;
         if (keyToUse != null && keyToUse.isNotEmpty && !keyToUse.startsWith('TRIAL-')) {
           if (!current.isLicensed || current.isExpired || storedKey != keyToUse) {
-            await _svc.unrevokeLicense(prefs);
             final res = await _svc.activateAsync(keyToUse, prefs);
             if (res.result == LicenseActivationResult.success && res.info != null) {
               state = AsyncData(res.info!);
@@ -181,6 +222,8 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
               state = AsyncData(await _svc.checkAsync(prefs));
             }
           }
+        } else if (current.isExpired) {
+          state = AsyncData(await _svc.checkAsync(prefs));
         }
       }
     } catch (_) {

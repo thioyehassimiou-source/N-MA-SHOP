@@ -420,7 +420,7 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final client = filtered[index];
@@ -432,16 +432,13 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
       ),
       floatingActionButton: filtered.isEmpty
           ? null
-          : Padding(
-              padding: const EdgeInsets.only(bottom: 70),
-              child: FloatingActionButton.extended(
-                onPressed: () => _showAddClientDialog(),
-                backgroundColor: AppTheme.primaryIndigo,
-                foregroundColor: Colors.white,
-                elevation: 4,
-                icon: const Icon(Icons.add_business_rounded),
-                label: const Text('Nouvelle Boutique'),
-              ),
+          : FloatingActionButton.extended(
+              onPressed: () => _showAddClientDialog(),
+              backgroundColor: AppTheme.primaryIndigo,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              icon: const Icon(Icons.add_business_rounded),
+              label: const Text('Nouvelle Boutique'),
             ),
     );
   }
@@ -583,28 +580,28 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
             ],
             const SizedBox(height: 14),
 
-            // Action Buttons Row: Direct Contact & Editing
+            // Action Buttons Row: Direct Contact & Licensing Actions
             Row(
               children: [
                 // Bouton Numéro de Téléphone avec Menu de Contact Direct (Appel / WhatsApp / SMS)
                 ElevatedButton.icon(
                   onPressed: () => _showContactOptions(context, client.phone, client.storeName),
-                  icon: const Icon(Icons.phone_in_talk_rounded, size: 16),
+                  icon: const Icon(Icons.phone_in_talk_rounded, size: 15),
                   label: Text(hasPhone ? client.phone : 'Contacter'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryIndigo,
                     foregroundColor: Colors.white,
                     elevation: 2,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
 
                 // Raccourci Direct WhatsApp
                 if (hasPhone)
                   IconButton(
-                    icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 22),
+                    icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 20),
                     onPressed: () => _openWhatsApp(client.phone, client.storeName),
                     tooltip: 'Ouvrir WhatsApp',
                   ),
@@ -613,25 +610,22 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
 
                 // Bouton Activer / Délivrer Licence (si en essai)
                 if (!isStoreActive)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => HardwareKeyGeneratorScreen(preselectedClient: client),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.vpn_key_rounded, size: 14),
-                      label: const Text('Activer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.emeraldActive,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        elevation: 1,
-                      ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => HardwareKeyGeneratorScreen(preselectedClient: client),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.vpn_key_rounded, size: 14),
+                    label: const Text('Activer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.emeraldActive,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      elevation: 1,
                     ),
                   ),
 

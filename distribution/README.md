@@ -10,8 +10,8 @@ Site web officiel de présentation et de distribution du logiciel **N’MaShop**
   - Ventes & Caisse rapide (POS) avec impression de tickets thermiques et factures PDF.
   - Carnet numérique des crédits clients (remplacement du cahier papier).
   - Gestion du stock en temps réel avec valorisation au Coût Moyen Pondéré (CMP).
-  - Comptabilité SYSCOHADA (Journal, Grand Livre, Balance) conforme OHADA.
-  - Dépenses, flux de caisse et bénéfice net.
+  - Rapports financiers détaillés, suivi des dépenses et calcul du bénéfice net réel.
+  - Dépenses, flux de caisse et marges commerciales.
   - Suivi des vendeurs & commissions.
   - **100% Hors-Ligne (Offline-First)** : Base locale SQLite ultra-rapide sans dépendance internet.
   - **Essai gratuit de 7 jours** intégré dès le premier lancement.

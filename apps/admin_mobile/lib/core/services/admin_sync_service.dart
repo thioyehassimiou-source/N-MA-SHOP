@@ -194,14 +194,13 @@ class AdminSyncService {
         }
       }
 
-      // 3. Vérifier si la licence existe déjà (par clé ou par machine en mode essai)
+      // 3. Vérifier si la licence existe déjà (par clé ou par machine)
       final licenses = _repository.getLicenses();
       final existingIndex = licenses.indexWhere((l) {
         final sameKey = l.licenseKey.trim().toUpperCase() == licenseKey;
-        final sameMachineTrial = hardwareId.isNotEmpty &&
-            l.hardwareId.trim().toUpperCase() == hardwareId &&
-            (l.type == AdminLicenseType.trial || l.licenseKey.startsWith('TRIAL-'));
-        return sameKey || sameMachineTrial;
+        final sameMachine = hardwareId.isNotEmpty &&
+            l.hardwareId.trim().toUpperCase() == hardwareId;
+        return sameKey || sameMachine;
       });
 
       if (existingIndex < 0) {
@@ -222,13 +221,24 @@ class AdminSyncService {
       } else {
         // Enrichir le record existant (ex: mise à niveau d'un essai vers une clé payante ou MAJ statut)
         final existing = licenses[existingIndex];
+
+        // Ne jamais rétrograder une licence payante active vers un simple token d'essai
+        final existingIsPaid = !existing.licenseKey.startsWith('TRIAL-') && existing.licenseKey != 'ESSAI-GRATUIT';
+        final incomingIsTrial = licenseKey.startsWith('TRIAL-') || licenseKey == 'ESSAI-GRATUIT';
+
+        final effectiveKey = (existingIsPaid && incomingIsTrial)
+            ? existing.licenseKey
+            : (licenseKey.isNotEmpty ? licenseKey : existing.licenseKey);
+        final effectiveType = (existingIsPaid && incomingIsTrial) ? existing.type : type;
+        final effectiveExpiresAt = (existingIsPaid && incomingIsTrial) ? existing.expiresAt : (expiryDate ?? existing.expiresAt);
+
         final updated = existing.copyWith(
           hardwareId: hardwareId.isNotEmpty ? hardwareId : existing.hardwareId,
           clientName: businessName != 'Boutique Inconnue' ? businessName : existing.clientName,
           clientId: clientId.isNotEmpty ? clientId : existing.clientId,
-          licenseKey: licenseKey.isNotEmpty ? licenseKey : existing.licenseKey,
-          type: type,
-          expiresAt: expiryDate ?? existing.expiresAt,
+          licenseKey: effectiveKey,
+          type: effectiveType,
+          expiresAt: effectiveExpiresAt,
           isActive: isActive,
         );
         await _repository.saveLicense(updated);
@@ -306,20 +316,30 @@ class AdminSyncService {
       final int affectedRows;
       if (cleanKey.isNotEmpty && cleanHwId.isNotEmpty) {
         final res = await connection.execute(
-          Sql.named('UPDATE nmashop_activations SET is_active = @isActive WHERE license_key = @key OR hardware_id = @hwId'),
+          Sql.named('''
+            UPDATE nmashop_activations 
+            SET is_active = @isActive,
+                license_key = @key,
+                expires_at = COALESCE(@expiresAt, expires_at),
+                business_name = COALESCE(NULLIF(@businessName, ''), business_name)
+            WHERE license_key = @key OR hardware_id = @hwId
+          '''),
           parameters: {
             'isActive': isActive,
             'key': cleanKey,
             'hwId': cleanHwId,
+            'expiresAt': expiresAt,
+            'businessName': storeName ?? '',
           },
         );
         affectedRows = res.affectedRows;
       } else if (cleanKey.isNotEmpty) {
         final res = await connection.execute(
-          Sql.named('UPDATE nmashop_activations SET is_active = @isActive WHERE license_key = @key'),
+          Sql.named('UPDATE nmashop_activations SET is_active = @isActive, expires_at = COALESCE(@expiresAt, expires_at) WHERE license_key = @key'),
           parameters: {
             'isActive': isActive,
             'key': cleanKey,
+            'expiresAt': expiresAt,
           },
         );
         affectedRows = res.affectedRows;

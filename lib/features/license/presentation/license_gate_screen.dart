@@ -460,9 +460,13 @@ class _BrandPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    license.isTrial
-                        ? 'Votre période d\'essai\nde 7 jours est terminée.'
-                        : 'Votre licence a expiré.',
+                    license.status == LicenseStatus.tampered
+                        ? 'Horloge système modifiée\nou tentative d\'altération.'
+                        : license.status == LicenseStatus.deviceMismatch
+                            ? 'Licence dédiée à une autre machine.'
+                            : license.isTrial
+                                ? 'Votre période d\'essai\nde 7 jours est terminée.'
+                                : 'Votre licence a expiré.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -491,9 +495,13 @@ class _BrandPanel extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text(
-                          'Accès bloqué',
-                          style: TextStyle(
+                        Text(
+                          license.status == LicenseStatus.tampered
+                              ? 'Altération détectée'
+                              : license.status == LicenseStatus.deviceMismatch
+                                  ? 'Machine non autorisée'
+                                  : 'Accès bloqué',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                             fontSize: 13,

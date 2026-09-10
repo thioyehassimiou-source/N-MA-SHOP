@@ -9,8 +9,10 @@ on:
         required: false
         default: "1.0.0"
 
-  # Déclenchement automatique lors du push d'un tag de version (ex: v1.0.0)
+  # Déclenchement automatique lors du push d'un tag de version (ex: v1.0.0) ou push sur main
   push:
+    branches:
+      - main
     tags:
       - 'v*'
 
@@ -202,7 +204,7 @@ jobs:
   publish-release:
     name: 🏷️ Publier la Release Officielle GitHub
     needs: [build-linux, build-windows, build-mobile]
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -235,7 +237,7 @@ jobs:
       - name: 🚀 Créer la Release GitHub
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name || format('v{0}', github.event.inputs.version || '1.0.0') }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', github.event.inputs.version || '1.0.0') }}
           name: N'MaShop v${{ github.event.inputs.version || '1.0.0' }} (Desktop PC & Mobile Admin)
           body: |
             🎉 **N'MaShop v1.0.0 — Publication Officielle de Production**

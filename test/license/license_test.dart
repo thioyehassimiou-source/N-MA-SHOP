@@ -280,7 +280,7 @@ void main() {
       );
       final res = await service.activateAsync(foreignKey, prefs);
 
-      expect(res.result, LicenseActivationResult.invalidKey);
+      expect(res.result, LicenseActivationResult.deviceMismatch);
       expect(prefs.getString('lic_key'), isNull);
     });
 

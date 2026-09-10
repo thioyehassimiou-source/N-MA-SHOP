@@ -103,7 +103,8 @@ class LicenseCore {
 
   /// Extrait le Hash court à 4 caractères de l'Hardware ID pour lier la clé à la machine.
   static String generateHwHash(String hardwareId) {
-    final bytes = utf8.encode('$hardwareId#$localSecuritySalt');
+    final cleanId = hardwareId.trim().toUpperCase();
+    final bytes = utf8.encode('$cleanId#$localSecuritySalt');
     return sha256.convert(bytes).toString().substring(0, 4).toUpperCase();
   }
 

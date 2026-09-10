@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -166,9 +168,27 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       final db = ref.read(databaseProvider);
       await db.purgeAllData();
 
-      // Si l'utilisateur choisit le mode essai, on s'assure d'inscrire l'essai 15j
+      // Si l'utilisateur choisit le mode essai, s'assurer que les préférences d'essai sont saines
       if (_useTrialMode) {
-        await ref.read(licenseProvider.notifier).resetLicense();
+        final prefs = ref.read(sharedPreferencesProvider);
+        await prefs.remove('lic_key');
+        await prefs.remove('lic_bound_hw_id');
+        await prefs.remove('lic_was_revoked_by_admin');
+
+        final firstLaunchStr = prefs.getString('lic_first_launch');
+        DateTime firstLaunch = DateTime.now();
+        if (firstLaunchStr != null) {
+          final parsed = DateTime.tryParse(firstLaunchStr);
+          if (parsed != null && parsed.year > 2020) {
+            firstLaunch = parsed;
+          } else {
+            await prefs.setString('lic_first_launch', firstLaunch.toIso8601String());
+          }
+        } else {
+          await prefs.setString('lic_first_launch', firstLaunch.toIso8601String());
+        }
+        await prefs.setString('lic_last_known_time', DateTime.now().toIso8601String());
+        await ref.read(licenseProvider.notifier).refresh();
       }
 
       final user = await ref.read(authProvider.notifier).defineAccount(
@@ -185,6 +205,29 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         businessPhone: _phoneController.text.trim(),
         paletteId: AppPalette.fallback.id,
       );
+
+      // Si l'utilisateur choisit le mode essai, déclarer immédiatement l'installation active à Neon
+      if (_useTrialMode) {
+        try {
+          final hwId = await HardwareIdService.getHardwareId();
+          final prefs = ref.read(sharedPreferencesProvider);
+          final firstLaunchStr = prefs.getString('lic_first_launch');
+          final firstLaunch = firstLaunchStr != null
+              ? (DateTime.tryParse(firstLaunchStr) ?? DateTime.now())
+              : DateTime.now();
+          final expiry = LicenseCore.computeTrialExpiry(firstLaunch);
+
+          LicenseAdminSyncService.reportTrialInstallation(
+            hardwareId: hwId,
+            firstLaunch: firstLaunch,
+            trialExpiry: expiry,
+            businessName: _nameController.text.trim(),
+            ownerName: user.fullName,
+            phone: _phoneController.text.trim(),
+            osInfo: Platform.operatingSystem.toUpperCase(),
+          );
+        } catch (_) {}
+      }
 
       // Si l'utilisateur a activé une clé de licence, resynchroniser les infos du propriétaire et de la boutique
       if (!_useTrialMode && _licenseActivated) {

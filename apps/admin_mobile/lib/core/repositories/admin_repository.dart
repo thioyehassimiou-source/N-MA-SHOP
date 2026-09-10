@@ -61,21 +61,36 @@ class AdminRepository {
     final raw = _prefs.getStringList(_keyLicenses) ?? [];
     final list = raw.map((str) => LicenseRecord.fromJson(str)).toList();
 
-    // Dédupliquer automatiquement par clé de licence (insensible à la casse)
+    // Dédupliquer rigoureusement par Hardware ID et par Clé
     final Map<String, LicenseRecord> uniqueMap = {};
     for (final record in list) {
-      final key = record.licenseKey.trim().toUpperCase();
-      if (!uniqueMap.containsKey(key)) {
-        uniqueMap[key] = record;
+      final cleanHwId = record.hardwareId.trim().toUpperCase();
+      final cleanKey = record.licenseKey.trim().toUpperCase();
+      // Utiliser l'empreinte matérielle si disponible comme identifiant unique de poste
+      final mapKey = cleanHwId.isNotEmpty ? 'HW:$cleanHwId' : 'KEY:$cleanKey';
+
+      if (!uniqueMap.containsKey(mapKey)) {
+        uniqueMap[mapKey] = record;
       } else {
-        // En cas de doublon, on conserve l'enregistrement le plus riche
-        // (celui qui a le Hardware ID et qui est activé)
-        final existing = uniqueMap[key]!;
-        final bool shouldReplace = (existing.hardwareId.isEmpty && record.hardwareId.isNotEmpty) ||
-            (!existing.isActive && record.isActive) ||
-            (existing.clientName == 'Boutique Client' && record.clientName != 'Boutique Client');
+        final existing = uniqueMap[mapKey]!;
+        // Une vraie licence payante / pro remplace systématiquement une licence d'essai
+        final existingIsTrial = existing.type == AdminLicenseType.trial || existing.licenseKey.startsWith('TRIAL-');
+        final recordIsTrial = record.type == AdminLicenseType.trial || record.licenseKey.startsWith('TRIAL-');
+
+        final bool shouldReplace;
+        if (existingIsTrial && !recordIsTrial) {
+          shouldReplace = true;
+        } else if (!existingIsTrial && recordIsTrial) {
+          shouldReplace = false;
+        } else {
+          // Si même type, conserver l'enregistrement actif le plus récent ou avec plus de détails
+          shouldReplace = (!existing.isActive && record.isActive) ||
+              (existing.clientName == 'Boutique Client' && record.clientName != 'Boutique Client') ||
+              record.createdAt.isAfter(existing.createdAt);
+        }
+
         if (shouldReplace) {
-          uniqueMap[key] = record;
+          uniqueMap[mapKey] = record;
         }
       }
     }
@@ -85,17 +100,33 @@ class AdminRepository {
   Future<void> saveLicense(LicenseRecord record) async {
     final licenses = getLicenses();
     final cleanKey = record.licenseKey.trim().toUpperCase();
+    final cleanHwId = record.hardwareId.trim().toUpperCase();
 
-    // Recherche par ID ou par clé de licence
+    // Recherche par ID, par clé de licence, ou par Hardware ID (si renseigné)
     final index = licenses.indexWhere(
-      (l) => l.id == record.id || l.licenseKey.trim().toUpperCase() == cleanKey,
+      (l) {
+        final sameId = l.id == record.id;
+        final sameKey = l.licenseKey.trim().toUpperCase() == cleanKey;
+        final sameHw = cleanHwId.isNotEmpty && l.hardwareId.trim().toUpperCase() == cleanHwId;
+        return sameId || sameKey || sameHw;
+      },
     );
 
     if (index >= 0) {
-      licenses[index] = record;
+      // Conserver l'ID original pour préserver la cohérence des sélections UI
+      licenses[index] = record.copyWith(id: licenses[index].id);
     } else {
       licenses.insert(0, record);
     }
+
+    // Supprimer tout doublon résiduel pour cette machine
+    if (cleanHwId.isNotEmpty) {
+      final preservedId = index >= 0 ? licenses[index].id : record.id;
+      licenses.removeWhere((l) =>
+          l.id != preservedId &&
+          l.hardwareId.trim().toUpperCase() == cleanHwId);
+    }
+
     final raw = licenses.map((l) => l.toJson()).toList();
     await _prefs.setStringList(_keyLicenses, raw);
   }
@@ -104,8 +135,12 @@ class AdminRepository {
     final licenses = getLicenses();
     final target = licenses.where((l) => l.id == id).firstOrNull;
     final cleanKey = target?.licenseKey.trim().toUpperCase();
+    final cleanHwId = target?.hardwareId.trim().toUpperCase();
 
-    licenses.removeWhere((l) => l.id == id || (cleanKey != null && l.licenseKey.trim().toUpperCase() == cleanKey));
+    licenses.removeWhere((l) =>
+        l.id == id ||
+        (cleanKey != null && cleanKey.isNotEmpty && l.licenseKey.trim().toUpperCase() == cleanKey) ||
+        (cleanHwId != null && cleanHwId.isNotEmpty && l.hardwareId.trim().toUpperCase() == cleanHwId));
     final raw = licenses.map((l) => l.toJson()).toList();
     await _prefs.setStringList(_keyLicenses, raw);
   }
