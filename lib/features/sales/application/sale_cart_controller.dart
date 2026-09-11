@@ -21,6 +21,7 @@ class CartLine {
     required this.quantity,
     required this.availableStock,
     this.imageUrl,
+    this.originalPrice,
   });
 
   final String productId;
@@ -30,15 +31,22 @@ class CartLine {
   final int quantity;
   final int availableStock;
   final String? imageUrl;
+  final int? originalPrice;
+
+  int get basePrice => originalPrice ?? unitPrice;
+  bool get hasDiscount => unitPrice < basePrice;
+  int get discountAmount => hasDiscount ? (basePrice - unitPrice) : 0;
+  int get totalDiscount => discountAmount * quantity;
 
   int get lineTotal => unitPrice * quantity;
   bool get exceedsStock => quantity > availableStock;
 
-  CartLine copyWith({int? unitPrice, int? quantity}) => CartLine(
+  CartLine copyWith({int? unitPrice, int? quantity, int? originalPrice}) => CartLine(
     productId: productId,
     name: name,
     unit: unit,
     unitPrice: unitPrice ?? this.unitPrice,
+    originalPrice: originalPrice ?? this.originalPrice,
     quantity: quantity ?? this.quantity,
     availableStock: availableStock,
     imageUrl: imageUrl,
@@ -62,6 +70,9 @@ class SaleCartState {
   final bool submitting;
 
   int get total => lines.fold(0, (s, l) => s + l.lineTotal);
+  int get catalogTotal => lines.fold(0, (s, l) => s + (l.basePrice * l.quantity));
+  int get totalDiscount => lines.fold(0, (s, l) => s + l.totalDiscount);
+  bool get hasAnyDiscount => lines.any((l) => l.hasDiscount);
   bool get isEmpty => lines.isEmpty;
   bool get isCredit => method == PaymentMethod.credit;
   bool get hasStockIssue => lines.any((l) => l.exceedsStock);
@@ -101,6 +112,7 @@ class SaleCartController extends Notifier<SaleCartState> {
           name: product.name,
           unit: product.unit,
           unitPrice: product.salePrice,
+          originalPrice: product.salePrice,
           quantity: 1,
           availableStock: product.stockQuantity,
           imageUrl: product.imageUrl,
@@ -120,6 +132,32 @@ class SaleCartController extends Notifier<SaleCartState> {
   void setUnitPrice(int index, int unitPrice) {
     final lines = [...state.lines];
     lines[index] = lines[index].copyWith(unitPrice: unitPrice);
+    state = state.copyWith(lines: lines);
+  }
+
+  /// Applique une remise globale (en GNF) sur le total du panier,
+  /// répartie proportionnellement sur les lignes.
+  void applyGlobalDiscount(int discountAmountGnf) {
+    if (state.isEmpty || discountAmountGnf <= 0) return;
+    final currentTotal = state.total;
+    if (currentTotal <= 0) return;
+
+    final targetTotal = (currentTotal - discountAmountGnf).clamp(0, currentTotal);
+    final ratio = targetTotal / currentTotal;
+
+    final lines = [
+      for (final l in state.lines)
+        l.copyWith(unitPrice: (l.unitPrice * ratio).round())
+    ];
+    state = state.copyWith(lines: lines);
+  }
+
+  /// Rétablit les prix normaux du catalogue pour tous les articles.
+  void resetPrices() {
+    final lines = [
+      for (final l in state.lines)
+        l.copyWith(unitPrice: l.basePrice)
+    ];
     state = state.copyWith(lines: lines);
   }
 
@@ -152,11 +190,15 @@ class SaleCartController extends Notifier<SaleCartState> {
     state = state.copyWith(submitting: true);
     try {
       String? customerId;
+      final name = state.customerName.trim();
       if (state.isCredit) {
-        final name = state.customerName.trim();
         if (name.isEmpty) {
           return const RecordSaleFailure(CreditRequiresCustomerError());
         }
+        customerId = await ref
+            .read(customerRepositoryProvider)
+            .getOrCreate(name, phone: state.customerPhone);
+      } else if (name.isNotEmpty) {
         customerId = await ref
             .read(customerRepositoryProvider)
             .getOrCreate(name, phone: state.customerPhone);

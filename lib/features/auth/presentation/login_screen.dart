@@ -31,7 +31,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _obscure = true;
   bool _submitting = false;
+  bool _rememberMe = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final prefs = ref.read(sharedPreferencesProvider);
+    _rememberMe = prefs.getBool('auth_remember_me') ?? false;
+    final rememberedName = prefs.getString('auth_remembered_name');
+    if (rememberedName != null && rememberedName.isNotEmpty) {
+      _nameController.text = rememberedName;
+    }
+  }
 
   @override
   void dispose() {
@@ -55,6 +67,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref.read(authProvider.notifier).unlock(
             fullName: _nameController.text,
             password: _passwordController.text,
+            rememberMe: _rememberMe,
           );
       // Le routeur bascule seul sur le tableau de bord en observant la session.
     } on AuthException catch (e) {
@@ -198,7 +211,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ? 'Saisissez votre mot de passe'
                   : null,
             ),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.sm),
+            InkWell(
+              onTap: () => setState(() => _rememberMe = !_rememberMe),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: Checkbox(
+                        value: _rememberMe,
+                        onChanged: (val) => setState(() => _rememberMe = val ?? false),
+                        activeColor: context.colors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Se souvenir de moi (Rester connecté)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: context.colors.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
 
             if (_error != null) AuthErrorBanner(_error!),
 

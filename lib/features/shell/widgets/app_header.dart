@@ -69,7 +69,7 @@ class AppHeader extends ConsumerWidget {
     } else if (license.daysLeft != null) {
       final days = license.daysLeft!;
       final isTrial = license.status == LicenseStatus.trial;
-      badgeText = isTrial ? 'Essai : ${days}j restant${days > 1 ? 's' : ''}' : '${days}j restant${days > 1 ? 's' : ''}';
+      badgeText = isTrial ? license.trialCountdownLabel : '${days}j restant${days > 1 ? 's' : ''}';
       if (days <= 3) {
         badgeBg = isDark ? const Color(0xFF881337) : const Color(0xFFFFE4E6);
         badgeBorder = const Color(0xFFF43F5E);

@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+
+import '../services/image_storage_service.dart';
 
 /// Utilitaire de sélection d'images cross-plateforme (Desktop Linux/Windows/macOS & Mobile).
 class AppImagePicker {
@@ -38,21 +38,12 @@ class AppImagePicker {
       final sourceFile = File(sourcePath);
       if (!sourceFile.existsSync()) return null;
 
-      // 2. Préparer le dossier cible dans les documents de l'application
-      final appDir = await getApplicationDocumentsDirectory();
-      final targetDir = Directory(p.join(appDir.path, folderName));
-      if (!targetDir.existsSync()) {
-        await targetDir.create(recursive: true);
-      }
-
-      // 3. Copier le fichier avec un nom unique
-      final ext = p.extension(sourcePath).isNotEmpty ? p.extension(sourcePath) : '.png';
-      final prefix = filePrefix ?? folderName;
-      final fileName = '${prefix}_${DateTime.now().millisecondsSinceEpoch}$ext';
-      final destinationPath = p.join(targetDir.path, fileName);
-
-      final savedFile = await sourceFile.copy(destinationPath);
-      return savedFile.path;
+      // 2. Copier le fichier directement dans le stockage dédié de l'application
+      return await ImageStorageService.copyImageToAppStorage(
+        sourceFile: sourceFile,
+        folderName: folderName,
+        filePrefix: filePrefix,
+      );
     } catch (e) {
       rethrow;
     }

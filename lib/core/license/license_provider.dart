@@ -138,9 +138,20 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       // Si la période d'essai ou la licence arrive à échéance pendant l'utilisation,
       // l'application déconnecte et verrouille immédiatement la session sans Internet.
       final localCheck = await _svc.checkAsync(prefs);
-      if (localCheck.isExpired && !current.isExpired) {
-        await ref.read(authProvider.notifier).lock();
+      if (localCheck.isExpired) {
+        if (!current.isExpired) {
+          await ref.read(authProvider.notifier).lock();
+        }
         state = AsyncData(localCheck);
+        return;
+      } else if (current.isTrial) {
+        // En mode essai : actualiser l'état dès qu'une minute ou un jour s'écoule
+        // pour animer le décompte en temps réel à l'écran sans redémarrage.
+        final oldDur = current.remainingDuration;
+        final newDur = localCheck.remainingDuration;
+        if (oldDur?.inMinutes != newDur?.inMinutes || localCheck.daysLeft != current.daysLeft) {
+          state = AsyncData(localCheck);
+        }
       }
 
       final storedKey = prefs.getString('lic_key');

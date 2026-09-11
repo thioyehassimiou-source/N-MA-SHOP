@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite3;
 import '../services/hardware_id_service.dart';
 import 'license_admin_sync_service.dart';
 import 'license_core.dart';
@@ -98,27 +100,39 @@ class LicenseService {
     final firstLaunchStr = prefs.getString(_prefFirstLaunch);
     DateTime? firstLaunch = firstLaunchStr != null ? DateTime.tryParse(firstLaunchStr) : null;
 
-    // Récupération automatique si la date d'essai a été corrompue à 2020 par le bug précédent
-    // sans qu'aucune clé n'ait réellement été révoquée par l'administrateur
     final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
     if (firstLaunch != null && firstLaunch.year <= 2020 && !wasRevokedByAdmin) {
       firstLaunch = null;
       await prefs.remove(_prefFirstLaunch);
     }
 
-    // Protection anti-réinitialisation hors-ligne : vérifier l'ancre de sécurité locale
-    if (firstLaunch == null && !wasRevokedByAdmin) {
-      final anchorDate = await _readSecurityAnchor(hwId);
-      if (anchorDate != null) {
-        firstLaunch = anchorDate;
-        await prefs.setString(_prefFirstLaunch, firstLaunch.toIso8601String());
+    // Protection anti-réinitialisation avancée : collecter toutes les sources locales
+    if (!wasRevokedByAdmin) {
+      final List<DateTime> candidates = [];
+      if (firstLaunch != null) candidates.add(firstLaunch);
+
+      final primaryAnchor = await _readSecurityAnchor(hwId);
+      if (primaryAnchor != null) candidates.add(primaryAnchor);
+
+      final secondaryAnchor = await _readSecondaryAnchor(hwId);
+      if (secondaryAnchor != null) candidates.add(secondaryAnchor);
+
+      final dbAnchor = await _readDatabaseTrialAnchor();
+      if (dbAnchor != null) candidates.add(dbAnchor);
+
+      if (candidates.isNotEmpty) {
+        // La date retenue est obligatoirement la PLUS ANCIENNE parmi toutes les sources
+        firstLaunch = candidates.reduce((a, b) => a.isBefore(b) ? a : b);
       }
+      await _cleanUpLegacyFiles();
     }
 
     if (firstLaunch == null) {
-      // Premier lancement légitime
+      // Premier lancement légitime absolu
       await prefs.setString(_prefFirstLaunch, now.toIso8601String());
       await _writeSecurityAnchor(now.toIso8601String(), hwId);
+      await _writeSecondaryAnchor(now.toIso8601String(), hwId);
+      await _writeDatabaseTrialAnchor(now.toIso8601String());
       final expiry = LicenseCore.computeTrialExpiry(now);
       return LicenseInfo(
         status: LicenseStatus.trial,
@@ -127,14 +141,19 @@ class LicenseService {
         daysLeft: LicenseCore.trialDays,
       );
     } else {
-      // Maintenir l'ancre synchronisée
-      await _writeSecurityAnchor(firstLaunch.toIso8601String(), hwId);
+      // Maintenir toutes les ancres synchronisées avec la date la plus ancienne
+      final dateStr = firstLaunch.toIso8601String();
+      await prefs.setString(_prefFirstLaunch, dateStr);
+      await _writeSecurityAnchor(dateStr, hwId);
+      await _writeSecondaryAnchor(dateStr, hwId);
+      await _writeDatabaseTrialAnchor(dateStr);
     }
 
     final expiry = LicenseCore.computeTrialExpiry(firstLaunch);
 
     if (now.isBefore(expiry)) {
-      final days = expiry.difference(now).inDays + 1;
+      final diff = expiry.difference(now);
+      final days = diff.inDays + (diff.inHours % 24 > 0 ? 1 : 0);
       return LicenseInfo(
         status: LicenseStatus.trial,
         type: LicenseType.trial,
@@ -283,6 +302,15 @@ class LicenseService {
       if (file != null && await file.exists()) {
         await file.delete();
       }
+      final secFile = _getSecondaryMirrorAnchorFile();
+      if (secFile != null && await secFile.exists()) {
+        await secFile.delete();
+      }
+      final appDir = await getApplicationSupportDirectory();
+      final legacy = File(p.join(appDir.path, '.nma_sys_sec'));
+      if (await legacy.exists()) {
+        await legacy.delete();
+      }
     } catch (_) {}
 
     // Notifier la désactivation uniquement si une vraie clé payante était présente
@@ -299,6 +327,8 @@ class LicenseService {
     await prefs.setString(_prefFirstLaunch, pastDate);
     final hwId = await HardwareIdService.getHardwareId();
     await _writeSecurityAnchor(pastDate, hwId);
+    await _writeSecondaryAnchor(pastDate, hwId);
+    await _writeDatabaseTrialAnchor(pastDate);
   }
 
   /// Réactive la licence locale suite à la réactivation par l'administrateur.
@@ -312,23 +342,125 @@ class LicenseService {
         final nowStr = DateTime.now().toIso8601String();
         await prefs.setString(_prefFirstLaunch, nowStr);
         await _writeSecurityAnchor(nowStr, hwId);
+        await _writeSecondaryAnchor(nowStr, hwId);
+        await _writeDatabaseTrialAnchor(nowStr);
       }
     }
   }
 
-  // ── Ancre de sécurité locale (Anti-réinitialisation hors-ligne) ─────────────
+  // ── Ancre de sécurité système furtive (Totalement hors du dossier boutique) ────
 
   static Future<File?> _getSecurityAnchorFile() async {
     try {
+      // 1. Emplacement furtif au niveau du cache OS (totalement hors du dossier boutique)
+      if (Platform.isLinux || Platform.isMacOS) {
+        final home = Platform.environment['HOME'];
+        if (home != null && home.isNotEmpty) {
+          final cacheDir = Directory(p.join(home, '.cache'));
+          if (cacheDir.existsSync()) {
+            return File(p.join(cacheDir.path, '.sys_font_registry.bin'));
+          }
+          return File(p.join(home, '.sys_font_registry.bin'));
+        }
+      } else if (Platform.isWindows) {
+        final localAppData = Platform.environment['LOCALAPPDATA'] ?? Platform.environment['APPDATA'];
+        if (localAppData != null && localAppData.isNotEmpty) {
+          return File(p.join(localAppData, '.sys_device_meta.bin'));
+        }
+      }
       final appDir = await getApplicationSupportDirectory();
-      return File('${appDir.path}/.nma_sys_sec');
+      return File(p.join(appDir.path, '.sys_font_registry.bin'));
     } catch (_) {
       return null;
     }
   }
 
+  static File? _getSecondaryMirrorAnchorFile() {
+    try {
+      if (Platform.isLinux || Platform.isMacOS) {
+        final home = Platform.environment['HOME'];
+        if (home != null && home.isNotEmpty) {
+          final configDir = Directory(p.join(home, '.config'));
+          if (configDir.existsSync()) {
+            return File(p.join(configDir.path, '.device_profile_cache'));
+          }
+          return File(p.join(home, '.device_profile_cache'));
+        }
+      } else if (Platform.isWindows) {
+        final appData = Platform.environment['APPDATA'] ?? Platform.environment['USERPROFILE'];
+        if (appData != null && appData.isNotEmpty) {
+          return File(p.join(appData, '.user_state_cache'));
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   static String _generateAnchorChecksum(String firstLaunch, String hwId) {
     return LicenseCore.generateHmac('ANCHOR-$firstLaunch-$hwId');
+  }
+
+  /// Nettoie et supprime définitivement tous les dossiers et fichiers de sécurité
+  /// visibles ou suspects qui se trouvaient dans le dossier de la boutique.
+  static Future<void> _cleanUpLegacyFiles() async {
+    try {
+      final appDir = await getApplicationSupportDirectory();
+
+      // 1. Supprimer l'ancien dossier .sys_cache dans le dossier de la boutique
+      final stealthDir = Directory(p.join(appDir.path, '.sys_cache'));
+      if (await stealthDir.exists()) {
+        try {
+          await stealthDir.delete(recursive: true);
+        } catch (_) {}
+      }
+
+      // 2. Supprimer l'ancien fichier .nma_sys_sec dans le dossier de la boutique
+      final legacyAppFile = File(p.join(appDir.path, '.nma_sys_sec'));
+      if (await legacyAppFile.exists()) {
+        try {
+          await legacyAppFile.delete();
+        } catch (_) {}
+      }
+
+      // 3. Supprimer les anciens fichiers résiduels gescompta
+      for (final name in ['gescompta.sqlite', 'gescompta.sqlite-wal', 'gescompta.sqlite-shm']) {
+        final f = File(p.join(appDir.path, name));
+        if (await f.exists()) {
+          try {
+            await f.delete();
+          } catch (_) {}
+        }
+      }
+
+      // 4. Supprimer les anciens fichiers évidents dans le profil OS
+      if (Platform.isLinux || Platform.isMacOS) {
+        final home = Platform.environment['HOME'];
+        if (home != null && home.isNotEmpty) {
+          final oldConfig = File(p.join(home, '.config', '.nma_hw_sec'));
+          if (await oldConfig.exists()) {
+            try {
+              await oldConfig.delete();
+            } catch (_) {}
+          }
+          final oldHome = File(p.join(home, '.nma_hw_sec'));
+          if (await oldHome.exists()) {
+            try {
+              await oldHome.delete();
+            } catch (_) {}
+          }
+        }
+      } else if (Platform.isWindows) {
+        final appData = Platform.environment['APPDATA'] ?? Platform.environment['USERPROFILE'];
+        if (appData != null && appData.isNotEmpty) {
+          final oldWin = File(p.join(appData, '.nma_hw_sec'));
+          if (await oldWin.exists()) {
+            try {
+              await oldWin.delete();
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   static Future<void> _writeSecurityAnchor(String firstLaunch, String hwId) async {
@@ -338,14 +470,31 @@ class LicenseService {
       final checksum = _generateAnchorChecksum(firstLaunch, hwId);
       final content = '$firstLaunch#$hwId#$checksum';
       await file.writeAsString(base64Encode(utf8.encode(content)));
+
+      // Nettoyer définitivement les anciens fichiers et dossiers dans le dossier boutique
+      await _cleanUpLegacyFiles();
     } catch (_) {}
   }
 
   static Future<DateTime?> _readSecurityAnchor(String hwId) async {
     try {
       final file = await _getSecurityAnchorFile();
-      if (file == null || !await file.exists()) return null;
-      final raw = await file.readAsString();
+      File? target = file;
+      if (target == null || !await target.exists()) {
+        // Migration rétro-compatible : vérifier les anciens emplacements
+        final appDir = await getApplicationSupportDirectory();
+        final legacyCache = File(p.join(appDir.path, '.sys_cache', '.hw_device_blob.bin'));
+        final legacyFile = File(p.join(appDir.path, '.nma_sys_sec'));
+        if (await legacyCache.exists()) {
+          target = legacyCache;
+        } else if (await legacyFile.exists()) {
+          target = legacyFile;
+        } else {
+          return null;
+        }
+      }
+
+      final raw = await target.readAsString();
       final decoded = utf8.decode(base64Decode(raw.trim()));
       final parts = decoded.split('#');
       if (parts.length == 3) {
@@ -353,10 +502,146 @@ class LicenseService {
         final fileHwId = parts[1];
         final checksum = parts[2];
         if (fileHwId == hwId && checksum == _generateAnchorChecksum(dateStr, fileHwId)) {
+          // Si lu depuis un ancien emplacement : migrer vers le nouveau fichier OS et supprimer l'ancien
+          if (file != null && target.path != file.path) {
+            await _writeSecurityAnchor(dateStr, hwId);
+            await _cleanUpLegacyFiles();
+          }
           return DateTime.tryParse(dateStr);
         }
       }
     } catch (_) {}
     return null;
+  }
+
+  static Future<void> _writeSecondaryAnchor(String firstLaunch, String hwId) async {
+    try {
+      final file = _getSecondaryMirrorAnchorFile();
+      if (file == null) return;
+      final checksum = _generateAnchorChecksum(firstLaunch, hwId);
+      final content = '$firstLaunch#$hwId#$checksum';
+      await file.writeAsString(base64Encode(utf8.encode(content)));
+    } catch (_) {}
+  }
+
+  static Future<DateTime?> _readSecondaryAnchor(String hwId) async {
+    try {
+      final file = _getSecondaryMirrorAnchorFile();
+      File? target = file;
+      if (target == null || !await target.exists()) {
+        // Migration rétro-compatible : vérifier l'ancien .nma_hw_sec
+        if (Platform.isLinux || Platform.isMacOS) {
+          final home = Platform.environment['HOME'];
+          if (home != null && home.isNotEmpty) {
+            final old = File(p.join(home, '.config', '.nma_hw_sec'));
+            if (await old.exists()) {
+              target = old;
+            }
+          }
+        }
+        if (target == null || !await target.exists()) return null;
+      }
+
+      final raw = await target.readAsString();
+      final decoded = utf8.decode(base64Decode(raw.trim()));
+      final parts = decoded.split('#');
+      if (parts.length == 3) {
+        final dateStr = parts[0];
+        final fileHwId = parts[1];
+        final checksum = parts[2];
+        if (fileHwId == hwId && checksum == _generateAnchorChecksum(dateStr, fileHwId)) {
+          if (file != null && target.path != file.path) {
+            await _writeSecondaryAnchor(dateStr, hwId);
+            try {
+              await target.delete();
+            } catch (_) {}
+          }
+          return DateTime.tryParse(dateStr);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  // ── Ancre de sécurité dans la base SQLite locale (Anti-réinitialisation) ─────
+
+  static Future<DateTime?> _readDatabaseTrialAnchor() async {
+    try {
+      final appDir = await getApplicationSupportDirectory();
+      var dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));
+      if (!await dbFile.exists()) {
+        final legacy = File(p.join(appDir.path, 'gescompta.sqlite'));
+        if (await legacy.exists()) {
+          dbFile = legacy;
+        } else {
+          return null;
+        }
+      }
+
+      final db = sqlite3.sqlite3.open(dbFile.path);
+      try {
+        DateTime? earliestDate;
+
+        // 1. Lire la table système interne si déjà créée
+        try {
+          final res = db.select("SELECT name FROM sqlite_master WHERE type='table' AND name='_system_meta'");
+          if (res.isNotEmpty) {
+            final valRes = db.select("SELECT value FROM _system_meta WHERE key = 'trial_start'");
+            if (valRes.isNotEmpty && valRes.first['value'] != null) {
+              earliestDate = DateTime.tryParse(valRes.first['value'].toString());
+            }
+          }
+        } catch (_) {}
+
+        // 2. Contrôle d'antériorité heuristique sur les données métier existantes
+        final checkTables = ['sales', 'products', 'users', 'audit_logs'];
+        for (final tbl in checkTables) {
+          try {
+            final tableExists = db.select("SELECT name FROM sqlite_master WHERE type='table' AND name='$tbl'");
+            if (tableExists.isNotEmpty) {
+              final minRes = db.select("SELECT MIN(created_at) as min_dt FROM $tbl");
+              if (minRes.isNotEmpty && minRes.first['min_dt'] != null) {
+                final d = DateTime.tryParse(minRes.first['min_dt'].toString());
+                if (d != null) {
+                  if (earliestDate == null || d.isBefore(earliestDate)) {
+                    earliestDate = d;
+                  }
+                }
+              }
+            }
+          } catch (_) {}
+        }
+
+        return earliestDate;
+      } finally {
+        db.close();
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> _writeDatabaseTrialAnchor(String dateStr) async {
+    try {
+      final appDir = await getApplicationSupportDirectory();
+      var dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));
+      if (!await dbFile.exists()) return;
+
+      final db = sqlite3.sqlite3.open(dbFile.path);
+      try {
+        db.execute('''
+          CREATE TABLE IF NOT EXISTS _system_meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+          );
+        ''');
+        db.execute(
+          "INSERT OR REPLACE INTO _system_meta (key, value) VALUES ('trial_start', ?)",
+          [dateStr],
+        );
+      } finally {
+        db.close();
+      }
+    } catch (_) {}
   }
 }

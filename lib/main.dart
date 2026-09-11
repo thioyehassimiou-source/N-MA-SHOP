@@ -11,6 +11,7 @@ import 'core/license/license_service.dart';
 import 'core/providers/app_settings_provider.dart';
 import 'core/providers/database_provider.dart';
 import 'core/providers/startup_flags.dart';
+import 'core/services/image_storage_service.dart';
 import 'features/auth/application/auth_providers.dart';
 
 Future<void> main() async {
@@ -43,6 +44,9 @@ Future<void> main() async {
   // Ouvre la base locale et SharedPreferences.
   final database = AppDatabase();
   final prefs = await SharedPreferences.getInstance();
+
+  // Initialisation du stockage dédié des images et migration automatique
+  await ImageStorageService.initializeStorage(db: database);
 
   // Vérification de la licence (synchrone — prefs déjà en mémoire).
   // Résultat disponible avant le premier rendu pour éviter tout flash.

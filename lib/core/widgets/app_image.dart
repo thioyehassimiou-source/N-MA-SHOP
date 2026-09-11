@@ -1,6 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+
+import '../services/image_storage_service.dart';
 
 /// Widget universel d'affichage d'images pour N'MaShop.
 /// Gère les chemins locaux (`/path/to/file`), les assets (`assets/images/...`),
@@ -40,7 +40,8 @@ class AppImage extends StatelessWidget {
   static bool isLocalFile(String path) {
     if (isAssetPath(path) || isNetworkUrl(path)) return false;
     try {
-      return File(path).existsSync();
+      final resolved = ImageStorageService.resolveImageFile(path);
+      return resolved != null && resolved.existsSync();
     } catch (_) {
       return false;
     }
@@ -117,9 +118,10 @@ class AppImage extends StatelessWidget {
       );
     }
 
-    if (isLocalFile(path)) {
+    final resolvedFile = ImageStorageService.resolveImageFile(path);
+    if (resolvedFile != null && resolvedFile.existsSync()) {
       return Image.file(
-        File(path),
+        resolvedFile,
         width: width,
         height: height,
         fit: fit,

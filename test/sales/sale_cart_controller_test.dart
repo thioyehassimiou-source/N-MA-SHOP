@@ -101,4 +101,30 @@ void main() {
     expect(sale.amountPaid, 0);
     expect(sale.totalAmount, 150000); // tout à crédit
   });
+
+  test('Vente au comptant (espèces) avec nom : client créé et associé à la vente',
+      () async {
+    final controller = container.read(saleCartControllerProvider.notifier);
+    final product = _p1();
+
+    controller.addProduct(product);
+    controller.setMethod(PaymentMethod.cash);
+    controller.setCustomerName('Ibrahima Sory');
+    controller.setCustomerPhone('620001122');
+
+    final result = await controller.submit();
+    expect(result, isA<RecordSaleSuccess>());
+
+    // Client créé en base
+    final customers = await db.select(db.customers).get();
+    expect(customers, hasLength(1));
+    expect(customers.single.name, 'Ibrahima Sory');
+    expect(customers.single.phone, '620001122');
+
+    // Vente associée au client
+    final sale = (await db.select(db.sales).get()).single;
+    expect(sale.customerId, customers.single.id);
+    expect(sale.amountPaid, 150000);
+    expect(sale.totalAmount - sale.amountPaid, 0);
+  });
 }

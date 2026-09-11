@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -753,15 +754,15 @@ class _FinancialSummary extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _SummaryLine(label: 'Chiffre d\'Affaires (ventes)', value: data.revenue, color: const Color(0xFF6366F1)),
-          _SummaryLine(label: 'Encaissé', value: data.collected, color: const Color(0xFF10B981)),
-          _SummaryLine(label: 'Créances (argent dehors)', value: data.receivables, color: const Color(0xFFF59E0B)),
+          _SummaryLine(label: 'Total des ventes réalisées', value: data.revenue, color: const Color(0xFF6366F1)),
+          _SummaryLine(label: 'Argent encaissé direct', value: data.collected, color: const Color(0xFF10B981)),
+          _SummaryLine(label: 'Argent dehors (Crédits non réglés)', value: data.receivables, color: const Color(0xFFF59E0B)),
           const Divider(height: 24),
-          _SummaryLine(label: 'Bénéfice brut (marge)', value: data.grossProfit, color: const Color(0xFF10B981)),
-          _SummaryLine(label: 'Total dépenses', value: -data.totalExpenses, color: const Color(0xFFEF4444), isNegative: true),
+          _SummaryLine(label: 'Bénéfice sur articles (Gain brut)', value: data.grossProfit, color: const Color(0xFF10B981)),
+          _SummaryLine(label: 'Total des dépenses', value: -data.totalExpenses, color: const Color(0xFFEF4444), isNegative: true),
           const Divider(height: 24),
           _SummaryLine(
-            label: 'BÉNÉFICE NET',
+            label: 'GAIN RÉEL EN POCHE (Bénéfice net)',
             value: data.netProfit,
             color: data.netProfit >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
             isBold: true,
@@ -870,15 +871,31 @@ class _EmptyReportState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            OutlinedButton.icon(
-              onPressed: null, // passif — guide l'utilisateur
-              icon: const Icon(Icons.point_of_sale_rounded, size: 18),
-              label: const Text('Aller à la caisse'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                foregroundColor: const Color(0xFF6366F1),
-                side: const BorderSide(color: Color(0xFF6366F1)),
-              ),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => context.go('/produits'),
+                  icon: const Icon(Icons.inventory_2_outlined, size: 18),
+                  label: const Text('Consulter les stocks'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    foregroundColor: const Color(0xFF6366F1),
+                    side: const BorderSide(color: Color(0xFF6366F1)),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () => context.go('/vendre'),
+                  icon: const Icon(Icons.point_of_sale_rounded, size: 18),
+                  label: const Text('Aller à la caisse'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    backgroundColor: const Color(0xFF6366F1),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

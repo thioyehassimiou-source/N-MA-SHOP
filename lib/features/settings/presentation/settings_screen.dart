@@ -397,14 +397,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: AppSpacing.md),
               _buildSecurityItem(
                 Icons.save_alt,
-                'Sauvegarde Locale (Base de données)',
+                'Sauvegarde des données (Fichier .nma sécurisé)',
                 trailing: AppButton.secondary(
                   label: 'Sauvegarder',
                   onPressed: () async {
                     final success = await ExportService.backupDatabase();
                     if (mounted && success) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: const Text('Sauvegarde réussie'), backgroundColor: context.colors.primary),
+                        SnackBar(content: const Text('Sauvegarde .nma réussie avec succès'), backgroundColor: context.colors.primary),
                       );
                     }
                   },
@@ -413,7 +413,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: AppSpacing.xs),
               _buildSecurityItem(
                 Icons.restore_page_rounded,
-                'Restauration de la base de données',
+                'Restauration des données (.nma, .sqlite)',
                 trailing: AppButton.secondary(
                   label: 'Restaurer',
                   onPressed: () async {
@@ -421,7 +421,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       context: context,
                       builder: (dialogContext) => AppFormDialog(
                         title: 'Restaurer une sauvegarde ?',
-                        subtitle: 'Cette action remplacera l\'intégralité des données actuelles par le fichier de sauvegarde sélectionné.\n\nL\'application réactualisera ensuite votre tableau de bord.',
+                        subtitle: 'Cette action remplacera l\'intégralité des données actuelles par le fichier de sauvegarde sélectionné (.nma ou .sqlite).\n\nL\'application réactualisera ensuite votre tableau de bord.',
                         icon: Icons.warning_amber_rounded,
                         gradientColors: const [Color(0xFFF59E0B), Color(0xFFD97706)],
                         width: 480,

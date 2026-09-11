@@ -87,44 +87,93 @@ Future<void> _showPrintLabelsDialog(BuildContext context, Product product) async
             const Text('Imprimer étiquettes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(product.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            const SizedBox(height: 4),
-            Text('Code: $code  •  Prix: ${formatAmount(product.salePrice)}',
-                style: const TextStyle(color: Colors.grey, fontSize: 13)),
-            const SizedBox(height: 20),
-            const Text('Nombre d\'exemplaires :', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton.outlined(
-                  icon: const Icon(Icons.remove),
-                  onPressed: copies > 1 ? () => setDialogState(() => copies--) : null,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text('$copies', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                ),
-                IconButton.outlined(
-                  icon: const Icon(Icons.add),
-                  onPressed: () => setDialogState(() => copies++),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              alignment: WrapAlignment.center,
-              children: [1, 5, 10, 20, 50].map((preset) => ActionChip(
-                label: Text('$preset'),
-                onPressed: () => setDialogState(() => copies = preset),
-              )).toList(),
-            ),
-          ],
+        content: SizedBox(
+          width: 320,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(product.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+              const SizedBox(height: 4),
+              Text('Code: $code  •  Prix: ${formatAmount(product.salePrice)}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 20),
+              const Text('Nombre d\'exemplaires :', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton.outlined(
+                    icon: const Icon(Icons.remove),
+                    onPressed: copies > 1 ? () => setDialogState(() => copies--) : null,
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 70,
+                    child: TextFormField(
+                      key: ValueKey(copies),
+                      initialValue: '$copies',
+                      textAlign: TextAlign.center,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onChanged: (val) {
+                        final parsed = int.tryParse(val.trim());
+                        if (parsed != null && parsed > 0) {
+                          copies = parsed;
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.outlined(
+                    icon: const Icon(Icons.add),
+                    onPressed: () => setDialogState(() => copies++),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Aligner tous les chiffres sur une seule et même ligne
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [1, 5, 10, 20, 50].map((preset) {
+                  final isSelected = copies == preset;
+                  return InkWell(
+                    onTap: () => setDialogState(() => copies = preset),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.brandOrange
+                            : Theme.of(context).colorScheme.surfaceContainer,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.brandOrange
+                              : Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Text(
+                        '$preset',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: isSelected
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -346,12 +395,13 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       _buildHeader(all, isAdmin),
                       // ── Bandeau Alerte Stock Bas ─────────────
                       _LowStockAlertBanner(products: all),
+                      const SizedBox(height: AppSpacing.md),
+                      // ── Statistiques du Stock (En haut du tableau) ───
+                      _buildInsights(all, isAdmin),
                       const SizedBox(height: AppSpacing.lg),
                       _buildFilterBar(filtered.length, start, pageItems.length),
                       const SizedBox(height: AppSpacing.lg),
                       _buildTableCard(pageItems, pageCount, isAdmin),
-                      const SizedBox(height: AppSpacing.xl),
-                      _buildInsights(all, isAdmin),
                     ],
                   ),
                 ),
@@ -535,109 +585,247 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       );
     }
 
+    final allSelected = items.isNotEmpty && items.every((p) => _selected.contains(p.id));
+    final someSelected = items.any((p) => _selected.contains(p.id)) && !allSelected;
+
     return AppCard(
       padding: EdgeInsets.zero,
       clip: true,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: [
-                DataColumn(label: Checkbox(value: false, onChanged: (_) {})),
-                const DataColumn(label: Text('NOM')),
-                const DataColumn(label: Text('CATÉGORIE')),
-                const DataColumn(label: Text('NIVEAU DE STOCK'), numeric: true),
-                const DataColumn(label: Text('PRIX (GNF)'), numeric: true),
-                const DataColumn(label: Text('STATUT')),
-                if (isAdmin) const DataColumn(label: Text('ACTIONS')),
-              ],
-              rows: items.map((p) {
-                final status = _statusOf(p);
-                final out = status == StockStatus.out;
+          // ── Barre de sélection groupée ────────────────────────
+          if (_selected.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: context.colors.primaryContainer.withValues(alpha: 0.25),
+                border: Border(
+                  bottom: BorderSide(color: context.colors.outlineVariant),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 20,
+                    color: context.colors.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    '${_selected.length} produit(s) sélectionné(s)',
+                    style: AppTypography.labelMd.copyWith(
+                      color: context.colors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: () => setState(() => _selected.clear()),
+                    icon: const Icon(Icons.clear_all, size: 16),
+                    label: const Text('Tout désélectionner'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-                return DataRow(
-                  cells: [
-                    DataCell(
-                      Checkbox(
-                        value: _selected.contains(p.id),
-                        onChanged: (_) {},
-                      ),
+          // ── Tableau des produits plein écran & centré équilibré ──
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
+                    showCheckboxColumn: false,
+                    columnSpacing: 28,
+                    horizontalMargin: 20,
+                    headingRowHeight: 46,
+                    dataRowMinHeight: 52,
+                    dataRowMaxHeight: 56,
+                    headingRowColor: WidgetStateProperty.all(
+                      context.colors.surfaceContainerHighest.withValues(alpha: 0.35),
                     ),
-                    DataCell(
-                      Row(
-                        children: [
-                          Opacity(
-                            opacity: out ? 0.5 : 1.0,
-                            child: ProductThumbnail(
-                              imageUrl: p.imageUrl,
-                              size: 40,
-                              borderRadius: 8,
-                              fallbackColor: AppColors.brandNavy,
-                              enableZoomOnTap: true,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(p.name, style: AppTypography.labelMd),
-                              Text(
-                                'Réf: ${p.reference ?? p.id.substring(0, 6)}',
-                                style: AppTypography.labelSm.copyWith(
-                                  color: context.colors.onSurfaceVariant,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                    headingTextStyle: AppTypography.labelSm.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: context.colors.onSurfaceVariant,
+                      letterSpacing: 0.5,
                     ),
-                    const DataCell(
-                      Text('Générale', style: AppTypography.bodySm),
-                    ),
-                    DataCell(
-                      AppBadge(
-                        text: '${formatQuantity(p.stockQuantity)} unités',
-                        status: _chipStatusOf(status),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        formatAmount(p.salePrice),
-                        style: AppTypography.labelMd,
-                      ),
-                    ),
-                    DataCell(
-                      AppChip(
-                        label: _statusLabelOf(status),
-                        status: _chipStatusOf(status),
-                      ),
-                    ),
-                    if (isAdmin)
-                      DataCell(
-                        Row(
+                    columns: [
+                      DataColumn(
+                        label: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.print_outlined, size: 20),
-                              tooltip: 'Imprimer étiquettes code-barres',
-                              onPressed: () => _showPrintLabelsDialog(context, p),
+                            Checkbox(
+                              value: allSelected ? true : (someSelected ? null : false),
+                              tristate: true,
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              onChanged: (val) {
+                                setState(() {
+                                  if (val == true) {
+                                    _selected.addAll(items.map((p) => p.id));
+                                  } else {
+                                    for (final p in items) {
+                                      _selected.remove(p.id);
+                                    }
+                                  }
+                                });
+                              },
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.edit, size: 20),
-                              tooltip: 'Modifier',
-                              onPressed: () => _openDialog(p),
-                            ),
+                            const SizedBox(width: 8),
+                            const Text('SÉLECTION'),
                           ],
                         ),
                       ),
-                  ],
-                );
-              }).toList(),
-            ),
+                      const DataColumn(label: Text('PHOTO')),
+                      const DataColumn(label: Text("NOM DE L'ARTICLE")),
+                      const DataColumn(label: Text('UNITÉ')),
+                      const DataColumn(label: Text("PRIX D'ACHAT")),
+                      const DataColumn(label: Text('PRIX DE VENTE')),
+                      const DataColumn(label: Text('STOCK EN BOUTIQUE')),
+                      const DataColumn(label: Text('STATUT')),
+                      if (isAdmin) const DataColumn(label: Text('ACTIONS')),
+                    ],
+                    rows: items.map((p) {
+                      final status = _statusOf(p);
+                      final out = status == StockStatus.out;
+                      final isChecked = _selected.contains(p.id);
+
+                      return DataRow(
+                        selected: isChecked,
+                        onSelectChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              _selected.add(p.id);
+                            } else {
+                              _selected.remove(p.id);
+                            }
+                          });
+                        },
+                        cells: [
+                          DataCell(
+                            Checkbox(
+                              value: isChecked,
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              onChanged: (val) {
+                                setState(() {
+                                  if (val == true) {
+                                    _selected.add(p.id);
+                                  } else {
+                                    _selected.remove(p.id);
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                          DataCell(
+                            Opacity(
+                              opacity: out ? 0.5 : 1.0,
+                              child: ProductThumbnail(
+                                imageUrl: p.imageUrl,
+                                size: 36,
+                                borderRadius: 8,
+                                fallbackColor: AppColors.brandNavy,
+                                enableZoomOnTap: true,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              p.name,
+                              style: AppTypography.labelMd.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.brandOrange.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppColors.brandOrange.withValues(alpha: 0.25),
+                                ),
+                              ),
+                              child: Text(
+                                p.unit.isNotEmpty ? p.unit : 'pièce',
+                                style: AppTypography.labelSm.copyWith(
+                                  color: AppColors.brandOrange,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              '${formatAmount(p.purchasePrice)} GNF',
+                              style: AppTypography.bodySm.copyWith(
+                                color: context.colors.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              '${formatAmount(p.salePrice)} GNF',
+                              style: AppTypography.labelMd.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            AppBadge(
+                              text: '${formatQuantity(p.stockQuantity)} ${p.unit.isNotEmpty ? p.unit : 'unités'}',
+                              status: _chipStatusOf(status),
+                            ),
+                          ),
+                          DataCell(
+                            AppChip(
+                              label: _statusLabelOf(status),
+                              status: _chipStatusOf(status),
+                            ),
+                          ),
+                          if (isAdmin)
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.print_outlined, size: 20),
+                                    visualDensity: VisualDensity.compact,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                    tooltip: 'Imprimer étiquettes code-barres',
+                                    onPressed: () => _showPrintLabelsDialog(context, p),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 20),
+                                    visualDensity: VisualDensity.compact,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                    tooltip: 'Modifier',
+                                    onPressed: () => _openDialog(p),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              );
+            },
           ),
           Divider(height: 1, color: context.colors.outlineVariant),
           Padding(
@@ -700,23 +888,23 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
               SizedBox(
                 width: cardWidth,
                 child: AppMetricCard(
-                  title: 'Valeur du Stock (GNF)',
-                  value: formatAmount(inventoryValue),
+                  title: 'Valeur marchande du stock',
+                  value: '${formatAmount(inventoryValue)} GNF',
                   icon: Icons.inventory_2,
                   iconColor: context.colors.primary,
                   iconBackgroundColor: context.colors.primaryContainer,
-                  badgeText: '+4.2%',
+                  badgeText: '${products.length} référence(s)',
                 ),
               ),
             SizedBox(
               width: cardWidth,
               child: AppMetricCard(
-                title: 'Alertes de Réappro.',
+                title: 'Stock faible (À commander)',
                 value: '$restock',
                 icon: Icons.notification_important,
                 iconColor: context.colors.error,
                 iconBackgroundColor: context.colors.errorContainer,
-                badgeText: 'À traiter',
+                badgeText: restock == 0 ? 'Stock optimal' : '$restock produit(s)',
               ),
             ),
           ],
@@ -748,7 +936,24 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
   String? _imageUrl;
   bool _saving = false;
 
+  static const List<String> _kStandardUnits = [
+    'pièce',
+    'kg',
+    'sac',
+    'carton',
+    'paquet',
+    'litre',
+    'mètre',
+    'boîte',
+    'bouteille',
+    'lot',
+    'paire',
+    'palette',
+    'gramme',
+  ];
+
   bool get _isEdit => widget.product != null;
+  bool _customUnitMode = false;
 
   @override
   void initState() {
@@ -765,6 +970,9 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
     _threshold = TextEditingController(
       text: formatQuantity(p?.lowStockThreshold ?? 0),
     );
+    if (p != null && !_kStandardUnits.contains(p.unit) && p.unit.isNotEmpty) {
+      _customUnitMode = true;
+    }
   }
 
   @override
@@ -860,11 +1068,11 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
     return AppFormDialog(
       title: _isEdit ? 'Modifier Produit' : 'Ajouter Produit',
       subtitle: _isEdit
-          ? 'Mise à jour des informations du produit'
-          : 'Nouveau produit dans votre catalogue',
+          ? 'Mise à jour des informations de l\'article'
+          : 'Enregistrement direct d\'un produit dans votre stock',
       icon: Icons.inventory_2_outlined,
       gradientColors: const [AppColors.brandNavy, AppColors.brandNavyLight],
-      width: 520,
+      width: 860,
       primaryLabel: 'Enregistrer',
       primaryIcon: Icons.check_circle_outline,
       onPrimary: _saving ? null : _save,
@@ -874,261 +1082,482 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Section Photo ─────────────────────────────────
-            _FormSectionContainer(
-              title: 'Photo du Produit',
-              icon: Icons.camera_alt_outlined,
-              child: Center(
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    InkWell(
-                      onTap: _pickImage,
-                      borderRadius: BorderRadius.circular(50),
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: context.colors.surfaceContainer,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: context.colors.outline,
-                            width: 2,
-                          ),
-                        ),
-                        child: hasImage
-                            ? ClipOval(
-                                child: AppImage(
-                                  imagePath: _imageUrl,
-                                  fit: BoxFit.cover,
-                                  width: 100,
-                                  height: 100,
-                                ),
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+            // ── Rangée 1 : Identité & Prix (même hauteur & largeur) ──
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Carte 1 : Identité du Produit
+                  Expanded(
+                    child: _FormSectionContainer(
+                      title: 'Identité du Produit',
+                      icon: Icons.inventory_2_outlined,
+                      child: Column(
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Sélecteur Photo compact
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
-                                    Icons.add_a_photo_outlined,
-                                    size: 28,
-                                    color: context.colors.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(height: 4),
                                   Text(
                                     'Photo',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: context.colors.onSurfaceVariant,
+                                    style: AppTypography.labelSm.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: context.colors.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  InkWell(
+                                    onTap: _pickImage,
+                                    borderRadius: BorderRadius.circular(40),
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        Container(
+                                          width: 60,
+                                          height: 60,
+                                          decoration: BoxDecoration(
+                                            color: context.colors.surfaceContainer,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: context.colors.outline,
+                                              width: 1.5,
+                                            ),
+                                          ),
+                                          child: hasImage
+                                              ? ClipOval(
+                                                  child: AppImage(
+                                                    imagePath: _imageUrl,
+                                                    fit: BoxFit.cover,
+                                                    width: 60,
+                                                    height: 60,
+                                                  ),
+                                                )
+                                              : Icon(
+                                                  Icons.add_a_photo_outlined,
+                                                  size: 22,
+                                                  color: context.colors.primary,
+                                                ),
+                                        ),
+                                        Positioned(
+                                          bottom: -2,
+                                          right: -2,
+                                          child: Container(
+                                            width: 20,
+                                            height: 20,
+                                            decoration: BoxDecoration(
+                                              color: context.colors.primary,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: context.colors.surfaceContainerLowest,
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.camera_alt,
+                                              color: Colors.white,
+                                              size: 11,
+                                            ),
+                                          ),
+                                        ),
+                                        if (hasImage)
+                                          Positioned(
+                                            top: -4,
+                                            right: -4,
+                                            child: InkWell(
+                                              onTap: () => setState(() => _imageUrl = null),
+                                              child: Container(
+                                                width: 18,
+                                                height: 18,
+                                                decoration: BoxDecoration(
+                                                  color: context.colors.error,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.close,
+                                                  color: Colors.white,
+                                                  size: 11,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
+                              const SizedBox(width: 12),
+                              // Nom de l'article
+                              Expanded(
+                                child: AppFormField(
+                                  label: 'Nom de l\'article',
+                                  hint: 'Ex: Riz Uncle Ben\'s 5kg',
+                                  controller: _name,
+                                  icon: Icons.label_outline,
+                                  isRequired: true,
+                                  validator: (v) =>
+                                      (v == null || v.trim().isEmpty) ? 'Requis' : null,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          FormFieldRow(
+                            left: AppFormField(
+                              label: 'Référence',
+                              hint: 'Auto si vide',
+                              controller: _reference,
+                              icon: Icons.qr_code_outlined,
+                            ),
+                            right: _customUnitMode
+                                ? AppFormField(
+                                    label: 'Unité personnalisée',
+                                    hint: 'Ex: carton 12x1L',
+                                    controller: _unit,
+                                    icon: Icons.edit_outlined,
+                                    isRequired: true,
+                                    suffixIcon: IconButton(
+                                      icon: const Icon(Icons.list, size: 18),
+                                      tooltip: 'Choisir parmi la liste',
+                                      onPressed: () => setState(() {
+                                        _customUnitMode = false;
+                                        _unit.text = 'pièce';
+                                      }),
+                                    ),
+                                  )
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Unité *',
+                                            style: AppTypography.labelSm.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              color: context.colors.onSurface,
+                                            ),
+                                          ),
+                                          InkWell(
+                                            onTap: () => setState(
+                                              () => _customUnitMode = true,
+                                            ),
+                                            child: Text(
+                                              '+ Autre unité',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: context.colors.primary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      DropdownButtonFormField<String>(
+                                        initialValue: _kStandardUnits.contains(_unit.text)
+                                            ? _unit.text
+                                            : 'pièce',
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          prefixIcon: const Icon(
+                                            Icons.straighten_outlined,
+                                            size: 18,
+                                          ),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 11,
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              AppRadius.lg,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: context.colors.outlineVariant,
+                                            ),
+                                          ),
+                                        ),
+                                        items: _kStandardUnits
+                                            .map(
+                                              (u) => DropdownMenuItem(
+                                                value: u,
+                                                child: Text(
+                                                  u,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                        onChanged: (val) {
+                                          if (val != null) {
+                                            setState(() => _unit.text = val);
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ],
                       ),
                     ),
-                    // Camera overlay badge
-                    Positioned(
-                      bottom: 2,
-                      right: 2,
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: context.colors.primary,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: context.colors.surfaceContainerLowest,
-                            width: 2,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                      ),
-                    ),
-                    // Remove button
-                    if (hasImage)
-                      Positioned(
-                        top: -4,
-                        right: -4,
-                        child: InkWell(
-                          onTap: () => setState(() => _imageUrl = null),
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: context.colors.error,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Section Informations ──────────────────────────
-            _FormSectionContainer(
-              title: 'Informations Produit',
-              icon: Icons.info_outline,
-              child: Column(
-                children: [
-                  AppFormField(
-                    label: 'Nom du produit',
-                    hint: 'Ex: Riz Uncle Ben\'s 5kg',
-                    controller: _name,
-                    icon: Icons.label_outline,
-                    isRequired: true,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Requis' : null,
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  FormFieldRow(
-                    left: AppFormField(
-                      label: 'Référence',
-                      hint: 'Auto-généré si vide',
-                      controller: _reference,
-                      icon: Icons.qr_code_outlined,
-                    ),
-                    right: AppFormField(
-                      label: 'Unité',
-                      hint: 'Ex: pièce, kg, litre',
-                      controller: _unit,
-                      icon: Icons.straighten_outlined,
-                      isRequired: true,
+                  const SizedBox(width: AppSpacing.md),
+
+                  // Carte 2 : Prix & Bénéfice
+                  Expanded(
+                    child: _FormSectionContainer(
+                      title: 'Prix & Rentabilité (Gain)',
+                      icon: Icons.payments_outlined,
+                      child: Column(
+                        children: [
+                          FormFieldRow(
+                            left: AppFormField(
+                              label: 'Prix d\'achat (GNF)',
+                              hint: 'Ex: 50 000',
+                              controller: _purchase,
+                              icon: Icons.shopping_cart_outlined,
+                              isRequired: true,
+                              keyboardType: TextInputType.number,
+                              iconColor: AppColors.warning,
+                              onChanged: (_) => setState(() {}),
+                            ),
+                            right: AppFormField(
+                              label: 'Prix de vente (GNF)',
+                              hint: 'Ex: 75 000',
+                              controller: _sale,
+                              icon: Icons.sell_outlined,
+                              isRequired: true,
+                              keyboardType: TextInputType.number,
+                              iconColor: AppColors.brandEmerald,
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Builder(
+                            builder: (context) {
+                              final buy =
+                                  int.tryParse(_purchase.text.trim()) ?? 0;
+                              final sell =
+                                  int.tryParse(_sale.text.trim()) ?? 0;
+                              final margin = sell - buy;
+                              final isPositive = margin >= 0;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: (isPositive
+                                          ? AppColors.brandEmerald
+                                          : context.colors.error)
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: (isPositive
+                                            ? AppColors.brandEmerald
+                                            : context.colors.error)
+                                        .withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isPositive
+                                          ? Icons.trending_up
+                                          : Icons.trending_down,
+                                      size: 16,
+                                      color: isPositive
+                                          ? AppColors.brandEmerald
+                                          : context.colors.error,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Bénéfice estimé / unité : ',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: context.colors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      '${isPositive ? '+' : ''}${formatAmount(margin)} GNF',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isPositive
+                                            ? AppColors.brandEmerald
+                                            : context.colors.error,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
 
-            // ── Section Prix ──────────────────────────────────
-            _FormSectionContainer(
-              title: 'Prix & Tarification',
-              icon: Icons.payments_outlined,
-              child: FormFieldRow(
-                left: AppFormField(
-                  label: 'Prix d\'achat (GNF)',
-                  hint: 'Ex: 50 000',
-                  controller: _purchase,
-                  icon: Icons.shopping_cart_outlined,
-                  isRequired: true,
-                  keyboardType: TextInputType.number,
-                  iconColor: AppColors.warning,
-                ),
-                right: AppFormField(
-                  label: 'Prix de vente (GNF)',
-                  hint: 'Ex: 75 000',
-                  controller: _sale,
-                  icon: Icons.sell_outlined,
-                  isRequired: true,
-                  keyboardType: TextInputType.number,
-                  iconColor: AppColors.brandEmerald,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Section Stock ─────────────────────────────────
-            _FormSectionContainer(
-              title: 'Niveaux de Stock',
-              icon: Icons.inventory_outlined,
-              child: FormFieldRow(
-                left: AppFormField(
-                  label: 'Stock initial',
-                  hint: 'Ex: 100',
-                  controller: _stock,
-                  icon: Icons.archive_outlined,
-                  isRequired: true,
-                  keyboardType: TextInputType.number,
-                ),
-                right: AppFormField(
-                  label: 'Seuil d\'alerte',
-                  hint: 'Ex: 10',
-                  controller: _threshold,
-                  icon: Icons.warning_amber_outlined,
-                  isRequired: true,
-                  keyboardType: TextInputType.number,
-                  iconColor: AppColors.error,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Section Code-barres ────────────────────────────
-            _FormSectionContainer(
-              title: 'Code-barres (Scan POS & Caisse)',
-              icon: Icons.qr_code_2_outlined,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // ── Rangée 2 : Code-barres & Stock (même hauteur & largeur) ──
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _barcode,
-                          decoration: InputDecoration(
-                            hintText: 'Ex: 6141234567890 (ou générer ci-dessous)',
-                            prefixIcon: Icon(Icons.barcode_reader, size: 20, color: context.colors.primary),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  // Carte 3 : Code-barres & Scan
+                  Expanded(
+                    child: _FormSectionContainer(
+                      title: 'Code-barres (Scan & Caisse)',
+                      icon: Icons.qr_code_2_outlined,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AppFormField(
+                            label: 'Code-barres',
+                            hint: 'Ex: 6141234567890 (ou générer)',
+                            controller: _barcode,
+                            icon: Icons.barcode_reader,
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Tooltip(
-                        message: 'Scanner via webcam ou smartphone',
-                        child: FilledButton.icon(
-                          onPressed: () async {
-                            final code = await BarcodeScannerDialog.show(context);
-                            if (code != null && mounted) {
-                              setState(() => _barcode.text = code);
-                            }
-                          },
-                          icon: const Icon(Icons.qr_code_scanner, size: 18),
-                          label: const Text('Scanner'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _generateEan13,
+                                  icon: const Icon(Icons.auto_awesome, size: 15),
+                                  label: const Text('Générer'),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 10,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: () async {
+                                    final code = await BarcodeScannerDialog.show(context);
+                                    if (code != null && mounted) {
+                                      setState(() => _barcode.text = code);
+                                    }
+                                  },
+                                  icon: const Icon(Icons.qr_code_scanner, size: 15),
+                                  label: const Text('Scanner'),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.brandOrange,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 10,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
+                          if (_isEdit && widget.product != null) ...[
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () => _showPrintLabelsDialog(context, widget.product!),
+                                icon: const Icon(Icons.print_outlined, size: 15),
+                                label: const Text('Imprimer étiquettes'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.xs,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _generateEan13,
-                        icon: const Icon(Icons.auto_awesome, size: 16),
-                        label: const Text('Générer EAN-13 (Vrac/Local)'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                      ),
-                      if (_isEdit && widget.product != null)
-                        OutlinedButton.icon(
-                          onPressed: () => _showPrintLabelsDialog(context, widget.product!),
-                          icon: const Icon(Icons.print_outlined, size: 16),
-                          label: const Text('Imprimer étiquettes'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  const SizedBox(width: AppSpacing.md),
+
+                  // Carte 4 : Gestion du Stock & Alertes
+                  Expanded(
+                    child: _FormSectionContainer(
+                      title: 'Gestion du Stock & Alertes',
+                      icon: Icons.inventory_outlined,
+                      child: Column(
+                        children: [
+                          FormFieldRow(
+                            left: AppFormField(
+                              label: 'Stock en boutique',
+                              hint: 'Ex: 100',
+                              controller: _stock,
+                              icon: Icons.archive_outlined,
+                              isRequired: true,
+                              keyboardType: TextInputType.number,
+                            ),
+                            right: AppFormField(
+                              label: 'Alerte stock faible',
+                              hint: 'Ex: 10',
+                              controller: _threshold,
+                              icon: Icons.warning_amber_outlined,
+                              isRequired: true,
+                              keyboardType: TextInputType.number,
+                              iconColor: AppColors.error,
+                            ),
                           ),
-                        ),
-                    ],
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: context.colors.primary.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: context.colors.primary.withValues(alpha: 0.15),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.notifications_active_outlined,
+                                  size: 15,
+                                  color: context.colors.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Alerte automatique dès que le stock passe sous ce seuil.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: context.colors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1155,10 +1584,10 @@ class _FormSectionContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: context.colors.surfaceContainerLowest,
-        border: Border.all(color: context.colors.outline),
+        border: Border.all(color: context.colors.outlineVariant),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -1166,19 +1595,26 @@ class _FormSectionContainer extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 20, color: context.colors.primary),
-              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: context.colors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Icon(icon, size: 16, color: context.colors.primary),
+              ),
+              const SizedBox(width: 8),
               Text(
                 title,
                 style: AppTypography.labelMd.copyWith(
                   color: context.colors.onSurface,
-                  fontSize: 15,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           child,
         ],
       ),

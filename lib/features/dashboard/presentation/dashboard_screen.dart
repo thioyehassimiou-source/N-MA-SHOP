@@ -14,7 +14,6 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/app_button.dart';
-import '../../sales/application/sales_providers.dart';
 import '../application/dashboard_providers.dart';
 import '../../../core/providers/theme_provider.dart';
 
@@ -954,16 +953,16 @@ class _MetricsGrid extends ConsumerWidget {
           _GlassMetricCard(
             title: 'Solde de caisse',
             value: formatGnfCompact(data.cashAvailable),
-            badgeText: 'Trésorerie Act...',
+            badgeText: 'En caisse disponible',
             badgeColor: AppColors.brandEmerald,
             icon: Icons.account_balance_rounded,
             iconColor: AppColors.iconGreen,
             iconBackgroundColor: AppColors.iconGreenBg,
           ),
           _GlassMetricCard(
-            title: 'Crédits à recouvrer',
+            title: 'Argent dehors (Crédits)',
             value: formatGnfCompact(data.owed),
-            badgeText: '${data.owedCount} clients',
+            badgeText: '${data.owedCount} clients à encaisser',
             icon: Icons.credit_card_rounded,
             iconColor: AppColors.iconOrange,
             iconBackgroundColor: AppColors.iconOrangeBg,
@@ -971,16 +970,16 @@ class _MetricsGrid extends ConsumerWidget {
           _GlassMetricCard(
             title: 'Produits en alerte',
             value: '${data.lowStock.length}',
-            badgeText: data.lowStock.isEmpty ? 'Stock OK' : 'À réappro...',
+            badgeText: data.lowStock.isEmpty ? 'Stock optimal' : 'Stock faible (À commander)',
             icon: Icons.warning_amber_rounded,
             iconColor: AppColors.iconRed,
             iconBackgroundColor: AppColors.iconRedBg,
           ),
           if (isAdmin)
             _GlassMetricCard(
-              title: 'Fournisseurs actifs',
+              title: 'Dettes à payer',
               value: formatGnfCompact(data.supplierDebt),
-              badgeText: 'Dettes fournisseurs',
+              badgeText: 'Aux fournisseurs',
               icon: Icons.storefront_rounded,
               iconColor: AppColors.iconNavy,
               iconBackgroundColor: AppColors.iconNavyBg,
@@ -1040,47 +1039,6 @@ class _RecentSalesCard extends ConsumerWidget {
 
   final List<RecentSaleView> sales;
 
-  void _confirmCancel(BuildContext context, WidgetRef ref, RecentSaleView sale) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Annuler la vente ?'),
-        content: Text(
-          'Attention : Le stock sera restauré et les paiements associés seront effacés.\n'
-          'Cette action est irréversible.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Retour'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ref.read(saleServiceProvider).cancel(sale.id);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Vente annulée avec succès.')),
-                  );
-                  ref.invalidate(dashboardDataProvider);
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur : $e')),
-                  );
-                }
-              }
-            },
-            child: Text('Confirmer l\'annulation'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -1124,7 +1082,6 @@ class _RecentSalesCard extends ConsumerWidget {
                 DataColumn(label: Text('HEURE')),
                 DataColumn(label: Text('MONTANT')),
                 DataColumn(label: Text('STATUT')),
-                DataColumn(label: Text('ACTIONS')),
               ],
               rows: sales
                   .map(
@@ -1229,30 +1186,6 @@ class _RecentSalesCard extends ConsumerWidget {
                                       label: 'Crédit',
                                       status: AppChipStatus.warning,
                                     )),
-                        ),
-                        DataCell(
-                          sale.isCancelled || !isAdmin
-                              ? const SizedBox()
-                              : PopupMenuButton<String>(
-                                  icon: Icon(Icons.more_vert, color: theme.colorScheme.onSurfaceVariant),
-                                  onSelected: (value) {
-                                    if (value == 'cancel') {
-                                      _confirmCancel(context, ref, sale);
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'cancel',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.cancel_outlined, color: Colors.red, size: 20),
-                                          SizedBox(width: 8),
-                                          Text('Annuler', style: TextStyle(color: Colors.red)),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
                         ),
                       ],
                     ),

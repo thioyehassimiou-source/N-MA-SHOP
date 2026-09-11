@@ -376,5 +376,36 @@ void main() {
       expect(check5.isLicensed, isTrue);
       expect(check5.isExpired, isFalse);
     });
+
+    test('trialCountdownLabel formats days and hours accurately', () {
+      final now = DateTime.now();
+      
+      // More than 1 day remaining
+      final info1 = LicenseInfo(
+        status: LicenseStatus.trial,
+        type: LicenseType.trial,
+        expiryDate: now.add(const Duration(days: 5, hours: 14, minutes: 20)),
+        daysLeft: 6,
+      );
+      expect(info1.trialCountdownLabel, contains('5j 14h'));
+
+      // Less than 24 hours remaining
+      final info2 = LicenseInfo(
+        status: LicenseStatus.trial,
+        type: LicenseType.trial,
+        expiryDate: now.add(const Duration(hours: 12, minutes: 45)),
+        daysLeft: 1,
+      );
+      expect(info2.trialCountdownLabel, contains('12h'));
+
+      // Expired trial
+      final info3 = LicenseInfo(
+        status: LicenseStatus.expired,
+        type: LicenseType.trial,
+        expiryDate: now.subtract(const Duration(minutes: 1)),
+        daysLeft: 0,
+      );
+      expect(info3.trialCountdownLabel, 'Essai expiré');
+    });
   });
 }

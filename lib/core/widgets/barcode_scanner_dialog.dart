@@ -48,6 +48,7 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
   String _usbBarcodeBuffer = '';
   Timer? _usbDebounceTimer;
   final FocusNode _focusNode = FocusNode();
+  final TextEditingController _manualInputCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -55,8 +56,10 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
 
-    // Initialiser immédiatement la webcam pour un scan direct sans clic supplémentaire
-    _initCamera();
+    // Initialiser la webcam si support natif disponible
+    if (!Platform.isLinux) {
+      _initCamera();
+    }
 
     // Démarrer le serveur local (onglet Smartphone)
     _scannerServer.start().then((_) {
@@ -107,6 +110,7 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
   @override
   void dispose() {
     _focusNode.dispose();
+    _manualInputCtrl.dispose();
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _serverSubscription?.cancel();
@@ -254,12 +258,12 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
   }
 
   Widget _buildWebcamTab() {
-    // Onglet Webcam : la caméra n'est initialisée que quand on est sur cet onglet
-    if (_cameraController == null) {
-      // Proposer d'activer la caméra
+    // Sur Linux Desktop ou si la caméra native n'est pas initialisée :
+    // On offre l'ouverture immédiate via le serveur local Web qui active la webcam Linux sans écran noir.
+    if (Platform.isLinux || _cameraController == null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.all(28.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -270,38 +274,21 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Icon(Icons.videocam_outlined, color: AppColors.primary, size: 36),
+                child: const Icon(Icons.videocam_outlined, color: AppColors.primary, size: 38),
               ),
               const SizedBox(height: 16),
               const Text(
-                'Activer la caméra',
+                'Activer la Webcam PC',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Cliquez sur le bouton pour démarrer\nla caméra de votre PC.',
+                'Cliquez sur le bouton ci-dessous pour démarrer le scan via votre caméra PC.\nDès qu\'un article est détecté, le code s\'insère instantanément avec un Bip sonore !',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
               ),
               const SizedBox(height: 20),
               FilledButton.icon(
-                onPressed: _initCamera,
-                icon: const Icon(Icons.play_circle_outline),
-                label: const Text('Démarrer la caméra'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Si la caméra reste noire ou ne fonctionne pas, utilisez la version navigateur :',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
                 onPressed: () async {
                   if (_scannerServer.serverUrl != null) {
                     final uri = Uri.parse(_scannerServer.serverUrl!).replace(host: '127.0.0.1');
@@ -310,8 +297,35 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
                     }
                   }
                 },
-                icon: const Icon(Icons.open_in_browser),
-                label: const Text('Ouvrir dans le navigateur'),
+                icon: const Icon(Icons.play_circle_fill_rounded),
+                label: const Text('Démarrer la Webcam (1-clic)'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.phone_iphone_outlined, size: 16, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Astuce : Utilisez aussi l\'onglet Smartphone ci-dessus pour scanner sans fil.',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -487,10 +501,48 @@ class _BarcodeScannerDialogState extends State<BarcodeScannerDialog>
                     style: AppTypography.labelMd.copyWith(color: Colors.green)),
               ],
             )
-          : Text(
-              'Ou saisissez manuellement la référence produit',
-              style: AppTypography.bodySm.copyWith(color: Colors.grey, fontSize: 11),
-              textAlign: TextAlign.center,
+          : Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 38,
+                    child: TextField(
+                      controller: _manualInputCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'Saisie manuelle code ou référence...',
+                        hintStyle: const TextStyle(fontSize: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        prefixIcon: const Icon(Icons.keyboard_outlined, size: 16),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onSubmitted: (val) {
+                        if (val.trim().isNotEmpty) {
+                          _onCodeDetected(val.trim());
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () {
+                    final val = _manualInputCtrl.text.trim();
+                    if (val.isNotEmpty) {
+                      _onCodeDetected(val);
+                    }
+                  },
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    minimumSize: const Size(0, 38),
+                  ),
+                  child: const Text('Valider', style: TextStyle(fontSize: 12)),
+                ),
+              ],
             ),
     );
   }

@@ -79,6 +79,7 @@ class AppFormDialog extends StatelessWidget {
         width: width,
         height: height,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: height == null ? MainAxisSize.min : MainAxisSize.max,
           children: [
             // ── Header Gradient ──────────────────────────────────
@@ -93,7 +94,7 @@ class AppFormDialog extends StatelessWidget {
             // ── Contenu ──────────────────────────────────────────
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
                 child: sections != null
                     ? Column(
                         mainAxisSize: MainAxisSize.min,
@@ -296,7 +297,8 @@ class _ActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
       decoration: BoxDecoration(
         color: context.colors.surfaceContainerLowest,
         border: Border(
@@ -308,49 +310,49 @@ class _ActionBar extends StatelessWidget {
         children: [
           // Bouton Annuler (text simple)
           TextButton(
-            onPressed: onCancel,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-            child: Text(
-              'Fermer',
-              style: TextStyle(
-                color: context.colors.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
+              onPressed: onCancel,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-
-          // Bouton secondaire optionnel
-          if (secondaryLabel != null && onSecondary != null) ...[
-            OutlinedButton.icon(
-              onPressed: onSecondary,
-              icon: Icon(secondaryIcon ?? Icons.save_alt_rounded, size: 18),
-              label: Text(secondaryLabel!),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+              child: Text(
+                'Fermer',
+                style: TextStyle(
+                  color: context.colors.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-          ],
+            const SizedBox(width: AppSpacing.xs),
 
-          // Bouton principal gradient
-          _GradientButton(
-            label: primaryLabel,
-            icon: primaryIcon,
-            onPressed: onPrimary,
-            isLoading: isPrimaryLoading,
-            gradientColors: gradientColors,
-          ),
-        ],
-      ),
-    );
+            // Bouton secondaire optionnel
+            if (secondaryLabel != null && onSecondary != null) ...[
+              OutlinedButton.icon(
+                onPressed: onSecondary,
+                icon: Icon(secondaryIcon ?? Icons.save_alt_rounded, size: 18),
+                label: Text(secondaryLabel!),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+            ],
+
+            // Bouton principal gradient
+            _GradientButton(
+              label: primaryLabel,
+              icon: primaryIcon,
+              onPressed: onPrimary,
+              isLoading: isPrimaryLoading,
+              gradientColors: gradientColors,
+            ),
+          ],
+        ),
+      );
+    }
   }
-}
 
 // ─────────────────────────── Gradient Button ─────────────────────────────────
 

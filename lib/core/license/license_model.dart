@@ -67,6 +67,29 @@ class LicenseInfo {
   bool get isLifetime => type == LicenseType.lifetime;
   bool get isTampered => status == LicenseStatus.tampered;
 
+  /// Durée exacte restante avant expiration.
+  Duration? get remainingDuration {
+    if (expiryDate == null) return null;
+    final diff = expiryDate!.difference(DateTime.now());
+    return diff.isNegative ? Duration.zero : diff;
+  }
+
+  /// Libellé précis du compte à rebours pour la période d'essai (Jours et Heures).
+  String get trialCountdownLabel {
+    final dur = remainingDuration;
+    if (dur == null || dur <= Duration.zero) return 'Essai expiré';
+    final days = dur.inDays;
+    final hours = dur.inHours % 24;
+    final minutes = dur.inMinutes % 60;
+    if (days > 0) {
+      return 'Essai : ${days}j ${hours}h restant${days > 1 || hours > 1 ? 's' : ''}';
+    } else if (hours > 0) {
+      return 'Essai : ${hours}h ${minutes}m restante${hours > 1 || minutes > 1 ? 's' : ''}';
+    } else {
+      return 'Essai : ${minutes}m restante${minutes > 1 ? 's' : ''}';
+    }
+  }
+
   /// Étiquette courte pour l'UI.
   String get statusLabel {
     switch (status) {

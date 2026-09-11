@@ -23,6 +23,7 @@ import '../../../core/widgets/product_thumbnail.dart';
 import '../../../core/widgets/app_image.dart';
 import '../../stock/application/stock_providers.dart';
 import '../../stock/domain/entities/product.dart';
+import '../../clients/application/clients_providers.dart';
 import '../application/sale_cart_controller.dart';
 import '../domain/usecases/record_sale.dart';
 
@@ -38,18 +39,15 @@ class SalesScreen extends ConsumerWidget {
         final isWide = constraints.maxWidth >= 720;
 
         if (isWide) {
-          // ── Mode large : sélection produits + panier côte à côte ──
+          // ── Mode large : sélection produits + panier côte à côte (espace égal 50% / 50%) ──
           return Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Expanded(flex: 3, child: _ProductPicker()),
+                const Expanded(child: _ProductPicker()),
                 const SizedBox(width: AppSpacing.lg),
-                SizedBox(
-                  width: (constraints.maxWidth * 0.32).clamp(300.0, 400.0),
-                  child: const _CartPanel(),
-                ),
+                const Expanded(child: _CartPanel()),
               ],
             ),
           );
@@ -456,7 +454,7 @@ class _ProductPickerState extends ConsumerState<_ProductPicker> {
               }
               return GridView.builder(
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 200,
+                  maxCrossAxisExtent: 220,
                   mainAxisExtent: 110,
                   crossAxisSpacing: AppSpacing.md,
                   mainAxisSpacing: AppSpacing.md,
@@ -643,7 +641,50 @@ class _CartPanel extends ConsumerWidget {
                 _PaymentSelector(state: state, controller: controller),
                 const SizedBox(height: AppSpacing.md),
 
-                // Total
+                // Total et Remise négociée
+                if (state.hasAnyDiscount) ...[
+                  Row(
+                    children: [
+                      Text(
+                        'Total normal',
+                        style: AppTypography.bodySm.copyWith(
+                          color: context.colors.onSurfaceVariant,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        formatGnf(state.catalogTotal),
+                        style: AppTypography.bodySm.copyWith(
+                          decoration: TextDecoration.lineThrough,
+                          color: context.colors.outlineVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        'Remise accordée',
+                        style: AppTypography.bodySm.copyWith(
+                          color: AppColors.brandEmerald,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '-${formatGnf(state.totalDiscount)}',
+                        style: AppTypography.bodySm.copyWith(
+                          color: AppColors.brandEmerald,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                ],
+
+                // Total final
                 Row(
                   children: [
                     Text(
@@ -652,6 +693,34 @@ class _CartPanel extends ConsumerWidget {
                         color: context.colors.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    if (!state.isEmpty)
+                      InkWell(
+                        onTap: () => _showGlobalDiscountDialog(context, ref, state),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.brandOrange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.sell_outlined, size: 12, color: AppColors.brandOrange),
+                              SizedBox(width: 4),
+                              Text(
+                                'Remise',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.brandOrange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     const Spacer(),
                     Text(
                       formatGnf(state.total),
@@ -738,28 +807,33 @@ class _EmptyCartPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.shopping_cart_outlined,
-              size: 56,
+              size: 38,
               color: context.colors.outlineVariant,
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: 6),
             Text(
               'Panier vide',
               style: AppTypography.labelMd.copyWith(
                 color: context.colors.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: 2),
             Text(
-              'Cliquez sur un produit à gauche\npour l\'ajouter.',
+              'Cliquez sur un produit à gauche pour l\'ajouter.',
               textAlign: TextAlign.center,
               style: AppTypography.bodySm.copyWith(
+                fontSize: 12,
                 color: context.colors.outlineVariant,
               ),
             ),
@@ -882,7 +956,7 @@ class _SubmitButton extends ConsumerWidget {
           subtitle: 'Imprimez le reçu ou enregistrez-le directement en PDF.',
           icon: Icons.check_circle_outline,
           gradientColors: const [AppColors.brandEmerald, Color(0xFF059669)],
-          width: 460,
+          width: 540,
           primaryLabel: 'Imprimer Ticket',
           primaryIcon: Icons.print_outlined,
           onPrimary: () async {
@@ -972,10 +1046,11 @@ class _CartLineTile extends ConsumerWidget {
           ),
           const SizedBox(width: AppSpacing.base),
 
-          // Nom + prix unitaire
+          // Nom + prix unitaire négociable
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   line.name,
@@ -983,33 +1058,102 @@ class _CartLineTile extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.labelMd,
                 ),
-                Text(
-                  '${formatGnf(line.unitPrice)} / ${line.unit}',
-                  style: AppTypography.labelSm.copyWith(
-                    color: hasIssue
-                        ? theme.colorScheme.error
-                        : context.colors.onSurfaceVariant,
+                InkWell(
+                  onTap: () => _showDiscountDialog(context, ref, index, line),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (line.hasDiscount) ...[
+                          Flexible(
+                            child: Text(
+                              formatAmount(line.basePrice),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.labelSm.copyWith(
+                                decoration: TextDecoration.lineThrough,
+                                color: context.colors.outlineVariant,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 3),
+                          Flexible(
+                            child: Text(
+                              '${formatGnf(line.unitPrice)}/${line.unit}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.labelSm.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.brandEmerald,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 3),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.brandEmerald.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '-${formatAmount(line.discountAmount)}',
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.brandEmerald,
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          Flexible(
+                            child: Text(
+                              '${formatGnf(line.unitPrice)}/${line.unit}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.labelSm.copyWith(
+                                color: hasIssue
+                                    ? theme.colorScheme.error
+                                    : context.colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 3),
+                          Icon(
+                            Icons.edit_outlined,
+                            size: 11,
+                            color: context.colors.primary.withValues(alpha: 0.6),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
 
-          // Contrôles quantité
+          // Contrôles quantité (incrémentation, décrémentation et saisie directe)
           _QuantityControl(
             quantity: line.quantity,
             available: line.availableStock,
             onDecrement: () => controller.setQuantity(index, line.quantity - 1),
             onIncrement: () => controller.setQuantity(index, line.quantity + 1),
+            onQuantityChanged: (newQty) => controller.setQuantity(index, newQty),
           ),
 
           // Sous-total
           SizedBox(
-            width: 90,
+            width: 65,
             child: Text(
               formatAmount(line.lineTotal),
               textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: AppTypography.labelMd.copyWith(
+                fontWeight: FontWeight.bold,
                 color: hasIssue ? context.colors.error : context.colors.primary,
               ),
             ),
@@ -1020,41 +1164,110 @@ class _CartLineTile extends ConsumerWidget {
   }
 }
 
-class _QuantityControl extends StatelessWidget {
+class _QuantityControl extends StatefulWidget {
   const _QuantityControl({
     required this.quantity,
     required this.available,
     required this.onDecrement,
     required this.onIncrement,
+    required this.onQuantityChanged,
   });
 
   final int quantity;
   final int available;
   final VoidCallback onDecrement;
   final VoidCallback onIncrement;
+  final ValueChanged<int> onQuantityChanged;
+
+  @override
+  State<_QuantityControl> createState() => _QuantityControlState();
+}
+
+class _QuantityControlState extends State<_QuantityControl> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: '${widget.quantity}');
+    _focusNode = FocusNode();
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus) {
+        _applyText();
+      } else {
+        _controller.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _controller.text.length,
+        );
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _QuantityControl oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.quantity != widget.quantity && !_focusNode.hasFocus) {
+      _controller.text = '${widget.quantity}';
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _applyText() {
+    final parsed = int.tryParse(_controller.text.trim());
+    if (parsed != null && parsed > 0) {
+      widget.onQuantityChanged(parsed);
+    } else {
+      _controller.text = '${widget.quantity}';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final atMax = quantity >= available;
+    final atMax = widget.quantity >= widget.available;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(
+          color: _focusNode.hasFocus
+              ? theme.colorScheme.primary
+              : theme.colorScheme.outlineVariant,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _QtyBtn(icon: Icons.remove, onTap: onDecrement),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Text(formatQuantity(quantity), style: AppTypography.labelMd),
+          _QtyBtn(icon: Icons.remove, onTap: widget.onDecrement),
+          SizedBox(
+            width: 36,
+            height: 26,
+            child: TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.number,
+              style: AppTypography.labelMd.copyWith(fontWeight: FontWeight.bold, fontSize: 13),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 3),
+                border: InputBorder.none,
+              ),
+              onSubmitted: (_) => _applyText(),
+            ),
           ),
           _QtyBtn(
             icon: Icons.add,
-            onTap: atMax ? null : onIncrement,
+            onTap: atMax ? null : widget.onIncrement,
             disabled: atMax,
           ),
         ],
@@ -1075,10 +1288,10 @@ class _QtyBtn extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Padding(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(5),
         child: Icon(
           icon,
-          size: 16,
+          size: 15,
           color: disabled ? context.colors.outlineVariant : context.colors.onSurface,
         ),
       ),
@@ -1086,23 +1299,327 @@ class _QtyBtn extends StatelessWidget {
   }
 }
 
+/// Boîte de dialogue pour négocier / réduire le prix unitaire d'un produit.
+Future<void> _showDiscountDialog(
+  BuildContext context,
+  WidgetRef ref,
+  int index,
+  CartLine line,
+) async {
+  final controller = ref.read(saleCartControllerProvider.notifier);
+  final textController = TextEditingController(text: '${line.unitPrice}');
+  int currentPrice = line.unitPrice;
+
+  await showDialog(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setDialogState) {
+        final diff = line.basePrice - currentPrice;
+        final isDiscounted = diff > 0;
+        final isIncreased = diff < 0;
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.brandOrange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.sell_outlined, color: AppColors.brandOrange, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Prix négocié / Réduction',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 340,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  line.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Prix normal en boutique : ${formatGnf(line.basePrice)} / ${line.unit}',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Prix convenu pour la vente (GNF) :',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: textController,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.payments_outlined, size: 20),
+                    suffixText: 'GNF',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  onChanged: (val) {
+                    final p = int.tryParse(val.trim());
+                    if (p != null) {
+                      setDialogState(() => currentPrice = p);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                if (isDiscounted) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.brandEmerald.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.brandEmerald.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline, size: 16, color: AppColors.brandEmerald),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Remise : -${formatAmount(diff)} GNF / unité (-${((diff / line.basePrice) * 100).toStringAsFixed(0)}%)',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brandEmerald),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (isIncreased) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.trending_up, size: 16, color: AppColors.warning),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Majoration : +${formatAmount(-diff)} GNF / unité',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.warning),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    if (line.unitPrice != line.basePrice)
+                      ActionChip(
+                        label: const Text('Prix normal'),
+                        avatar: const Icon(Icons.refresh, size: 14),
+                        onPressed: () {
+                          textController.text = '${line.basePrice}';
+                          setDialogState(() => currentPrice = line.basePrice);
+                        },
+                      ),
+                    ActionChip(
+                      label: const Text('-500 GNF'),
+                      onPressed: () {
+                        final np = (line.basePrice - 500).clamp(0, 999999999);
+                        textController.text = '$np';
+                        setDialogState(() => currentPrice = np);
+                      },
+                    ),
+                    ActionChip(
+                      label: const Text('-1 000 GNF'),
+                      onPressed: () {
+                        final np = (line.basePrice - 1000).clamp(0, 999999999);
+                        textController.text = '$np';
+                        setDialogState(() => currentPrice = np);
+                      },
+                    ),
+                    ActionChip(
+                      label: const Text('-2 000 GNF'),
+                      onPressed: () {
+                        final np = (line.basePrice - 2000).clamp(0, 999999999);
+                        textController.text = '$np';
+                        setDialogState(() => currentPrice = np);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.brandOrange,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                final np = int.tryParse(textController.text.trim()) ?? currentPrice;
+                controller.setUnitPrice(index, np);
+                Navigator.of(ctx).pop();
+              },
+              child: const Text('Appliquer le prix'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// Boîte de dialogue pour accorder une remise globale sur le total du panier.
+Future<void> _showGlobalDiscountDialog(
+  BuildContext context,
+  WidgetRef ref,
+  SaleCartState state,
+) async {
+  final controller = ref.read(saleCartControllerProvider.notifier);
+  final textController = TextEditingController();
+
+  await showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.brandOrange.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.discount_outlined, color: AppColors.brandOrange, size: 20),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Remise globale sur la vente',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 340,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Total actuel du panier : ${formatGnf(state.total)}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Montant de la remise à déduire (GNF) :',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: textController,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                hintText: 'Ex: 2 000 ou 5 000',
+                prefixIcon: const Icon(Icons.remove_circle_outline, size: 20, color: AppColors.brandEmerald),
+                suffixText: 'GNF',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 6,
+              children: [
+                if (state.hasAnyDiscount)
+                  ActionChip(
+                    label: const Text('Rétablir prix normaux'),
+                    avatar: const Icon(Icons.refresh, size: 14),
+                    onPressed: () {
+                      controller.resetPrices();
+                      Navigator.of(ctx).pop();
+                    },
+                  ),
+                ActionChip(
+                  label: const Text('-1 000 GNF'),
+                  onPressed: () => textController.text = '1000',
+                ),
+                ActionChip(
+                  label: const Text('-2 000 GNF'),
+                  onPressed: () => textController.text = '2000',
+                ),
+                ActionChip(
+                  label: const Text('-5 000 GNF'),
+                  onPressed: () => textController.text = '5000',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Fermer'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.brandOrange,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          onPressed: () {
+            final discount = int.tryParse(textController.text.trim()) ?? 0;
+            if (discount > 0) {
+              controller.applyGlobalDiscount(discount);
+            }
+            Navigator.of(ctx).pop();
+          },
+          child: const Text('Appliquer la remise'),
+        ),
+      ],
+    ),
+  );
+}
+
 // ─────────────────────────── Sélecteur de paiement ───────────────────────────
 
-class _PaymentSelector extends StatefulWidget {
+// ─────────────────────────── Sélecteur de paiement ───────────────────────────
+
+class _PaymentSelector extends ConsumerStatefulWidget {
   const _PaymentSelector({required this.state, required this.controller});
 
   final SaleCartState state;
   final SaleCartController controller;
 
   @override
-  State<_PaymentSelector> createState() => _PaymentSelectorState();
+  ConsumerState<_PaymentSelector> createState() => _PaymentSelectorState();
 }
 
-class _PaymentSelectorState extends State<_PaymentSelector> {
+class _PaymentSelectorState extends ConsumerState<_PaymentSelector> {
   // Contrôleurs persistants : les champs ne se vident pas lors du changement
   // de méthode de paiement.
   late final TextEditingController _nameCtrl;
   late final TextEditingController _phoneCtrl;
+  String? _selectedCustomerId;
 
   @override
   void initState() {
@@ -1126,9 +1643,36 @@ class _PaymentSelectorState extends State<_PaymentSelector> {
   };
 
   @override
+  void didUpdateWidget(_PaymentSelector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state.customerName != widget.state.customerName &&
+        widget.state.customerName.isEmpty) {
+      _nameCtrl.clear();
+      _phoneCtrl.clear();
+      _selectedCustomerId = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = widget.state;
     final controller = widget.controller;
+    final clientsAsync = ref.watch(clientsStreamProvider);
+    final clients = clientsAsync.asData?.value ?? [];
+
+    // Auto-lier si un nom est déjà saisi
+    if (_selectedCustomerId == null && state.customerName.isNotEmpty && clients.isNotEmpty) {
+      final match = clients.where(
+        (c) => c.name.trim().toLowerCase() == state.customerName.trim().toLowerCase(),
+      );
+      if (match.isNotEmpty) {
+        _selectedCustomerId = match.first.id;
+      }
+    }
+
+    final isExistingClientSelected = _selectedCustomerId != null &&
+        _selectedCustomerId != '__new__' &&
+        clients.any((c) => c.id == _selectedCustomerId);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1149,28 +1693,311 @@ class _PaymentSelectorState extends State<_PaymentSelector> {
                 icon: entry.value.$1,
                 label: entry.value.$2,
                 selected: state.method == entry.key,
-                onTap: () => controller.setMethod(entry.key),
+                onTap: () {
+                  controller.setMethod(entry.key);
+                  if (entry.key == PaymentMethod.credit && !isExistingClientSelected && (_selectedCustomerId == null || _selectedCustomerId == '__none__')) {
+                    setState(() => _selectedCustomerId = '__new__');
+                  }
+                },
               ),
           ],
         ),
-        if (state.isCredit) ...[
-          const SizedBox(height: AppSpacing.md),
-          AppFormField(
-            label: 'Nom du client',
-            controller: _nameCtrl,
-            icon: Icons.person_outline,
-            hint: 'Ex : Mamadou Diallo',
-            isRequired: true,
-            onChanged: controller.setCustomerName,
+        const SizedBox(height: AppSpacing.md),
+
+        // ── Sélection du Client (disponible pour TOUS les modes de paiement) ──
+        Row(
+          children: [
+            Icon(
+              state.isCredit ? Icons.person_pin : Icons.person_outline,
+              size: 18,
+              color: state.isCredit ? context.colors.primary : context.colors.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              state.isCredit
+                  ? 'Client (Vente à crédit) *'
+                  : 'Client (Optionnel) :',
+              style: AppTypography.labelSm.copyWith(
+                color: state.isCredit ? context.colors.primary : context.colors.onSurface,
+                fontWeight: state.isCredit ? FontWeight.bold : FontWeight.w600,
+              ),
+            ),
+            if (state.isCredit) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: context.colors.errorContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'Requis',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: context.colors.error,
+                  ),
+                ),
+              ),
+            ],
+            const Spacer(),
+            if (!state.isCredit && (isExistingClientSelected || _selectedCustomerId == '__new__' || state.customerName.isNotEmpty))
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedCustomerId = '__none__';
+                    _nameCtrl.clear();
+                    _phoneCtrl.clear();
+                    controller.setCustomerName('');
+                    controller.setCustomerPhone('');
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.close, size: 13, color: context.colors.error),
+                      const SizedBox(width: 2),
+                      Text(
+                        'Retirer',
+                        style: TextStyle(fontSize: 11, color: context.colors.error),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+
+        // Liste déroulante directe des clients
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: context.colors.surfaceContainer,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(
+              color: isExistingClientSelected
+                  ? context.colors.primary
+                  : context.colors.outlineVariant,
+              width: isExistingClientSelected ? 1.5 : 1.0,
+            ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          AppFormField(
-            label: 'Numéro de téléphone (WhatsApp)',
-            controller: _phoneCtrl,
-            icon: Icons.phone_outlined,
-            hint: 'Ex : 622 12 34 56',
-            keyboardType: TextInputType.phone,
-            onChanged: controller.setCustomerPhone,
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String?>(
+              value: isExistingClientSelected
+                  ? _selectedCustomerId
+                  : (_selectedCustomerId == '__new__'
+                      ? '__new__'
+                      : (state.isCredit ? '__new__' : '__none__')),
+              isExpanded: true,
+              hint: Row(
+                children: [
+                  Icon(
+                    Icons.people_outline,
+                    size: 18,
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      state.isCredit
+                          ? 'Sélectionner le client à créditer *'
+                          : 'Client comptoir / anonyme…',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              items: [
+                if (!state.isCredit)
+                  const DropdownMenuItem<String?>(
+                    value: '__none__',
+                    child: Row(
+                      children: [
+                        Icon(Icons.person_off_outlined, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          '👤 Client anonyme / Comptant (aucun)',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                DropdownMenuItem<String?>(
+                  value: '__new__',
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_add_alt_1, size: 18, color: context.colors.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        '➕ Nouveau client (saisie manuelle)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: context.colors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (clients.isNotEmpty)
+                  ...clients.map(
+                    (c) => DropdownMenuItem<String?>(
+                      value: c.id,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.person_outline, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${c.name}${c.phone != null && c.phone!.isNotEmpty ? ' (${c.phone})' : ''}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+              onChanged: (selectedId) {
+                setState(() {
+                  _selectedCustomerId = selectedId;
+                  if (selectedId != null && selectedId != '__new__' && selectedId != '__none__') {
+                    final selectedClient = clients.firstWhere(
+                      (c) => c.id == selectedId,
+                    );
+                    _nameCtrl.text = selectedClient.name;
+                    _phoneCtrl.text = selectedClient.phone ?? '';
+                    controller.setCustomerName(selectedClient.name);
+                    controller.setCustomerPhone(selectedClient.phone ?? '');
+                  } else {
+                    _nameCtrl.clear();
+                    _phoneCtrl.clear();
+                    controller.setCustomerName('');
+                    controller.setCustomerPhone('');
+                  }
+                });
+              },
+            ),
+          ),
+        ),
+
+        // Si un client existant est sélectionné : afficher sa fiche validée
+        if (isExistingClientSelected) ...[
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: context.colors.primaryContainer.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: context.colors.primary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle, size: 17, color: context.colors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _nameCtrl.text,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      if (_phoneCtrl.text.isNotEmpty)
+                        Text(
+                          'Tél : ${_phoneCtrl.text}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedCustomerId = '__new__';
+                    });
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Modifier', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+        ] else if (_selectedCustomerId == '__new__' || (state.isCredit && !isExistingClientSelected)) ...[
+          // Si nouveau client ou crédit requis : afficher les champs texte compacts sur une même ligne
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: AppFormField(
+                  label: state.isCredit ? 'Nom du client *' : 'Nom du client',
+                  controller: _nameCtrl,
+                  icon: Icons.person_outline,
+                  hint: 'Ex : Mamadou Diallo',
+                  isRequired: state.isCredit,
+                  onChanged: (val) {
+                    controller.setCustomerName(val);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: AppFormField(
+                  label: 'Tél. (WhatsApp)',
+                  controller: _phoneCtrl,
+                  icon: Icons.phone_outlined,
+                  hint: 'Ex : 622 12 34 56',
+                  keyboardType: TextInputType.phone,
+                  onChanged: controller.setCustomerPhone,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                size: 13,
+                color: context.colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Le client sera automatiquement enregistré pour vos prochaines ventes.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: context.colors.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ],

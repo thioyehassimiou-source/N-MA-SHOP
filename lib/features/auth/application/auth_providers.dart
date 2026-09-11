@@ -39,38 +39,38 @@ final authProvider = NotifierProvider<AuthNotifier, AppUser?>(AuthNotifier.new);
 
 class AuthNotifier extends Notifier<AppUser?> {
   /// Marque une session ouverte, pour rouvrir sans redemander le mot de passe
-  /// au prochain démarrage.
+  /// uniquement si l'utilisateur a activé "Se souvenir de moi".
   static const _kSessionUserId = 'session_user_id';
+  static const _kRememberMe = 'auth_remember_me';
+  static const _kRememberedName = 'auth_remembered_name';
 
   @override
   AppUser? build() => null;
 
   AuthRepository get _repo => ref.read(authRepositoryProvider);
 
-  /// Restaure la session enregistrée au démarrage de l'application.
-  ///
-  /// Restaure l'utilisateur via son ID de session ou, à défaut (ex. si les préférences
-  /// ont été réinitialisées), via le compte principal existant en base de données.
+  /// Restaure la session enregistrée au démarrage de l'application
+  /// UNIQUEMENT si l'utilisateur a coché "Se souvenir de moi".
   Future<bool> restoreSession() async {
     final prefs = ref.read(sharedPreferencesProvider);
-    var id = prefs.getString(_kSessionUserId);
-    AppUser? user;
+    final rememberMe = prefs.getBool(_kRememberMe) ?? false;
 
-    if (id != null) {
-      user = await _repo.findById(id);
+    // Si "Se souvenir de moi" n'est pas coché, renvoyer obligatoirement vers la page de login
+    if (!rememberMe) {
+      state = null;
+      return false;
     }
 
-    // Fallback : si aucun ID de session n'est enregistré ou valide, mais qu'un compte
-    // existe en base de données (mono-utilisateur/admin), on restaure la session.
-    if (user == null) {
-      user = await _repo.currentAccount();
-      if (user != null && user.isActive) {
-        await prefs.setString(_kSessionUserId, user.id);
-      }
+    final id = prefs.getString(_kSessionUserId);
+    if (id == null) {
+      state = null;
+      return false;
     }
 
+    final user = await _repo.findById(id);
     if (user == null || !user.isActive) {
       await prefs.remove(_kSessionUserId);
+      await prefs.setBool(_kRememberMe, false);
       state = null;
       return false;
     }
@@ -86,15 +86,19 @@ class AuthNotifier extends Notifier<AppUser?> {
     required String fullName,
     required String password,
     String? recoveryCode,
+    bool rememberMe = true,
   }) async {
     final user = await _repo.defineAccount(
       fullName: fullName,
       password: password,
       recoveryCode: recoveryCode,
     );
-    await ref
-        .read(sharedPreferencesProvider)
-        .setString(_kSessionUserId, user.id);
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setBool(_kRememberMe, rememberMe);
+    await prefs.setString(_kRememberedName, fullName.trim());
+    if (rememberMe) {
+      await prefs.setString(_kSessionUserId, user.id);
+    }
     ref.read(accountExistsProvider.notifier).set(true);
     state = user;
     return user;
@@ -104,11 +108,19 @@ class AuthNotifier extends Notifier<AppUser?> {
   Future<AppUser> unlock({
     required String fullName,
     required String password,
+    bool rememberMe = false,
   }) async {
     final user = await _repo.unlock(fullName: fullName, password: password);
-    await ref
-        .read(sharedPreferencesProvider)
-        .setString(_kSessionUserId, user.id);
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setBool(_kRememberMe, rememberMe);
+    await prefs.setString(_kRememberedName, fullName.trim());
+
+    if (rememberMe) {
+      await prefs.setString(_kSessionUserId, user.id);
+    } else {
+      await prefs.remove(_kSessionUserId);
+    }
+
     state = user;
     ref.invalidate(dashboardDataProvider);
     ref.invalidate(businessSummaryProvider);
@@ -158,7 +170,9 @@ class AuthNotifier extends Notifier<AppUser?> {
 
   /// Verrouille l'application. La boutique reste configurée.
   Future<void> lock() async {
-    await ref.read(sharedPreferencesProvider).remove(_kSessionUserId);
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.remove(_kSessionUserId);
+    await prefs.setBool(_kRememberMe, false);
     state = null;
     ref.invalidate(dashboardDataProvider);
     ref.invalidate(businessSummaryProvider);
