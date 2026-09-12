@@ -16,11 +16,15 @@ class PalettePicker extends StatelessWidget {
     super.key,
     required this.selected,
     required this.onSelected,
+    this.recommendedPaletteId,
     this.cardColor,
   });
 
   final AppPalette selected;
   final ValueChanged<AppPalette> onSelected;
+
+  /// Identifiant du template recommandé selon le secteur d'activité.
+  final String? recommendedPaletteId;
 
   /// Fond des cartes non sélectionnées. Par défaut, la surface du thème.
   final Color? cardColor;
@@ -45,6 +49,7 @@ class PalettePicker extends StatelessWidget {
                   child: _PaletteCard(
                     palette: p,
                     isSelected: p == selected,
+                    isRecommended: p.id == recommendedPaletteId,
                     cardColor: cardColor,
                     onTap: () => onSelected(p),
                   ),
@@ -62,11 +67,13 @@ class _PaletteCard extends StatelessWidget {
     required this.palette,
     required this.isSelected,
     required this.onTap,
+    this.isRecommended = false,
     this.cardColor,
   });
 
   final AppPalette palette;
   final bool isSelected;
+  final bool isRecommended;
   final VoidCallback onTap;
   final Color? cardColor;
 
@@ -106,7 +113,42 @@ class _PaletteCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _MiniApp(palette: palette),
+              Stack(
+                children: [
+                  _MiniApp(palette: palette),
+                  if (isRecommended)
+                    Positioned(
+                      top: 4,
+                      left: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE85D04),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0x33000000), blurRadius: 4),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star_rounded, size: 10, color: Colors.white),
+                            SizedBox(width: 3),
+                            Text(
+                              'Recommandé',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(4, 9, 2, 3),
                 child: Row(

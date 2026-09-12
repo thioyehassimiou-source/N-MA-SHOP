@@ -37,6 +37,7 @@ class ReceiptData {
     required this.creditAmount,
     required this.paymentMethodLabel,
     this.customerName,
+    this.receiptNotice,
   });
 
   final String reference;
@@ -51,6 +52,7 @@ class ReceiptData {
   final int creditAmount;
   final String paymentMethodLabel;
   final String? customerName;
+  final String? receiptNotice;
 
   bool get isCredit => creditAmount > 0;
 }
@@ -280,16 +282,34 @@ class PdfReceiptService {
                 borderRadius: pw.BorderRadius.circular(4),
                 border: pw.Border.all(color: PdfColor.fromInt(0xFFE2E8F0)),
               ),
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                 children: [
-                  pw.Text(
-                    'Merci de votre confiance ! À bientôt chez ${data.businessName}.',
-                    style: pw.TextStyle(font: font, fontSize: 8, fontStyle: pw.FontStyle.italic, color: PdfColors.grey700),
-                  ),
-                  pw.Text(
-                    'Généré avec N\'MaShop Desktop',
-                    style: pw.TextStyle(font: fontBold, fontSize: 8, color: orangeColor),
+                  if (data.receiptNotice != null && data.receiptNotice!.trim().isNotEmpty) ...[
+                    pw.Text(
+                      data.receiptNotice!.trim(),
+                      textAlign: pw.TextAlign.center,
+                      style: pw.TextStyle(
+                        font: font,
+                        fontSize: 7.5,
+                        color: navyColor,
+                        fontStyle: pw.FontStyle.italic,
+                      ),
+                    ),
+                    pw.SizedBox(height: 5),
+                  ],
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'Merci de votre confiance ! À bientôt chez ${data.businessName}.',
+                        style: pw.TextStyle(font: font, fontSize: 8, fontStyle: pw.FontStyle.italic, color: PdfColors.grey700),
+                      ),
+                      pw.Text(
+                        'Généré avec N\'MaShop Desktop',
+                        style: pw.TextStyle(font: fontBold, fontSize: 8, color: orangeColor),
+                      ),
+                    ],
                   ),
                 ],
               ),

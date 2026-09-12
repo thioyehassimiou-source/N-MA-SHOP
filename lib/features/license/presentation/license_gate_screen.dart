@@ -466,7 +466,7 @@ class _BrandPanel extends StatelessWidget {
                             ? 'Licence dédiée à une autre machine.'
                             : license.isTrial
                                 ? 'Votre période d\'essai\nde 7 jours est terminée.'
-                                : 'Votre licence a expiré.',
+                                : 'Votre licence et son délai de grâce\nsont arrivés à échéance.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,

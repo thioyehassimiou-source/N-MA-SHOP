@@ -8,8 +8,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/license/license_model.dart';
 import '../../../core/license/license_provider.dart';
 import '../../../core/services/hardware_id_service.dart';
+import '../../license/presentation/developer_contact_dialog.dart';
 import '../../../core/providers/app_settings_provider.dart';
+import '../../../core/config/business_domain_config.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -594,6 +597,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final currentThemeMode = ref.watch(themeProvider);
     final bool hasLicense = license.isLicensed;
 
+    final businessDomain = ref.watch(appSettingsProvider.select((s) => s.businessDomain));
+    final domainConfig = BusinessDomainConfig.forDomain(businessDomain);
+    final recommendedPalette = AppPalette.fromId(domainConfig.suggestedPaletteId);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
@@ -730,14 +737,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.warningContainer),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.workspace_premium_rounded, color: AppColors.warning),
-                        SizedBox(width: AppSpacing.md),
+                        const Icon(Icons.workspace_premium_rounded, color: AppColors.warning),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
-                          child: Text(
-                            'Les templates personnalisés sont disponibles pour les abonnés licenciés. Vous utilisez actuellement le template officiel N\'MaShop.',
-                            style: TextStyle(color: AppColors.onWarningContainer, fontSize: 13),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Les templates personnalisés sont une exclusivité des abonnés licenciés.',
+                                style: TextStyle(
+                                  color: AppColors.onWarningContainer,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              if (domainConfig.suggestedPaletteId != 'nmashop') ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  '⭐ Exclusivité suggérée pour votre secteur (${domainConfig.domain}) : "${recommendedPalette.label}" (${recommendedPalette.trade}). Activez votre licence pour le débloquer !',
+                                  style: const TextStyle(
+                                    color: AppColors.onWarningContainer,
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ],
@@ -751,6 +777,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ignoring: !hasLicense,
                     child: PalettePicker(
                       selected: selected,
+                      recommendedPaletteId: domainConfig.suggestedPaletteId != 'nmashop'
+                          ? domainConfig.suggestedPaletteId
+                          : null,
                       onSelected: (palette) {
                         ref.read(appSettingsProvider.notifier).updatePalette(palette.id);
                       },
@@ -987,6 +1016,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildLicenseCard() {
     final license = ref.watch(licenseInfoProvider);
     final bool isTrial = license.status == LicenseStatus.trial;
+    final bool isGracePeriod = license.isGracePeriod;
+
+    final Color cardBg = isGracePeriod
+        ? const Color(0xFFFEF2F2)
+        : isTrial
+            ? const Color(0xFFFFF7ED)
+            : const Color(0xFFECFDF5);
+    final Color cardBorder = isGracePeriod
+        ? const Color(0xFFFECACA)
+        : isTrial
+            ? const Color(0xFFFDE68A)
+            : const Color(0xFFA7F3D0);
+    final Color iconBg = isGracePeriod
+        ? const Color(0xFFFEE2E2)
+        : isTrial
+            ? const Color(0xFFFEF3C7)
+            : const Color(0xFFD1FAE5);
+    final Color textColor = isGracePeriod
+        ? const Color(0xFFB91C1C)
+        : isTrial
+            ? const Color(0xFFB45309)
+            : const Color(0xFF047857);
+    final IconData icon = isGracePeriod
+        ? Icons.warning_amber_rounded
+        : isTrial
+            ? Icons.hourglass_top_rounded
+            : Icons.check_circle_rounded;
     
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -1009,23 +1065,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: isTrial ? const Color(0xFFFFF7ED) : const Color(0xFFECFDF5),
+              color: cardBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isTrial ? const Color(0xFFFDE68A) : const Color(0xFFA7F3D0),
-              ),
+              border: Border.all(color: cardBorder),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isTrial ? const Color(0xFFFEF3C7) : const Color(0xFFD1FAE5),
+                    color: iconBg,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    isTrial ? Icons.hourglass_top_rounded : Icons.check_circle_rounded,
-                    color: isTrial ? const Color(0xFFD97706) : const Color(0xFF059669),
+                    icon,
+                    color: textColor,
                     size: 20,
                   ),
                 ),
@@ -1039,7 +1093,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: isTrial ? const Color(0xFFB45309) : const Color(0xFF047857),
+                          color: textColor,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -1047,7 +1101,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         license.detailedDescription,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isTrial ? const Color(0xFFB45309) : const Color(0xFF047857),
+                          color: textColor,
                         ),
                       ),
                       if (license.maskedKey != null) ...[
@@ -1101,13 +1155,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
                 ),
-                AppButton(
-                  label: isTrial ? 'Activer' : 'Changer la clé',
-                  onPressed: () => _showActivationDialog(context),
+                const SizedBox(width: AppSpacing.md),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppButton(
+                      label: isTrial ? 'Activer' : 'Changer la clé',
+                      onPressed: () => _showActivationDialog(context),
+                    ),
+                    const SizedBox(height: 6),
+                    OutlinedButton.icon(
+                      onPressed: () => DeveloperContactDialog.show(context),
+                      icon: const Icon(Icons.support_agent_rounded, size: 14),
+                      label: const Text(
+                        'Développeur & Achat',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF16A34A),
+                        side: const BorderSide(color: Color(0xFF16A34A)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
+          if (isTrial) ...[
+            const SizedBox(height: AppSpacing.md),
+            const DeveloperContactCard(),
+          ],
         ],
       ),
     );

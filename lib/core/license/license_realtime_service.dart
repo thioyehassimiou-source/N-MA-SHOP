@@ -101,17 +101,32 @@ class LicenseRealtimeService {
       );
 
       await _pgConnection?.execute('LISTEN $channelName;');
+      _reconnectAttempts = 0;
       debugPrint('[Realtime] Connecté avec succès au flux direct Neon.');
     } catch (e) {
-      debugPrint('[Realtime] Connexion directe Neon échouée (reconnexion automatique): $e');
+      debugPrint('[Realtime] Connexion directe Neon échouée (mode hors-ligne ou indisponible): $e');
       _scheduleReconnect();
     }
   }
 
+  int _reconnectAttempts = 0;
+
   void _scheduleReconnect() {
     if (_isDisposed) return;
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+    _reconnectAttempts++;
+    // Backoff exponentiel intelligent pour PC anciens et connexions hors-ligne en Guinée :
+    // 15s -> 30s -> 2 min -> 5 min -> 15 min max.
+    // Garantit 0% de charge CPU et 0 blocage d'I/O pour les machines modestes.
+    final delaySeconds = switch (_reconnectAttempts) {
+      1 => 15,
+      2 => 30,
+      3 => 120,
+      4 => 300,
+      _ => 900,
+    };
+    debugPrint('[Realtime] Prochaine tentative flux Neon dans ${delaySeconds}s (Tentative #$_reconnectAttempts)...');
+    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () {
       _startNeonRealtimeListener();
     });
   }

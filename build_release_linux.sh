@@ -6,9 +6,11 @@ echo "📦 Compilation de N'MaShop en version RELEASE cliente..."
 flutter clean
 flutter pub get
 
-# Compilation native optimisée AOT sans symboles de debug
-flutter build linux --release
+# Compilation native optimisée AOT avec obfuscation binaire totale (Levier 1 Sécurité)
+mkdir -p build/symbols
+flutter build linux --release --obfuscate --split-debug-info=build/symbols
 
-echo "✅ Compilation terminée avec succès !"
-echo "📁 Le binaire natif ultra-léger pour le client se trouve dans :"
+echo "✅ Compilation RELEASE obfusquée terminée avec succès !"
+echo "🛡️  Symboles de débogage extraits dans : build/symbols/"
+echo "📁 Le binaire natif sécurisé et allégé se trouve dans :"
 echo "   build/linux/x64/release/bundle/"

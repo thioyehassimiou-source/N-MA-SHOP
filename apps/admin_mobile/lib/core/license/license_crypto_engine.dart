@@ -53,6 +53,35 @@ abstract final class LicenseCryptoEngine {
     );
   }
 
+  static const int trialDays = 7;
+  static const int offlineGracePeriodDays = 5; // 5 jours de grâce hors-ligne après échéance contractuelle
+
+  /// Calcule si une licence est en période de grâce hors-ligne.
+  static bool isInOfflineGracePeriod(DateTime expiryDate) {
+    if (expiryDate.year >= 9999) return false;
+    final now = DateTime.now();
+    final graceEnd = DateTime(expiryDate.year, expiryDate.month, expiryDate.day, 23, 59, 59)
+        .add(const Duration(days: offlineGracePeriodDays));
+    return now.isAfter(expiryDate) && now.isBefore(graceEnd);
+  }
+
+  /// Calcule les jours de grâce hors-ligne restants.
+  static int getGraceDaysLeft(DateTime expiryDate) {
+    if (!isInOfflineGracePeriod(expiryDate)) return 0;
+    final graceEnd = DateTime(expiryDate.year, expiryDate.month, expiryDate.day, 23, 59, 59)
+        .add(const Duration(days: offlineGracePeriodDays));
+    return graceEnd.difference(DateTime.now()).inDays + 1;
+  }
+
+  /// Calcule si une licence a dépassé son délai de grâce (verrouillage strict hors-ligne).
+  static bool isStrictlyExpired(DateTime expiryDate) {
+    if (expiryDate.year >= 9999) return false;
+    final now = DateTime.now();
+    final graceEnd = DateTime(expiryDate.year, expiryDate.month, expiryDate.day, 23, 59, 59)
+        .add(const Duration(days: offlineGracePeriodDays));
+    return now.isAfter(graceEnd);
+  }
+
   /// Génère une clé universelle (non liée à un PC spécifique).
   static String generateUniversalKey(DateTime expiryDate) {
     final dateStr = '${expiryDate.year.toString().padLeft(4, '0')}'

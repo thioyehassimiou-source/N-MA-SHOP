@@ -21,10 +21,17 @@ class LicenseCore {
 
   // ── Paramètres ─────────────────────────────────────────────────────────────
   static const int trialDays = 7; // 7 jours d'essai gratuit au premier lancement
+  static const int offlineGracePeriodDays = 5; // 5 jours de grâce hors-ligne après échéance contractuelle
 
   // ── Validation interne ──────────────────────────────────────────────────────
 
   /// Valide la clé de licence [raw] pour un identifiant matériel donné [deviceHwId].
+  /// 
+  /// Règle Hors-Ligne Stricte :
+  /// - Tant que [now] <= [expiry], la licence est active (100% hors-ligne, zéro connexion requise).
+  /// - Si [now] > [expiry], un délai de grâce de 5 jours s'enclenche ([LicenseStatus.gracePeriod]),
+  ///   permettant les ventes avec avertissement de renouvellement.
+  /// - Si [now] dépasse la fin du délai de grâce, la révocation hors-ligne s'applique ([LicenseStatus.expired]).
   static LicenseInfo? validateKey(String raw, {String? deviceHwId}) {
     final key = raw.trim().toUpperCase();
     final parts = key.split('-');
@@ -77,6 +84,20 @@ class LicenseCore {
     final now = DateTime.now();
 
     if (!isLifetime && now.isAfter(expiry)) {
+      // Contrôle du délai de grâce hors-ligne lié à la date d'échéance de la licence
+      final graceEnd = DateTime(expiry.year, expiry.month, expiry.day, 23, 59, 59)
+          .add(const Duration(days: offlineGracePeriodDays));
+      if (now.isBefore(graceEnd)) {
+        final graceDaysLeft = graceEnd.difference(now).inDays + 1;
+        return LicenseInfo(
+          status: LicenseStatus.gracePeriod,
+          type: type,
+          expiryDate: expiry,
+          daysLeft: graceDaysLeft,
+          key: key,
+        );
+      }
+
       return LicenseInfo(
         status: LicenseStatus.expired,
         type: type,

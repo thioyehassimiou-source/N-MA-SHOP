@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -20,6 +21,8 @@ class AuthLayout extends StatelessWidget {
     required this.subtitle,
     required this.pitch,
     required this.child,
+    this.onBack,
+    this.showBackButton = true,
   });
 
   /// Titre du formulaire (« Content de vous revoir »).
@@ -32,6 +35,12 @@ class AuthLayout extends StatelessWidget {
   final String pitch;
 
   final Widget child;
+
+  /// Action de retour personnalisée
+  final VoidCallback? onBack;
+
+  /// Affiche un bouton de retour
+  final bool showBackButton;
 
   @override
   Widget build(BuildContext context) {
@@ -73,10 +82,10 @@ class AuthLayout extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Fond animé avec photos de boutiques
-        const AnimatedBackdrop(scrimOpacity: 0.45),
+        // Fond animé avec les nouvelles photos professionnelles
+        const AnimatedBackdrop(scrimOpacity: 0.5),
 
-        // Gradient de bas vers le haut pour améliorer la lisibilité du texte
+        // Voile dégradé sombre élégant
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -84,65 +93,80 @@ class AuthLayout extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.transparent,
-                  const Color(0xFF0F1B3D).withValues(alpha: 0.6),
+                  Colors.black.withValues(alpha: 0.35),
+                  const Color(0xFF0B132B).withValues(alpha: 0.85),
                 ],
-                stops: const [0.3, 1.0],
+                stops: const [0.25, 1.0],
               ),
             ),
           ),
         ),
 
-        // Contenu du panneau
+        // Contenu du panneau gauche
         Padding(
-          padding: EdgeInsets.all(compact ? AppSpacing.lg : AppSpacing.xl),
+          padding: EdgeInsets.all(compact ? AppSpacing.lg : 44),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Logo textuel intégré — aucun fond, rendu direct sur la photo
-              _buildInlineLogo(compact: compact),
+              // Véritable logo officiel N'MaShop avec carte blanche contrastée
+              BrandLogo(
+                height: compact ? 38 : 50,
+                showCard: true,
+              ),
               SizedBox(height: compact ? AppSpacing.md : AppSpacing.xl),
-              // Pitch
-              if (!compact) ...[
-                Text(
-                  pitch,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    height: 1.2,
-                    shadows: [
-                      Shadow(color: Color(0x99000000), blurRadius: 12, offset: Offset(0, 2)),
-                    ],
-                  ),
+
+              // Carte de présentation glassmorphic
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  '— GÉRER  •  VENDRE  •  GRANDIR —',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.65),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.5,
-                    shadows: const [
-                      Shadow(color: Color(0x66000000), blurRadius: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.brandOrange.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'ESPACE SÉCURISÉ',
+                        style: TextStyle(
+                          color: AppColors.brandOrangeLight,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      pitch,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: compact ? 18 : 26,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    if (!compact) ...[
+                      const SizedBox(height: 16),
+                      const Divider(color: Colors.white12, height: 1),
+                      const SizedBox(height: 16),
+                      _buildBulletItem(Icons.point_of_sale_rounded, 'Point de vente & Encaissement ultra-rapide'),
+                      const SizedBox(height: 10),
+                      _buildBulletItem(Icons.wifi_off_rounded, 'Données sécurisées 100% Hors-ligne'),
+                      const SizedBox(height: 10),
+                      _buildBulletItem(Icons.security_rounded, 'Protection Administrateur garantie'),
                     ],
-                  ),
+                  ],
                 ),
-              ] else
-                Text(
-                  pitch,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
-                    shadows: [
-                      Shadow(color: Color(0x99000000), blurRadius: 8, offset: Offset(0, 2)),
-                    ],
-                  ),
-                ),
+              ),
             ],
           ),
         ),
@@ -150,194 +174,40 @@ class AuthLayout extends StatelessWidget {
     );
   }
 
-  /// Logo premium — intégré directement sur le fond sombre, style glassmorphism.
-  Widget _buildInlineLogo({bool compact = false}) {
-    final bagSize = compact ? 36.0 : 60.0;
-    final nameFontSize = compact ? 22.0 : 42.0;
-    final tagSize = compact ? 9.0 : 11.0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
+  Widget _buildBulletItem(IconData icon, String label) {
+    return Row(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Icône sac stylisée
-            Container(
-              width: bagSize,
-              height: bagSize,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withValues(alpha: 0.18),
-                    Colors.white.withValues(alpha: 0.06),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(bagSize * 0.25),
-                border: Border.all(
-                  color: const Color(0xFFE85D04).withValues(alpha: 0.8),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFE85D04).withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.shopping_bag_rounded,
-                color: const Color(0xFFE85D04),
-                size: bagSize * 0.55,
-              ),
+        Icon(icon, size: 16, color: AppColors.brandOrangeLight),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
-            SizedBox(width: compact ? 12 : 16),
-            // Texte N'MA Shop
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: "N'MA",
-                        style: TextStyle(
-                          color: const Color(0xFFE85D04),
-                          fontSize: nameFontSize,
-                          fontWeight: FontWeight.w900,
-                          height: 1.0,
-                          letterSpacing: -1.0,
-                          shadows: const [
-                            Shadow(color: Color(0xBB000000), blurRadius: 16, offset: Offset(0, 3)),
-                          ],
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'Shop',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: nameFontSize,
-                          fontWeight: FontWeight.w900,
-                          height: 1.0,
-                          letterSpacing: -1.0,
-                          shadows: const [
-                            Shadow(color: Color(0xBB000000), blurRadius: 16, offset: Offset(0, 3)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Swoosh orange sous le texte
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Container(
-                    height: 2.5,
-                    width: nameFontSize * 4.2,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFE85D04), Color(0xFFFF9A3D), Colors.transparent],
-                        stops: [0.0, 0.6, 1.0],
-                      ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        if (!compact) ...[
-          const SizedBox(height: 10),
-          // Tagline sous le logo
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: ['GÉRER', 'VENDRE', 'GRANDIR'].expand((tag) {
-              final isLast = tag == 'GRANDIR';
-              return [
-                Text(
-                  tag,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: tagSize,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.4,
-                  ),
-                ),
-                if (!isLast)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 7),
-                    child: Container(
-                      width: 4,
-                      height: 4,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE85D04),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-              ];
-            }).toList(),
           ),
-        ],
+        ),
       ],
     );
   }
 
-
   Widget _buildFormPanel(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        // En mode sombre, ajouter un léger dégradé pour donner plus de profondeur
-        gradient: isDark
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  context.colors.surface,
-                  const Color(0xFF0A1229), // Très foncé
-                ],
-              )
-            : null,
-        boxShadow: [
-          if (isDark)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 40,
-              offset: const Offset(-10, 0),
-            ),
-        ],
-        // Bordure subtile orange pour séparer du fond
-        border: isDark
-            ? Border(
-                left: BorderSide(
-                  color: const Color(0xFFE85D04).withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              )
-            : null,
-      ),
+      color: context.colors.surface,
       child: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 36),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+            constraints: const BoxConstraints(maxWidth: 440),
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 600),
+              duration: const Duration(milliseconds: 400),
               curve: Curves.easeOutCubic,
               builder: (context, val, child) {
                 return Transform.translate(
-                  offset: Offset(0, 30 * (1 - val)),
+                  offset: Offset(0, 20 * (1 - val)),
                   child: Opacity(
                     opacity: val,
                     child: child,
@@ -347,19 +217,48 @@ class AuthLayout extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (showBackButton) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                        child: OutlinedButton.icon(
+                          onPressed: onBack ?? () {
+                            if (Navigator.of(context).canPop()) {
+                              Navigator.of(context).pop();
+                            } else {
+                              context.go('/setup');
+                            }
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: context.colors.onSurfaceVariant,
+                            side: BorderSide(color: context.colors.outlineVariant),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.full)),
+                          ),
+                          icon: const Icon(Icons.arrow_back_rounded, size: 15),
+                          label: const Text(
+                            'Retour à la configuration',
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: 28,
                       fontWeight: FontWeight.w800,
                       color: context.colors.onSurface,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       color: context.colors.onSurfaceVariant,
                       height: 1.4,
                     ),
@@ -385,7 +284,7 @@ class AuthFieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
         style: TextStyle(
@@ -407,22 +306,22 @@ InputDecoration authInputDecoration(
 }) {
   return InputDecoration(
     hintText: hint,
-    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-    prefixIcon: Icon(icon, color: Colors.grey[400], size: 20),
+    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.5),
+    prefixIcon: Icon(icon, color: const Color(0xFF94A3B8), size: 19),
     suffixIcon: suffixIcon,
     filled: true,
-    fillColor: Colors.white,
-    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    fillColor: const Color(0xFFF8FAFC),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      borderSide: BorderSide(color: Colors.grey[300]!),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      borderSide: BorderSide(color: Colors.grey[300]!),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       borderSide: BorderSide(color: context.colors.primary, width: 2),
     ),
   );

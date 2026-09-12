@@ -58,6 +58,7 @@ audio_demo/
 .env.g.dart
 releases/
 *.apk
+.github/workflows_disabled/
 scratch/
 *.wav
 .vercel/

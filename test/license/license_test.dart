@@ -47,7 +47,20 @@ void main() {
       expect(info.daysLeft, isNull);
     });
 
-    test('Expired key is rejected with expired status', () {
+    test('Key expired 2 days ago enters offline grace period without lockout', () {
+      final recentExpiry = DateTime.now().subtract(const Duration(days: 2));
+      final key = LicenseCore.generateAnnualKey(recentExpiry);
+
+      final info = LicenseCore.validateKey(key);
+      expect(info, isNotNull);
+      expect(info!.status, LicenseStatus.gracePeriod);
+      expect(info.isGracePeriod, isTrue);
+      expect(info.isLicensed, isTrue);
+      expect(info.isExpired, isFalse);
+      expect(info.daysLeft, inInclusiveRange(1, LicenseCore.offlineGracePeriodDays));
+    });
+
+    test('Key expired beyond grace period (10 days ago) is strictly expired', () {
       final pastExpiry = DateTime.now().subtract(const Duration(days: 10));
       final key = LicenseCore.generateAnnualKey(pastExpiry);
 
@@ -153,13 +166,18 @@ void main() {
     late LicenseService service;
     const testHwId = 'NMAS-TEST-MACHINE-01';
 
-    setUp(() {
+    setUp(() async {
       service = LicenseService();
       HardwareIdService.resetCacheForTesting(testHwId);
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      await service.resetLicense(prefs);
     });
 
-    tearDown(() {
+    tearDown(() async {
       HardwareIdService.resetCacheForTesting(null);
+      final prefs = await SharedPreferences.getInstance();
+      await service.resetLicense(prefs);
     });
 
     test('First launch initializes 7-day trial', () async {

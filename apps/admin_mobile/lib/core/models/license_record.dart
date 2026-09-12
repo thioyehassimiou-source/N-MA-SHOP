@@ -52,10 +52,40 @@ class LicenseRecord {
     this.isActive = true,
   });
 
+  static const int offlineGracePeriodDays = 5;
+
   bool get isLifetime => type == AdminLicenseType.lifetime;
   bool get isExpired {
     if (isLifetime || expiresAt == null) return false;
     return DateTime.now().isAfter(expiresAt!);
+  }
+
+  /// Détecte si le poste client est actuellement dans sa période de grâce hors-ligne (5 jours).
+  bool get isInGracePeriod {
+    if (isLifetime || expiresAt == null || type == AdminLicenseType.trial) return false;
+    final now = DateTime.now();
+    final graceEnd = DateTime(expiresAt!.year, expiresAt!.month, expiresAt!.day, 23, 59, 59)
+        .add(const Duration(days: offlineGracePeriodDays));
+    return now.isAfter(expiresAt!) && now.isBefore(graceEnd);
+  }
+
+  /// Nombre de jours de grâce hors-ligne restants pour le commerçant.
+  int get graceDaysLeft {
+    if (!isInGracePeriod || expiresAt == null) return 0;
+    final graceEnd = DateTime(expiresAt!.year, expiresAt!.month, expiresAt!.day, 23, 59, 59)
+        .add(const Duration(days: offlineGracePeriodDays));
+    return graceEnd.difference(DateTime.now()).inDays + 1;
+  }
+
+  /// Détecte si le poste a dépassé la licence ET le délai de grâce (verrouillage strict).
+  bool get isStrictlyExpired {
+    if (isLifetime || expiresAt == null) return false;
+    if (type == AdminLicenseType.trial) {
+      return DateTime.now().isAfter(expiresAt!);
+    }
+    final graceEnd = DateTime(expiresAt!.year, expiresAt!.month, expiresAt!.day, 23, 59, 59)
+        .add(const Duration(days: offlineGracePeriodDays));
+    return DateTime.now().isAfter(graceEnd);
   }
 
   Map<String, dynamic> toMap() {

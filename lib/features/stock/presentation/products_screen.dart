@@ -7,7 +7,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/business_domain_config.dart';
 import '../../../core/format/formatters.dart';
+import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -936,22 +938,6 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
   String? _imageUrl;
   bool _saving = false;
 
-  static const List<String> _kStandardUnits = [
-    'pièce',
-    'kg',
-    'sac',
-    'carton',
-    'paquet',
-    'litre',
-    'mètre',
-    'boîte',
-    'bouteille',
-    'lot',
-    'paire',
-    'palette',
-    'gramme',
-  ];
-
   bool get _isEdit => widget.product != null;
   bool _customUnitMode = false;
 
@@ -959,18 +945,21 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
   void initState() {
     super.initState();
     final p = widget.product;
+    final domain = ref.read(appSettingsProvider).businessDomain;
+    final domainConfig = BusinessDomainConfig.forDomain(domain);
     _imageUrl = p?.imageUrl;
     _barcode = TextEditingController(text: p?.barcode ?? '');
     _name = TextEditingController(text: p?.name ?? '');
     _reference = TextEditingController(text: p?.reference ?? '');
-    _unit = TextEditingController(text: p?.unit ?? 'pièce');
+    _unit = TextEditingController(text: p?.unit ?? domainConfig.defaultUnit);
     _purchase = TextEditingController(text: '${p?.purchasePrice ?? 0}');
     _sale = TextEditingController(text: '${p?.salePrice ?? 0}');
     _stock = TextEditingController(text: formatQuantity(p?.stockQuantity ?? 0));
     _threshold = TextEditingController(
       text: formatQuantity(p?.lowStockThreshold ?? 0),
     );
-    if (p != null && !_kStandardUnits.contains(p.unit) && p.unit.isNotEmpty) {
+    final standardUnits = domainConfig.allOrderedUnits;
+    if (p != null && !standardUnits.contains(p.unit) && p.unit.isNotEmpty) {
       _customUnitMode = true;
     }
   }
@@ -1064,6 +1053,9 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
   @override
   Widget build(BuildContext context) {
     final hasImage = _imageUrl != null && _imageUrl!.isNotEmpty;
+    final businessDomain = ref.watch(appSettingsProvider.select((s) => s.businessDomain));
+    final domainConfig = BusinessDomainConfig.forDomain(businessDomain);
+    final orderedUnits = domainConfig.allOrderedUnits;
 
     return AppFormDialog(
       title: _isEdit ? 'Modifier Produit' : 'Ajouter Produit',
@@ -1193,7 +1185,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                               Expanded(
                                 child: AppFormField(
                                   label: 'Nom de l\'article',
-                                  hint: 'Ex: Riz Uncle Ben\'s 5kg',
+                                  hint: domainConfig.productNameHint,
                                   controller: _name,
                                   icon: Icons.label_outline,
                                   isRequired: true,
@@ -1207,7 +1199,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                           FormFieldRow(
                             left: AppFormField(
                               label: 'Référence',
-                              hint: 'Auto si vide',
+                              hint: domainConfig.referenceHint,
                               controller: _reference,
                               icon: Icons.qr_code_outlined,
                             ),
@@ -1223,7 +1215,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                                       tooltip: 'Choisir parmi la liste',
                                       onPressed: () => setState(() {
                                         _customUnitMode = false;
-                                        _unit.text = 'pièce';
+                                        _unit.text = domainConfig.defaultUnit;
                                       }),
                                     ),
                                   )
@@ -1258,9 +1250,9 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                                       ),
                                       const SizedBox(height: 8),
                                       DropdownButtonFormField<String>(
-                                        initialValue: _kStandardUnits.contains(_unit.text)
+                                        initialValue: orderedUnits.contains(_unit.text)
                                             ? _unit.text
-                                            : 'pièce',
+                                            : orderedUnits.first,
                                         decoration: InputDecoration(
                                           isDense: true,
                                           prefixIcon: const Icon(
@@ -1281,7 +1273,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                                             ),
                                           ),
                                         ),
-                                        items: _kStandardUnits
+                                        items: orderedUnits
                                             .map(
                                               (u) => DropdownMenuItem(
                                                 value: u,
@@ -1300,6 +1292,44 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                                           }
                                         },
                                       ),
+                                      if (domainConfig.primaryUnits.isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Wrap(
+                                          spacing: 4,
+                                          runSpacing: 4,
+                                          children: domainConfig.primaryUnits.take(4).map((u) {
+                                            final isSelected = _unit.text.trim().toLowerCase() == u.toLowerCase();
+                                            return InkWell(
+                                              onTap: () => setState(() {
+                                                _customUnitMode = false;
+                                                _unit.text = u;
+                                              }),
+                                              borderRadius: BorderRadius.circular(4),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: isSelected
+                                                      ? context.colors.primary.withValues(alpha: 0.15)
+                                                      : context.colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  border: Border.all(
+                                                    color: isSelected ? context.colors.primary : Colors.transparent,
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  u,
+                                                  style: TextStyle(
+                                                    fontSize: 10.5,
+                                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                                    color: isSelected ? context.colors.primary : context.colors.onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ],
                                     ],
                                   ),
                           ),

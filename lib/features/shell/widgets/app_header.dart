@@ -11,6 +11,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/user_avatar.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/presentation/widgets/user_profile_dialog.dart';
+import '../../license/presentation/developer_contact_dialog.dart';
 
 class AppHeader extends ConsumerWidget {
   const AppHeader({super.key, this.isMobile = false});
@@ -66,6 +67,13 @@ class AppHeader extends ConsumerWidget {
       badgeBorder = const Color(0xFF10B981);
       badgeTextCol = isDark ? const Color(0xFF6EE7B7) : const Color(0xFF065F46);
       badgeIcon = Icons.verified_rounded;
+    } else if (license.isGracePeriod) {
+      final days = license.daysLeft ?? 0;
+      badgeText = 'Grâce : ${days}j restant${days > 1 ? 's' : ''}';
+      badgeBg = isDark ? const Color(0xFF881337) : const Color(0xFFFFE4E6);
+      badgeBorder = const Color(0xFFE11D48);
+      badgeTextCol = isDark ? const Color(0xFFFDA4AF) : const Color(0xFF9F1239);
+      badgeIcon = Icons.warning_amber_rounded;
     } else if (license.daysLeft != null) {
       final days = license.daysLeft!;
       final isTrial = license.status == LicenseStatus.trial;
@@ -128,10 +136,10 @@ class AppHeader extends ConsumerWidget {
 
           // Badge de Licence (Jours restants / Statut)
           InkWell(
-            onTap: () => context.go('/reglages/securite'),
+            onTap: () => DeveloperContactDialog.show(context),
             borderRadius: BorderRadius.circular(12),
             child: Tooltip(
-              message: 'Gérer la licence de l\'application',
+              message: 'Voir le statut de licence & contacter le développeur',
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(

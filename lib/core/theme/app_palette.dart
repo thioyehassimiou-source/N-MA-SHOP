@@ -124,12 +124,19 @@ enum AppPalette {
     }
     if (domain.contains('mode') ||
         domain.contains('cosmétique') ||
-        domain.contains('beauté')) {
+        domain.contains('beauté') ||
+        domain.contains('vêtement')) {
       return AppPalette.prune;
     }
-    if (domain.contains('alimentation') ||
-        domain.contains('restaurant') ||
-        domain.contains('boulangerie')) {
+    if (domain.contains('alimentation générale') ||
+        domain.contains('supérette') ||
+        domain.contains('commerce général')) {
+      return AppPalette.emeraude;
+    }
+    if (domain.contains('restaurant') ||
+        domain.contains('boulangerie') ||
+        domain.contains('pâtisserie') ||
+        domain.contains('alimentation')) {
       return AppPalette.safran;
     }
     if (domain.contains('électronique') ||
@@ -139,8 +146,14 @@ enum AppPalette {
     }
     if (domain.contains('quincaillerie') ||
         domain.contains('matéri') ||
-        domain.contains('équipement')) {
+        domain.contains('équipement') ||
+        domain.contains('btp')) {
       return AppPalette.ardoise;
+    }
+    if (domain.contains('artisanat') ||
+        domain.contains('textile') ||
+        domain.contains('culture')) {
+      return AppPalette.afrique;
     }
     return fallback;
   }

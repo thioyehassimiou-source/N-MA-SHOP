@@ -149,6 +149,14 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     if (businessDomain != null) {
       await _prefs.setString(_kBusinessDomain, businessDomain);
     }
+    if (businessPhone != null) {
+      await _prefs.setString(_kBusinessPhone, businessPhone);
+    }
+    if (paletteId != null) {
+      await _prefs.setString(_kPaletteId, paletteId);
+      final useCustom = paletteId != AppPalette.nmashop.id;
+      await _prefs.setBool(_kUseCustomTheme, useCustom);
+    }
 
     state = state.copyWith(
       businessName: businessName,
@@ -160,6 +168,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       businessDomain: businessDomain,
       businessPhone: businessPhone,
       paletteId: paletteId,
+      useCustomTheme: paletteId != null ? (paletteId != AppPalette.nmashop.id) : null,
     );
   }
 
@@ -183,6 +192,11 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     if (businessPhone != null) {
       await _prefs.setString(_kBusinessPhone, businessPhone);
     }
+    if (paletteId != null) {
+      await _prefs.setString(_kPaletteId, paletteId);
+      final useCustom = paletteId != AppPalette.nmashop.id;
+      await _prefs.setBool(_kUseCustomTheme, useCustom);
+    }
 
     state = state.copyWith(
       isSetupCompleted: true,
@@ -191,8 +205,8 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       logoPath: logoPath,
       businessDomain: businessDomain,
       businessPhone: businessPhone,
-      // Si aucune palette fournie, on garde la valeur par défaut (fallback).
       paletteId: paletteId,
+      useCustomTheme: paletteId != null ? (paletteId != AppPalette.nmashop.id) : null,
     );
   }
 

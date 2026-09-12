@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/business_domain_config.dart';
 import '../../../core/domain/payment_method.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/providers/app_settings_provider.dart';
@@ -910,6 +911,7 @@ class _SubmitButton extends ConsumerWidget {
           ),
         );
 
+        final domainConfig = BusinessDomainConfig.forDomain(appSettings.businessDomain);
         final receiptData = ReceiptData(
           reference: sale.reference,
           date: sale.date,
@@ -923,6 +925,7 @@ class _SubmitButton extends ConsumerWidget {
           creditAmount: sale.creditAmount,
           paymentMethodLabel: paymentLabel,
           customerName: customerName.isNotEmpty ? customerName : null,
+          receiptNotice: domainConfig.receiptNotice,
         );
 
         _showReceiptDialog(context, receiptData);

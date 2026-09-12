@@ -8,11 +8,11 @@ nouvelle contribution doit s'y conformer.
 
 | # | Document | Objet |
 |---|----------|-------|
-| 1 | [01-rapport-global.md](01-rapport-global.md) | Audit global : structure, architecture, flux, DB, état, dette, perf, sécurité |
-| 2 | [02-adr.md](02-adr.md) | Journal des décisions d'architecture (ADR-001 → ADR-004) |
-| 3 | [03-roadmap.md](03-roadmap.md) | Feuille de route V1.0 → V2.0 et jalons |
+| 1 | [01-rapport-global.md](01-rapport-global.md) | Audit global : structure, architecture, flux, DB, état, sécurité & licence, perf PC modestes |
+| 2 | [02-adr.md](02-adr.md) | Journal des décisions d'architecture (ADR-001 → ADR-006) |
+| 3 | [03-roadmap.md](03-roadmap.md) | Feuille de route V1.0 → V2.0 et jalons opérationnels |
 | 4 | [04-conventions.md](04-conventions.md) | Standards de code, nommage, commits, docstrings |
-| 5 | [05-architecture-technique.md](05-architecture-technique.md) | Couches, matrice des dépendances, règles d'import |
+| 5 | [05-architecture-technique.md](05-architecture-technique.md) | Couches, matrice des dépendances, règles d'import, isolation Isolate |
 
 ## Règles directrices (rappel)
 
@@ -21,4 +21,7 @@ nouvelle contribution doit s'y conformer.
 2. **Offline-first** : la base SQLite locale est la source de vérité unique (ADR-001).
 3. **Riverpod** est l'unique brique d'état + injection (ADR-003).
 4. **Pas d'IA** dans le MVP (ADR-004).
-5. Jalon en cours : **V1.0 — Assainissement et harmonisation comptable**.
+5. **Licence 3 leviers & Grâce 5 jours** (ADR-005) : protection anti-piratage matérielle,
+   fonctionnement 100% hors-ligne, délai de grâce post-expiration et sync Admin Mobile.
+6. **Optimisation PC modestes** (ADR-006) : Isolates de fond, WAL mode, cache mémoire borné (64 Mo).
+7. Contact officiel d'assistance et d'activation : **+224 624 19 30 69**.

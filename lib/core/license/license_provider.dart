@@ -6,6 +6,7 @@ import '../../features/auth/application/auth_providers.dart';
 import '../providers/app_settings_provider.dart';
 import '../services/hardware_id_service.dart';
 import 'license_admin_sync_service.dart';
+import 'license_core.dart';
 import 'license_model.dart';
 import 'license_realtime_service.dart';
 import 'license_service.dart';
@@ -111,12 +112,17 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
 
   // ── Surveillance distante Neon PostgreSQL ──────────────────────────────────
 
+  DateTime? _lastRemoteCheckTime;
+  int _networkBackoffMinutes = 1;
+
   void _startRemoteRevocationCheck() {
     _remoteCheckTimer?.cancel();
-    // Synchro immédiate en arrière-plan sans bloquer
-    Future.microtask(() => _syncWithRemote());
-    // Vérification toutes les 10 secondes pour une réaction quasi-instantanée aux révocations/activations distantes
-    _remoteCheckTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    // Synchro initiale en arrière-plan sans bloquer
+    Future.microtask(() => _syncWithRemote(forceRemote: true));
+    
+    // Heartbeat toutes les 60 secondes (au lieu de 10 secondes)
+    // 100% en mémoire pour préserver les PC modestes et les disques mécaniques HDD.
+    _remoteCheckTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       _syncWithRemote();
     });
     ref.onDispose(() {
@@ -124,36 +130,86 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
     });
   }
 
-  /// Vérification distante sans bloquer l'UI. Met à jour [state] uniquement
-  /// si un changement réel est détecté depuis la dernière vérification.
-  Future<void> _syncWithRemote() async {
+  /// Vérification distante et locale allégée sans bloquer l'UI.
+  Future<void> _syncWithRemote({bool forceRemote = false}) async {
     // Agit uniquement si un état valide est disponible (pas en loading/error)
     final current = state.maybeWhen(data: (v) => v, orElse: () => null);
     if (current == null) return;
 
     try {
       final prefs = ref.read(sharedPreferencesProvider);
+      final now = DateTime.now();
 
-      // ── 1. Contrôle local strict (100% Hors-Ligne) ─────────────────────────
-      // Si la période d'essai ou la licence arrive à échéance pendant l'utilisation,
-      // l'application déconnecte et verrouille immédiatement la session sans Internet.
-      final localCheck = await _svc.checkAsync(prefs);
-      if (localCheck.isExpired) {
-        if (!current.isExpired) {
-          await ref.read(authProvider.notifier).lock();
-        }
-        state = AsyncData(localCheck);
-        return;
-      } else if (current.isTrial) {
-        // En mode essai : actualiser l'état dès qu'une minute ou un jour s'écoule
-        // pour animer le décompte en temps réel à l'écran sans redémarrage.
-        final oldDur = current.remainingDuration;
-        final newDur = localCheck.remainingDuration;
-        if (oldDur?.inMinutes != newDur?.inMinutes || localCheck.daysLeft != current.daysLeft) {
-          state = AsyncData(localCheck);
+      // ── 1. Contrôle local strict (100% Hors-Ligne & Zéro charge I/O) ───────
+      // Vérifie l'expiration et le délai de grâce directement en mémoire
+      if (current.expiryDate != null) {
+        if (now.isAfter(current.expiryDate!)) {
+          final graceEnd = DateTime(
+            current.expiryDate!.year,
+            current.expiryDate!.month,
+            current.expiryDate!.day,
+            23, 59, 59,
+          ).add(const Duration(days: LicenseCore.offlineGracePeriodDays));
+
+          if (now.isBefore(graceEnd)) {
+            // Période de grâce active
+            final graceDaysLeft = graceEnd.difference(now).inDays + 1;
+            if (current.status != LicenseStatus.gracePeriod || current.daysLeft != graceDaysLeft) {
+              state = AsyncData(LicenseInfo(
+                status: LicenseStatus.gracePeriod,
+                type: current.type,
+                expiryDate: current.expiryDate,
+                daysLeft: graceDaysLeft,
+                key: current.key,
+              ));
+            }
+          } else {
+            // Fin du délai de grâce : verrouillage hors-ligne
+            if (!current.isExpired) {
+              await ref.read(authProvider.notifier).lock();
+              state = AsyncData(LicenseInfo(
+                status: LicenseStatus.expired,
+                type: current.type,
+                expiryDate: current.expiryDate,
+                daysLeft: 0,
+                key: current.key,
+              ));
+              return;
+            }
+          }
+        } else if (current.isTrial) {
+          // En mode essai : actualiser l'état pour animer le décompte en temps réel
+          final localCheck = await _svc.checkAsync(prefs);
+          if (localCheck.isExpired) {
+            if (!current.isExpired) {
+              await ref.read(authProvider.notifier).lock();
+            }
+            state = AsyncData(localCheck);
+            return;
+          }
+          final oldDur = current.remainingDuration;
+          final newDur = localCheck.remainingDuration;
+          if (oldDur?.inMinutes != newDur?.inMinutes || localCheck.daysLeft != current.daysLeft) {
+            state = AsyncData(localCheck);
+          }
         }
       }
 
+      // ── 2. Détermination de la nécessité d'un appel réseau Neon ───────────
+      // Si la machine possède une licence payante valide (> 7 jours), elle n'a PAS besoin
+      // de contacter Neon à chaque minute. Un contrôle toutes les 30 minutes suffit amplement.
+      final isLongTermLicensed = current.isStrictlyLicensed && (current.daysLeft == null || current.daysLeft! > 7);
+      final remoteIntervalMinutes = isLongTermLicensed ? 30 : _networkBackoffMinutes;
+
+      final shouldCheckRemote = forceRemote ||
+          _lastRemoteCheckTime == null ||
+          now.difference(_lastRemoteCheckTime!).inMinutes >= remoteIntervalMinutes;
+
+      if (!shouldCheckRemote) {
+        return; // Pas d'accès réseau : CPU & sockets 100% au repos
+      }
+
+      _lastRemoteCheckTime = now;
       final storedKey = prefs.getString('lic_key');
       final hwId = await HardwareIdService.getHardwareId();
 
@@ -163,11 +219,16 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       );
 
       if (remoteInfo == null) {
+        // Hors-ligne détecté : backoff progressif pour libérer le processeur
+        _networkBackoffMinutes = (_networkBackoffMinutes * 2).clamp(2, 30);
         if (current.isTrial) {
           _reportTrialInstallationAsync(current);
         }
-        return; // Hors-ligne → état local conservé
+        return; // Hors-ligne → état local scrupuleusement conservé
       }
+
+      // Réseau disponible : réinitialiser le backoff
+      _networkBackoffMinutes = 1;
 
       // ── A. Contrôle d'horloge absolue contre l'heure atomique du serveur Neon ──
       if (remoteInfo.serverTime != null) {
@@ -204,7 +265,7 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       }
 
       if (!remoteInfo.isActive) {
-        // L'administrateur a révoqué ou désactivé cette machine (en essai ou sous licence) depuis Mobile Admin.
+        // L'administrateur a révoqué ou désactivé cette machine depuis Mobile Admin.
         await _svc.revokeLicense(prefs);
         if (!current.isExpired) {
           await ref.read(authProvider.notifier).lock();

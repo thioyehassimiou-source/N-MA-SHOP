@@ -32,7 +32,7 @@ void main() {
       expect(AppPalette.suggestedFor('Mode & Prêt-à-porter'), AppPalette.prune);
       expect(
         AppPalette.suggestedFor('Alimentation Générale'),
-        AppPalette.safran,
+        AppPalette.emeraude,
       );
       expect(
         AppPalette.suggestedFor('Électronique & Informatique'),

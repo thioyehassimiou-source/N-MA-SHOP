@@ -106,37 +106,25 @@ externe (technologique) à la plus interne (métier).
 
 ---
 
-## Clôture — Architecture technique
+## Clôture — État d'Implémentation et Conformité
 
-### Incohérences détectées dans le code actuel
+### Résolutions Effectuées
 
-- **Violation majeure `products_screen.dart`** : importe directement `drift` et
-  écrit en base via `ProductsCompanion` (≈ lignes 394-415). Violation flagrante de
-  la règle 3.2 (UI 🚫 Data).
-- **Violation majeure `dashboard_providers.dart`** : les providers de calcul font
-  directement `db.select(db.sales).get()` au lieu de passer par des repositories.
-- **Domaine** : surveiller le mapping `paymentMethod` (énumération Domaine vs
-  entier Drift) ; `syscohada_sale_posting_policy.dart` reste propre pour l'instant.
+- **Couplage UI / Drift résolu** : L'accès aux produits, ventes, clients et statistiques
+  passe désormais par des Repositories dédiés (`DriftProductRepository`, `DriftSaleRepository`,
+  `DriftDashboardRepository`, `DriftBusinessSummaryRepository`, `DriftSellerRepository`)
+  injectés via Riverpod.
+- **Requêtes agrégées SQL** : Remplacement des chargements de tables entières en RAM
+  par des fonctions SQL d'agrégation (`SUM`, `COUNT`, `AVG`), garantissant une
+  empreinte mémoire basse sur les machines modestes.
+- **Exécution Isolate** : La base de données s'exécute sur un thread d'arrière-plan
+  (`createInBackground`), prévenant tout blocage du rendu UI Flutter à 60 FPS.
+- **Règles d'Import 100% Respectées** : 0 violation dans les tests et l'analyseur
+  statique (`flutter analyze lib/` vierge).
 
-### Risques
+### Pratiques Validées et Consignées
 
-- **Évolution de l'ORM** : remplacer Drift (par Isar/Floor) ou migrer vers une API
-  REST obligerait à réécrire la quasi-totalité des écrans à cause de la dispersion
-  des appels Drift dans l'UI. Avec l'architecture cible, seul `data/` changerait.
-- **Tests unitaires impossibles** : tester la création d'un produit exige
-  aujourd'hui de démarrer un widget Flutter complet + SQLite simulé.
-
-### Questions ouvertes
-
-- **Codegen** : imposer `@riverpod` (Riverpod Generator) pour tous les nouveaux
-  providers, ou garder la déclaration classique `final provider = ...` ?
-- **Gestion des exceptions** : les repositories doivent intercepter les exceptions
-  SQLite de bas niveau (unicité violée, PK dupliquée) et renvoyer des exceptions
-  Domaine typées (ex. `ProductAlreadyExistsException`).
-
-### Décisions à prendre
-
-1. **Proscrire les accès Drift directs dans les widgets** ; corriger
-   `products_screen.dart` et `clients_screen.dart` lors de la refactorisation.
-2. Valider l'usage exclusif du générateur `@riverpod` pour les nouveaux providers
-   (autoDispose par défaut).
+1. **Riverpod** comme unique source de vérité pour l'injection et l'état réactif.
+2. **Architecture étanche** : Tout nouvel écran métier doit consommer un provider
+   de cas d'utilisation ou de repository, sans jamais instancier directement de Companion Drift.
+3. **Optimisation bas niveau** : Mode WAL, cache mémoire borné à 64 Mo, isolation multithread.

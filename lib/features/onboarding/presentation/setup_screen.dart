@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../license/presentation/developer_contact_dialog.dart';
 import '../../../core/license/license_admin_sync_service.dart';
 import '../../../core/license/license_core.dart';
 import '../../../core/license/license_model.dart';
@@ -485,7 +486,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     final steps = ['Boutique', 'Licence', 'Administrateur'];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
@@ -676,7 +677,62 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             controller: _addressController,
             decoration: _inputDeco('Ex: Madina, Conakry', Icons.location_on_rounded),
           ),
+          const SizedBox(height: 28),
+          Center(
+            child: _buildLoginLinkButton(),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoginLinkButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.go('/connexion'),
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+          decoration: BoxDecoration(
+            color: AppColors.brandOrange.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            border: Border.all(
+              color: AppColors.brandOrange.withValues(alpha: 0.25),
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.login_rounded,
+                size: 16,
+                color: AppColors.brandOrange,
+              ),
+              const SizedBox(width: 8),
+              RichText(
+                text: const TextSpan(
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF475569),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  children: [
+                    TextSpan(text: 'Déjà un compte ? '),
+                    TextSpan(
+                      text: 'Se connecter',
+                      style: TextStyle(
+                        color: AppColors.brandOrange,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -839,6 +895,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                   )
                 : const SizedBox.shrink(key: ValueKey('empty_license')),
           ),
+          const SizedBox(height: AppSpacing.lg),
+          const DeveloperContactCard(),
         ],
       ),
     );
@@ -1072,45 +1130,34 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   Widget _buildNavigationFooter() {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey[200]!)),
       ),
-      child: Wrap(
-        spacing: AppSpacing.sm,
-        runSpacing: AppSpacing.sm,
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_currentStep > 0)
-                OutlinedButton.icon(
-                  onPressed: _saving ? null : _prevStep,
-                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                  label: const Text('Précédent'),
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
-                  ),
-                )
-              else
-                OutlinedButton.icon(
-                  onPressed: () => context.go('/onboarding'),
-                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                  label: const Text('Retour Onboarding'),
-                  style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
-                  ),
-                ),
-              const SizedBox(width: AppSpacing.sm),
-              TextButton.icon(
-                onPressed: () => context.go('/connexion'),
-                icon: const Icon(Icons.login_rounded, size: 16),
-                label: const Text('Déjà un compte ? Se connecter'),
+          SizedBox(
+            height: 46,
+            child: OutlinedButton.icon(
+              onPressed: _saving
+                  ? null
+                  : (_currentStep > 0
+                      ? _prevStep
+                      : () => context.go('/onboarding')),
+              icon: const Icon(Icons.arrow_back_rounded, size: 16),
+              label: Text(
+                _currentStep > 0 ? 'Précédent' : 'Retour Onboarding',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
               ),
-            ],
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+            ),
           ),
           SizedBox(
             height: 46,

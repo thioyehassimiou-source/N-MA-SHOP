@@ -34,9 +34,9 @@ const CONFIG = {
   // 🔗 Mettez ici le lien Google Drive de votre installateur Windows (.exe) :
   DOWNLOAD_URL: "https://drive.google.com/file/d/VOTRE_ID_FICHIER_EXE/view",
   
-  // 💬 Mettez ici votre numéro WhatsApp officiel (format international, ex: 224620000000) :
-  WHATSAPP_URL: "https://wa.me/224620000000?text=Bonjour%20l%27%C3%A9quipe%20N%E2%80%99MaShop",
-  WHATSAPP_DISPLAY: "+224 620 00 00 00"
+  // 💬 Votre numéro WhatsApp officiel (format international) :
+  WHATSAPP_URL: "https://wa.me/224624193069?text=Bonjour%20l%27%C3%A9quipe%20N%E2%80%99MaShop",
+  WHATSAPP_DISPLAY: "+224 624 19 30 69"
 };
 ```
 

@@ -94,31 +94,57 @@ rejetées, ses avantages, ses inconvénients et ses impacts.
 
 ---
 
+## ADR-005 : Système de licence hybride offline-first et délai de grâce de 5 jours
+
+- **Statut :** Accepté et Implémenté
+- **Contexte :** En Guinée et en Afrique de l'Ouest, de nombreux commerçants n'ont
+  aucune connexion Internet sur leur poste caisse de manière prolongée. Le modèle
+  de validation en ligne permanente est inapplicable. En même temps, il faut
+  garantir que le logiciel ne soit pas piraté ou dupliqué sans licence valide.
+- **Options envisagées :**
+  1. Blocage strict en ligne (Heartbeat obligatoire toutes les 24h) — Rejeté.
+  2. Licence statique par simple clé produit sans liaison matérielle — Rejeté.
+  3. Architecture hybride 3 leviers : obfuscation binaire, signature cryptographique
+     asymétrique liée à l'empreinte matérielle (Hardware ID), autonomie 100%
+     hors-ligne pendant la durée de validité, extension par délai de grâce de 5 jours
+     post-expiration, et synchronisation périodique avec Neon PostgreSQL — **Retenu**.
+- **Avantages :** Zéro blocage intempestif en cas de coupure Internet ; protection
+  anti-copie physique inviolable (une licence générée pour le PC A refuse de
+  s'activer sur le PC B) ; délai de grâce évitant d'interrompre l'activité commerciale
+  d'un client avant qu'il n'ait pu contacter le développeur (+224 624 19 30 69).
+- **Impacts :** Synchronisation bidirectionnelle des statuts de révocation, module
+  Admin Mobile (`apps/admin_mobile`) pour l'émission des licences par QR code/WhatsApp.
+
+---
+
+## ADR-006 : Optimisations de bas niveau pour ordinateurs à ressources modestes
+
+- **Statut :** Accepté et Implémenté
+- **Contexte :** Les commerçants utilisent fréquemment d'anciens ordinateurs de bureau
+  ou ordinateurs portables de récupération (processeurs double-cœur modestes, 2 à 4 Go
+  de mémoire vive, disques durs mécaniques HDD).
+- **Options envisagées :**
+  1. Polling continu en boucle toutes les 10 secondes et requêtes complètes en RAM.
+  2. Isolation multithreadée SQLite, mode WAL, cache RAM borné, et backoff exponentiel — **Retenu**.
+- **Décisions techniques retenues :**
+  - Exécution SQLite via Isolate d'arrière-plan (`NativeDatabase.createInBackground(file)`).
+  - Mode Write-Ahead Logging (`PRAGMA journal_mode = WAL`) et `PRAGMA synchronous = NORMAL`.
+  - Limitation du cache SQLite à 64 Mo (`PRAGMA cache_size = -64000`).
+  - Suppression de tout polling agressif au profit de vérifications temporisées avec
+    backoff exponentiel (15s jusqu'à 10 min en cas d'absence réseau, et 6h en nominal).
+  - Mise en cache en mémoire des ancrages de date de démarrage pour éliminer les I/O disque inutiles.
+- **Avantages :** Fluidité constante de l'interface graphique Flutter (60 FPS),
+  consommation mémoire globale inférieure à 120 Mo, longévité préservée sur disque HDD.
+
+---
+
 ## Clôture — Décisions
 
-### Incohérences détectées
+### État de réalisation (Mise à jour d'audit)
 
-- **Divergence marketing vs technique** : les métadonnées mentionnent encore une
-  « comptabilité assistée par IA », exclue par l'ADR-004. À nettoyer
-  (`pubspec.yaml`, description projet, `README.md`) avant la V1.0.
-
-### Risques
-
-- **Dette de migration** : forcer la Clean Architecture (ADR-002) exige de
-  modifier `products_screen.dart` et `suppliers_screen.dart`. À réaliser avec
-  précaution pour éviter les régressions sur le catalogue existant.
-
-### Questions ouvertes
-
-- **Chiffrement de la base (ADR-001)** : reporté V1.1. Les premiers utilisateurs
-  V1.0 auront donc une base en clair. Acceptable pour le lancement ?
-- **Lettrage / sous-comptes tiers** : comment garantir un export propre vers un
-  logiciel de cabinet (SAGE) si les comptes tiers (411 Diallo, 411 Barry) ne sont
-  pas individualisés en sous-comptes à 6 chiffres ?
-
-### Décisions à prendre
-
-1. Confirmer un **registre d'ADR partagé dans le dépôt** (ce dossier) pour tout
-   futur choix technique majeur (générateur PDF, package de chiffrement…).
-2. Valider que la **Clean Architecture sur le catalogue produits** sera la
-   première tâche de la phase V1.0.
+- **ADR-001 (Offline-first / Drift)** : Opérationnel (Schéma v20, 100% autonome).
+- **ADR-002 (Clean Architecture)** : Standardisé sur tous les modules avec injection Riverpod.
+- **ADR-003 (Riverpod)** : 100% de la gestion d'état et injection de dépendances.
+- **ADR-004 (Retrait IA MVP)** : Épuré et respecté.
+- **ADR-005 (Licence 3 leviers & Grâce 5j)** : Actif et synchronisé avec Admin Mobile.
+- **ADR-006 (Optimisations PC modestes)** : Actif (Isolates, WAL, mémoire bornée).

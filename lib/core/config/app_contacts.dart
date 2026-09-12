@@ -13,4 +13,12 @@ abstract final class AppContacts {
     );
     return 'https://wa.me/$phoneRaw?text=$msg';
   }
+
+  /// Génère le lien WhatsApp avec message pré-rempli pour le support technique.
+  static String getWhatsAppSupportUrl() {
+    final msg = Uri.encodeComponent(
+      'Bonjour l\'équipe N\'MaShop, j\'ai besoin d\'une assistance technique concernant mon logiciel.',
+    );
+    return 'https://wa.me/$phoneRaw?text=$msg';
+  }
 }

@@ -153,7 +153,7 @@ class LicenseService {
 
     if (now.isBefore(expiry)) {
       final diff = expiry.difference(now);
-      final days = diff.inDays + (diff.inHours % 24 > 0 ? 1 : 0);
+      final days = diff.inDays;
       return LicenseInfo(
         status: LicenseStatus.trial,
         type: LicenseType.trial,
@@ -212,7 +212,7 @@ class LicenseService {
         status: LicenseStatus.trial,
         type: LicenseType.trial,
         expiryDate: expiry,
-        daysLeft: (expiry.difference(now).inDays + 1).clamp(0, LicenseCore.trialDays),
+        daysLeft: expiry.difference(now).inDays.clamp(0, LicenseCore.trialDays),
       );
     }
 
@@ -249,7 +249,7 @@ class LicenseService {
       return (result: LicenseActivationResult.invalidKey, info: null);
     }
 
-    if (info.isExpired) {
+    if (info.isExpired || info.isGracePeriod) {
       return (result: LicenseActivationResult.expiredKey, info: info);
     }
 
@@ -278,7 +278,7 @@ class LicenseService {
       }
       return (result: LicenseActivationResult.invalidKey, info: null);
     }
-    if (info.isExpired) {
+    if (info.isExpired || info.isGracePeriod) {
       return (result: LicenseActivationResult.expiredKey, info: info);
     }
     prefs.setString(_prefKey, rawKey.trim().toUpperCase());
@@ -296,6 +296,7 @@ class LicenseService {
     await prefs.remove(_prefFirstLaunch);
     await prefs.remove(_prefLastKnownTime);
     await prefs.remove('lic_was_revoked_by_admin');
+    _cachedDbTrialAnchor = null;
 
     try {
       final file = await _getSecurityAnchorFile();
@@ -565,7 +566,13 @@ class LicenseService {
 
   // ── Ancre de sécurité dans la base SQLite locale (Anti-réinitialisation) ─────
 
+  static DateTime? _cachedDbTrialAnchor;
+
   static Future<DateTime?> _readDatabaseTrialAnchor() async {
+    if (_cachedDbTrialAnchor != null) {
+      return _cachedDbTrialAnchor;
+    }
+
     try {
       final appDir = await getApplicationSupportDirectory();
       var dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));
@@ -612,6 +619,7 @@ class LicenseService {
           } catch (_) {}
         }
 
+        _cachedDbTrialAnchor = earliestDate;
         return earliestDate;
       } finally {
         db.close();
@@ -622,6 +630,7 @@ class LicenseService {
   }
 
   static Future<void> _writeDatabaseTrialAnchor(String dateStr) async {
+    _cachedDbTrialAnchor = DateTime.tryParse(dateStr);
     try {
       final appDir = await getApplicationSupportDirectory();
       var dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));

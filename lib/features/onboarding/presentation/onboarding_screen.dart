@@ -5,15 +5,24 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/startup_flags.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/animated_backdrop.dart';
-
 import 'package:nmashop/core/theme/app_theme.dart';
+
+class _FeatureItem {
+  const _FeatureItem({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+}
 
 class _OnboardingPage {
   const _OnboardingPage({
     required this.image,
-    required this.tag,
+    required this.category,
     required this.title,
     required this.description,
     required this.accent,
@@ -21,47 +30,91 @@ class _OnboardingPage {
   });
 
   final String image;
-  final String tag;
+  final String category;
   final String title;
   final String description;
   final Color accent;
-  final List<String> features;
+  final List<_FeatureItem> features;
 }
 
 const _pages = [
   _OnboardingPage(
     image: 'assets/images/onboarding_sales.png',
-    tag: 'VENTES',
-    title: 'Encaissez en toute confiance',
+    category: 'VENTES & CAISSE',
+    title: 'Encaissez chaque vente en quelques secondes',
     description:
-        'Enregistrez chaque vente en quelques secondes, générez des reçus et '
-        'suivez vos recettes journalières sans effort.',
-    accent: AppColors.brandEmerald,
-    features: ['Reçus automatiques', 'Ventes rapides', 'Historique complet'],
+        'Une expérience de caisse fluide et intuitive conçue pour votre quotidien. '
+        'Éditez des reçus professionnels et sécurisez vos recettes sans effort.',
+    accent: AppColors.brandOrange,
+    features: [
+      _FeatureItem(
+        icon: Icons.receipt_long_rounded,
+        title: 'Reçus thermiques & Factures',
+        description: 'Impression instantanée sur imprimante 58/80mm ou partage PDF.',
+      ),
+      _FeatureItem(
+        icon: Icons.payments_rounded,
+        title: 'Multiples modes de paiement',
+        description: 'Encaissement par Espèces, Orange Money, Wave, Moov et virements.',
+      ),
+      _FeatureItem(
+        icon: Icons.wifi_off_rounded,
+        title: '100% Autonome Hors-ligne',
+        description: 'Continuez d\'enregistrer vos ventes même sans connexion internet.',
+      ),
+    ],
   ),
   _OnboardingPage(
     image: 'assets/images/onboarding_stock.png',
-    tag: 'STOCKS',
-    title: 'Gardez toujours le contrôle',
+    category: 'STOCKS & INVENTAIRE',
+    title: 'Gardez un contrôle total sur vos marchandises',
     description:
-        "Soyez alerté avant d'être en rupture. Gérez vos entrées, suivez vos "
-        'produits et évitez les mauvaises surprises.',
+        'Suivez vos entrées, vos sorties et vos quantités disponibles en temps réel. '
+        'Évitez les ruptures imprévues et réduisez les pertes.',
     accent: AppColors.brandEmerald,
     features: [
-      'Alertes de rupture',
-      'Suivi en temps réel',
-      'Gestion fournisseurs',
+      _FeatureItem(
+        icon: Icons.notification_important_rounded,
+        title: 'Alertes automatiques de rupture',
+        description: 'Soyez prévenu avant l\'épuisement de vos articles les plus demandés.',
+      ),
+      _FeatureItem(
+        icon: Icons.qr_code_scanner_rounded,
+        title: 'Scan rapide par code-barres',
+        description: 'Bippez vos produits directement à l\'aide d\'une douchette USB.',
+      ),
+      _FeatureItem(
+        icon: Icons.local_shipping_rounded,
+        title: 'Suivi des approvisionnements',
+        description: 'Historique clair des livraisons fournisseurs et des réassorts.',
+      ),
     ],
   ),
   _OnboardingPage(
     image: 'assets/images/onboarding_bilan.png',
-    tag: 'BILAN',
-    title: 'Voyez vos profits clairement',
+    category: 'FINANCES & BÉNÉFICES',
+    title: 'Visualisez vos bénéfices réels avec précision',
     description:
-        "Accédez à votre bilan en un clin d'œil : ventes du jour, gains nets, "
-        'dettes clients. Vos finances à portée de main.',
-    accent: AppColors.brandEmerald,
-    features: ['Bilan mensuel', 'Gains nets', 'Crédits clients'],
+        'Accédez à une vue claire de votre activité commerciale en un coup d\'œil : '
+        'recettes du jour, marge nette dégagée et suivi des crédits clients.',
+    accent: Color(0xFF2563EB),
+    features: [
+      _FeatureItem(
+        icon: Icons.trending_up_rounded,
+        title: 'Calcul automatique des marges nettes',
+        description: 'Connaissez votre rentabilité exacte sans calcul sur cahier.',
+      ),
+      _FeatureItem(
+        icon: Icons.account_balance_wallet_rounded,
+        title: 'Gestion des crédits clients',
+        description: 'Suivi rigoureux des dettes et historique des règlements partiels.',
+      ),
+      _FeatureItem(
+        icon: Icons.shield_rounded,
+        title: 'Protection Administrateur',
+        description: 'Confidentialité totale de vos bénéfices grâce à un code secret.',
+      ),
+    ],
   ),
 ];
 
@@ -73,7 +126,7 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   late AnimationController _fadeController;
@@ -83,7 +136,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   void initState() {
     super.initState();
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 350),
       vsync: this,
     )..forward();
     _fadeAnimation = CurvedAnimation(
@@ -108,8 +161,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   void _previous() {
     if (_currentPage > 0) {
       _pageController.previousPage(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOutCubic,
       );
     }
   }
@@ -117,8 +170,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   void _next() {
     if (_currentPage < _pages.length - 1) {
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOutCubic,
       );
     } else {
       context.go('/setup');
@@ -127,10 +180,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.sizeOf(context).width > 800;
+    final isWide = MediaQuery.sizeOf(context).width > 880;
 
     return Scaffold(
-      backgroundColor: AppColors.brandNavy,
+      backgroundColor: context.colors.surface,
       body: Stack(
         children: [
           PageView.builder(
@@ -143,8 +196,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             },
           ),
 
-          // Bandeau « Se connecter / Accéder à la boutique existante » :
-          // n'apparaît que si une boutique est déjà configurée sur cet appareil.
+          // Bandeau d'accès direct si une boutique existe déjà sur l'appareil
           Positioned(
             top: 0,
             left: 0,
@@ -185,9 +237,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -205,7 +257,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
-                      fontSize: 13.5,
+                      fontSize: 13,
                     ),
                   ),
                   SizedBox(width: 8),
@@ -223,7 +275,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return Row(
       children: [
         Expanded(flex: 5, child: _buildImagePanel(page)),
-        Expanded(flex: 5, child: _buildInfoPanel(page)),
+        Expanded(flex: 6, child: _buildInfoPanel(page)),
       ],
     );
   }
@@ -231,8 +283,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Widget _buildNarrowPage(_OnboardingPage page) {
     return Column(
       children: [
-        Expanded(flex: 5, child: _buildImagePanel(page)),
-        Expanded(flex: 5, child: _buildInfoPanel(page)),
+        SizedBox(height: 250, child: _buildImagePanel(page)),
+        Expanded(child: _buildInfoPanel(page)),
       ],
     );
   }
@@ -244,44 +296,28 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         Image.asset(
           page.image,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stack) => const ColoredBox(
-            color: AppColors.brandNavyLight,
+          errorBuilder: (context, error, stack) => ColoredBox(
+            color: AppColors.brandNavy,
             child: Center(
-              child: Icon(Icons.storefront, size: 80, color: Colors.white24),
+              child: Icon(Icons.storefront_rounded, size: 80, color: Colors.white.withValues(alpha: 0.2)),
             ),
           ),
         ),
-        // Voile haut discret
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 100,
+        // Voile dégradé sobre et élégant
+        Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withValues(alpha: 0.45),
+                  Colors.black.withValues(alpha: 0.25),
                   Colors.transparent,
+                  Colors.black.withValues(alpha: 0.55),
                 ],
+                stops: const [0.0, 0.45, 1.0],
               ),
             ),
-          ),
-        ),
-        // Logo N'MaShop avec conteneur stylisé sur la photo
-        Positioned(
-          top: AppSpacing.lg,
-          left: AppSpacing.lg,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.brandNavy.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-            ),
-            child: const BrandLogo(height: 32, onDark: true),
           ),
         ),
       ],
@@ -291,181 +327,122 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Widget _buildInfoPanel(_OnboardingPage page) {
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: Container(
-        color: context.colors.surface,
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.xs,
-                    ),
-                    decoration: BoxDecoration(
-                      color: page.accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                      border: Border.all(color: page.accent.withValues(alpha: 0.4)),
-                    ),
-                    child: Text(
-                      page.tag,
-                      style: TextStyle(
-                        color: page.accent,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  Text(
-                    page.title,
-                    style: AppTypography.headlineLg.copyWith(
-                      color: context.colors.onSurface,
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    page.description,
-                    style: AppTypography.bodyLg.copyWith(
-                      color: context.colors.onSurfaceVariant,
-                      height: 1.6,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: page.features.asMap().entries.map((e) {
-                      final label = e.value;
-                      return TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        duration: const Duration(milliseconds: 400),
-                        curve: Curves.easeOutCubic,
-                        builder: (context, val, child) {
-                          return Transform.translate(
-                            offset: Offset(20 * (1 - val), 0),
-                            child: Opacity(
-                              opacity: val,
-                              child: child,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 48,
+            vertical: AppSpacing.xl,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Contenu centré avec espacements généreux (style SaaS épuré)
+              Expanded(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 540),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Tag catégorie minimaliste
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: page.accent.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(AppRadius.full),
+                          ),
+                          child: Text(
+                            page.category,
+                            style: TextStyle(
+                              color: page.accent,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.1,
                             ),
-                          );
-                        },
-                        child: _chip(label, context),
-                      );
-                    }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+
+                        // Titre principal percutant
+                        Text(
+                          page.title,
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            color: context.colors.onSurface,
+                            height: 1.2,
+                            letterSpacing: -0.6,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+
+                        // Description simple et aérée
+                        Text(
+                          page.description,
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: context.colors.onSurfaceVariant,
+                            height: 1.6,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // 3 points clés simples et attrayants
+                        ...page.features.map((feat) => _buildFeatureItem(feat, page.accent)),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
-            // Navigation intégrée proprement dans le panneau blanc de droite
-            _buildInfoPanelNavigation(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _chip(String label, BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: context.colors.onSurface.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: context.colors.onSurface.withValues(alpha: 0.1)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: context.colors.onSurfaceVariant,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoPanelNavigation() {
-    final isLast = _currentPage == _pages.length - 1;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.md),
-      child: Row(
-        children: [
-          // Points de progression
-          Row(
-            children: List.generate(
-              _pages.length,
-              (i) => AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.only(right: 6),
-                width: i == _currentPage ? 24 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: i == _currentPage
-                      ? AppColors.brandOrange
-                      : context.colors.outlineVariant,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
               ),
-            ),
+
+              // Pied de page : pagination propre et boutons de navigation
+              _buildFooterNavigation(),
+            ],
           ),
-          const SizedBox(width: AppSpacing.sm),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(_FeatureItem item, Color accent) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(item.icon, size: 18, color: accent),
+          ),
+          const SizedBox(width: 14),
           Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_currentPage > 0) ...[
-                  TextButton.icon(
-                    onPressed: _previous,
-                    style: TextButton.styleFrom(
-                      foregroundColor: context.colors.onSurfaceVariant,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    ),
-                    icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                    label: const Text('Précédent'),
+                Text(
+                  item.title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: context.colors.onSurface,
                   ),
-                  const SizedBox(width: 4),
-                ],
-                if (!isLast) ...[
-                  TextButton(
-                    onPressed: () => context.go('/setup'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: context.colors.onSurfaceVariant,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    ),
-                    child: const Text('Passer'),
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                FilledButton.icon(
-                  onPressed: _next,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.brandOrange,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    ),
-                  ),
-                  icon: Icon(
-                    isLast
-                        ? Icons.rocket_launch_rounded
-                        : Icons.arrow_forward_rounded,
-                    size: 16,
-                  ),
-                  label: Text(
-                    isLast ? 'Configurer ma boutique' : 'Suivant',
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: context.colors.onSurfaceVariant,
+                    height: 1.4,
                   ),
                 ),
               ],
@@ -473,6 +450,94 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFooterNavigation() {
+    final isLast = _currentPage == _pages.length - 1;
+
+    return Row(
+      children: [
+        // Numérotation explicite (Étape X sur 3) et indicateurs fins
+        Row(
+          children: [
+            Text(
+              'Étape ${_currentPage + 1} sur ${_pages.length}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: context.colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Row(
+              children: List.generate(
+                _pages.length,
+                (i) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.only(right: 6),
+                  width: i == _currentPage ? 22 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: i == _currentPage
+                        ? AppColors.brandOrange
+                        : context.colors.outlineVariant,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+
+        // Boutons de navigation
+        if (_currentPage > 0) ...[
+          TextButton.icon(
+            onPressed: _previous,
+            style: TextButton.styleFrom(
+              foregroundColor: context.colors.onSurfaceVariant,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            icon: const Icon(Icons.arrow_back_rounded, size: 16),
+            label: const Text('Précédent', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(width: 8),
+        ],
+        if (!isLast) ...[
+          TextButton(
+            onPressed: () => context.go('/setup'),
+            style: TextButton.styleFrom(
+              foregroundColor: context.colors.onSurfaceVariant,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            child: const Text('Passer', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(width: 8),
+        ],
+        FilledButton.icon(
+          onPressed: _next,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.brandOrange,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 22,
+              vertical: 13,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+          ),
+          icon: Icon(
+            isLast ? Icons.storefront_rounded : Icons.arrow_forward_rounded,
+            size: 17,
+          ),
+          label: Text(
+            isLast ? 'Configurer ma boutique' : 'Suivant',
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+          ),
+        ),
+      ],
     );
   }
 }

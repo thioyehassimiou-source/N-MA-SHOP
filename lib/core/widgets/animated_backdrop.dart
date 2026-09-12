@@ -153,56 +153,66 @@ class _AnimatedBackdropState extends State<AnimatedBackdrop> {
   }
 }
 
-/// Logo N'MaShop officiel — utilise l'image PNG du logo branding.
-/// [onDark] encadre proprement le logo officiel pour une parfaite lisibilité sur fond sombre.
+/// Logo N'MaShop officiel — utilise les versions PNG transparentes haute résolution.
+/// [onDark] sélectionne la version claire adaptée aux arrière-plans sombres.
+/// [showCard] encapsule le logo dans un conteneur blanc soigné pour un contraste parfait sur photos complexes.
 class BrandLogo extends StatelessWidget {
-  const BrandLogo({super.key, this.height = 40, this.onDark = true});
+  const BrandLogo({
+    super.key,
+    this.height = 42,
+    this.onDark = false,
+    this.showCard = false,
+  });
 
   final double height;
   final bool onDark;
+  final bool showCard;
 
   @override
   Widget build(BuildContext context) {
-    if (onDark) {
+    // Si une carte est demandée (pour contraster sur une photo/arrière-plan complexe)
+    if (showCard) {
       return Container(
         padding: EdgeInsets.symmetric(
-          horizontal: height * 0.3,
-          vertical: height * 0.15,
+          horizontal: height * 0.45,
+          vertical: height * 0.22,
         ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(height * 0.25),
+          borderRadius: BorderRadius.circular(height * 0.3),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Image.asset(
-          'assets/images/nmashop_logo_official.png',
+          'assets/images/logo.png',
           height: height,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stack) => _fallbackLogo(),
+          errorBuilder: (context, error, stack) => _fallbackLogo(darkFallback: false),
         ),
       );
     }
 
+    final assetName = onDark ? 'assets/images/logo_light.png' : 'assets/images/logo.png';
+
     return Image.asset(
-      'assets/images/nmashop_logo_official.png',
-      height: height * 1.2,
+      assetName,
+      height: height,
       fit: BoxFit.contain,
-      errorBuilder: (context, error, stack) => _fallbackLogo(),
+      errorBuilder: (context, error, stack) => _fallbackLogo(darkFallback: onDark),
     );
   }
 
-  Widget _fallbackLogo() {
+  Widget _fallbackLogo({required bool darkFallback}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: EdgeInsets.all(height * 0.15),
+          padding: EdgeInsets.all(height * 0.18),
           decoration: BoxDecoration(
             color: AppColors.brandOrange,
             borderRadius: BorderRadius.circular(height * 0.25),
@@ -210,14 +220,14 @@ class BrandLogo extends StatelessWidget {
           child: Icon(
             Icons.shopping_bag_rounded,
             color: Colors.white,
-            size: height * 0.7,
+            size: height * 0.65,
           ),
         ),
-        SizedBox(width: height * 0.3),
+        SizedBox(width: height * 0.25),
         Text(
           'N\'MaShop',
           style: TextStyle(
-            color: onDark ? Colors.white : AppColors.brandNavy,
+            color: darkFallback ? Colors.white : AppColors.brandNavy,
             fontSize: height * 0.65,
             fontWeight: FontWeight.w900,
             letterSpacing: -0.5,

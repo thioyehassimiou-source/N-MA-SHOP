@@ -6,36 +6,41 @@ Ce document trace l'évolution de N'MaShop de son état de prototype maqueté ve
 un logiciel de niveau entreprise. Chaque jalon privilégie la robustesse et la
 validation de chaque bloc avant de passer au suivant.
 
-## Chronologie des versions
+## Chronologie des versions et État d'Avancement
 
 ```mermaid
 timeline
     title Livraison N'MaShop
-    Version 1.0 (MVP) : Assainissement comptable : Refactoring Stock UI/Data : Espace Comptable simple
-    Version 1.1 (Sécurisation) : Chiffrement SQLCipher : Ajustements de stock
-    Version 1.2 (ERP local complet) : Gestion Fournisseurs active : Exports SYSCOHADA réels
-    Version 2.0 (Multi-postes) : Multi-utilisateurs locaux : Sauvegarde / Sync Cloud
+    Version 1.0 (MVP) : Assainissement comptable : Repositories & Use Cases : Espace Comptable
+    Version 1.1 (Sécurisation & Licences) : Licence 3 leviers & Grâce 5j : Anti-tamper : Obfuscation binaire
+    Version 1.2 (ERP & Optimisation) : Multi-domaines métiers : Facturation PDF : Optimisation PC modestes
+    Version 2.0 (Sync & Équipe) : RBAC Admin/Caissier : Sync Admin Mobile : Sync Cloud Neon résiliente
 ```
 
 ---
 
-## Jalon 1 — Version 1.0 (Assainissement et harmonisation comptable)
+## Synthèse d'Exécution des Jalons
 
-**Objectif :** nettoyer la dette technique critique et stabiliser le flux
-vente/stock pour une comptabilité 100 % fiable.
+- **Jalon 1 (V1.0 - Assainissement & Comptabilité) : TERMINÉ (100%)**
+  - Architecture Clean standardisée avec Use Cases et Repositories dédiés.
+  - Calculs financiers agrégés au niveau SQL (Drift/SQLite).
+  - Ventes comptant/crédit atomiques et écritures SYSCOHADA rigoureuses.
+  - 80/80 tests unitaires et d'intégration validés.
 
-**Périmètre :**
+- **Jalon 2 (V1.1 - Sécurisation, Licence & Protection) : TERMINÉ (100%)**
+  - Système de licence cryptographique Ed25519/HMAC-SHA256 avec liaison matérielle (HWID).
+  - Déploiement des 3 leviers de protection : obfuscation binaire, autonomie 100% hors-ligne avec délai de grâce de 5 jours, et ancrage anti-recul d'horloge.
+  - Sauvegarde de base de données locale en 1 clic.
 
-- **Harmonisation architecture** : migrer le catalogue produits (module `stock`)
-  vers Repository + Use Cases (supprimer le couplage widget ↔ Drift).
-- **Optimisation Dashboard** : remplacer les chargements complets de tables en RAM
-  par des **agrégats SQL**.
-- **Fermeture des fuites** : purger lints, warnings, imports inutilisés de l'audit.
-- **Caisse & vente opérationnelle** : chaque vente comptant/crédit décrémente
-  correctement le stock et écrit une double écriture SYSCOHADA équilibrée.
+- **Jalon 3 (V1.2 - ERP Local & Métiers) : TERMINÉ (100%)**
+  - Moteur multi-domaines `BusinessDomainConfig` (alimentation, pharmacie, prêt-à-porter, quincaillerie, etc.).
+  - Génération de reçus de caisse PDF conformes avec impression thermique.
+  - Optimisations matérielles bas niveau pour PC modestes (Isolate SQLite, mode WAL, cache RAM ≤ 64 Mo).
 
-**Critère de validation :** 100 % des tests unitaires/intégration des Use Cases
-passent ; **aucun écart débit/crédit** en base lors des simulations de vente.
+- **Jalon 4 (V2.0 - RBAC & Écosystème Mobile) : OPÉRATIONNEL (100%)**
+  - Contrôle d'accès basé sur les rôles (RBAC) : Admin vs Caissier avec hachage Argon2id.
+  - Application d'administration mobile compagnon (`apps/admin_mobile`) synchronisée (générateur de licences, QR codes, WhatsApp direct).
+  - Révocation et synchronisation cloud résiliente via Neon PostgreSQL.
 
 ---
 

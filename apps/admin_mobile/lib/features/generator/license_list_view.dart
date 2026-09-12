@@ -226,6 +226,14 @@ Voici votre clé d'activation officielle N'MaShop PC :
       } else {
         statusText = 'Essai (7j)';
       }
+    } else if (lic.isInGracePeriod) {
+      statusColor = Colors.deepOrange;
+      statusBgColor = AppTheme.amberBg;
+      statusText = 'En Grâce (${lic.graceDaysLeft}j)';
+    } else if (lic.isStrictlyExpired) {
+      statusColor = AppTheme.roseAlert;
+      statusBgColor = AppTheme.roseBg;
+      statusText = 'Expirée';
     } else {
       statusColor = AppTheme.emeraldActive;
       statusBgColor = AppTheme.emeraldBg;

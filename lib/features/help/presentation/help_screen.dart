@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_contacts.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/url_launcher_helper.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_page_header.dart';
 
@@ -58,45 +61,309 @@ class _HelpScreenState extends State<HelpScreen> {
                 const SizedBox(height: AppSpacing.lg),
               ],
 
-              // ── Contact ─────────────────────────────────────────────────
-              AppCard(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: context.colors.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.support_agent_rounded,
-                          color: context.colors.primary, size: 28),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Besoin d\'aide supplémentaire ?',
-                              style: AppTypography.labelMd),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Contactez le support technique N\'MaShop via WhatsApp ou Email.',
-                            style: AppTypography.bodySm.copyWith(
-                                color: context.colors.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // ── Contact Support ─────────────────────────────────────────
+              _buildContactSupportCard(context),
               const SizedBox(height: AppSpacing.xl),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildContactSupportCard(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 920;
+
+        return Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: context.colors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border: Border.all(color: context.colors.outlineVariant),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: isWide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Icône du support
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.brandOrange.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.support_agent_rounded,
+                        color: AppColors.brandOrange,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+
+                    // Textes et coordonnées
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Besoin d\'aide supplémentaire ?',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: context.colors.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Contactez le support technique N\'MaShop via WhatsApp, téléphone ou email.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: context.colors.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              _ContactPill(
+                                icon: Icons.person_outline_rounded,
+                                label: AppContacts.developerName,
+                                detail: 'Concepteur',
+                              ),
+                              _ContactPill(
+                                icon: Icons.phone_android_rounded,
+                                label: AppContacts.phone,
+                                onTap: () => UrlLauncherHelper.openUrl('tel:${AppContacts.phoneRaw}'),
+                              ),
+                              _ContactPill(
+                                icon: Icons.alternate_email_rounded,
+                                label: AppContacts.email,
+                                onTap: () => UrlLauncherHelper.openUrl('mailto:${AppContacts.email}?subject=Support%20NMaShop'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.lg),
+
+                    // Actions parfaitement alignées à droite
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => UrlLauncherHelper.openUrl('tel:${AppContacts.phoneRaw}'),
+                          icon: const Icon(Icons.phone_rounded, size: 15),
+                          label: const Text('Appeler'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => UrlLauncherHelper.openUrl('mailto:${AppContacts.email}?subject=Support%20NMaShop'),
+                          icon: const Icon(Icons.email_outlined, size: 15),
+                          label: const Text('Email'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed: () => UrlLauncherHelper.openUrl(AppContacts.getWhatsAppSupportUrl()),
+                          icon: const Icon(Icons.chat_bubble_rounded, size: 15),
+                          label: const Text('WhatsApp'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF16A34A),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.brandOrange.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.support_agent_rounded,
+                            color: AppColors.brandOrange,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Besoin d\'aide supplémentaire ?',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: context.colors.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                'Contactez le support technique N\'MaShop via WhatsApp, téléphone ou email.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: context.colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        _ContactPill(
+                          icon: Icons.person_outline_rounded,
+                          label: AppContacts.developerName,
+                          detail: 'Concepteur',
+                        ),
+                        _ContactPill(
+                          icon: Icons.phone_android_rounded,
+                          label: AppContacts.phone,
+                          onTap: () => UrlLauncherHelper.openUrl('tel:${AppContacts.phoneRaw}'),
+                        ),
+                        _ContactPill(
+                          icon: Icons.alternate_email_rounded,
+                          label: AppContacts.email,
+                          onTap: () => UrlLauncherHelper.openUrl('mailto:${AppContacts.email}?subject=Support%20NMaShop'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => UrlLauncherHelper.openUrl('tel:${AppContacts.phoneRaw}'),
+                          icon: const Icon(Icons.phone_rounded, size: 15),
+                          label: const Text('Appeler'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => UrlLauncherHelper.openUrl('mailto:${AppContacts.email}?subject=Support%20NMaShop'),
+                          icon: const Icon(Icons.email_outlined, size: 15),
+                          label: const Text('Email'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                          ),
+                        ),
+                        FilledButton.icon(
+                          onPressed: () => UrlLauncherHelper.openUrl(AppContacts.getWhatsAppSupportUrl()),
+                          icon: const Icon(Icons.chat_bubble_rounded, size: 15),
+                          label: const Text('WhatsApp'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF16A34A),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+        );
+      },
+    );
+  }
+}
+
+class _ContactPill extends StatelessWidget {
+  const _ContactPill({
+    required this.icon,
+    required this.label,
+    this.detail,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String? detail;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: context.colors.surfaceContainer,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: context.colors.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: context.colors.primary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: context.colors.onSurface,
+            ),
+          ),
+          if (detail != null) ...[
+            const SizedBox(width: 4),
+            Text(
+              '($detail)',
+              style: TextStyle(
+                fontSize: 11,
+                color: context.colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: pill,
+      );
+    }
+    return pill;
   }
 }
 

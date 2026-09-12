@@ -300,10 +300,13 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
       // Statut réel
       final bool isDeactivated = lic != null && !lic.isActive;
       final bool isStoreActive = lic != null && lic.isActive && !lic.isExpired && lic.type != AdminLicenseType.trial;
-      final bool isTrial = lic == null || (lic.isActive && (lic.type == AdminLicenseType.trial || lic.isExpired));
+      final bool isInGrace = lic != null && lic.isActive && lic.isInGracePeriod;
+      final bool isTrial = lic == null || (lic.isActive && (lic.type == AdminLicenseType.trial || (lic.isExpired && !isInGrace)));
 
       if (_filterStatus == 'active') {
         return isStoreActive;
+      } else if (_filterStatus == 'grace') {
+        return isInGrace;
       } else if (_filterStatus == 'trial') {
         return isTrial;
       } else if (_filterStatus == 'deactivated') {
@@ -361,6 +364,14 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
                         onSelected: (_) => setState(() => _filterStatus = 'active'),
                         selectedColor: AppTheme.emeraldBg,
                         checkmarkColor: AppTheme.emeraldActive,
+                      ),
+                      const SizedBox(width: 8),
+                      FilterChip(
+                        selected: _filterStatus == 'grace',
+                        label: const Text('En Grâce (5j)'),
+                        onSelected: (_) => setState(() => _filterStatus = 'grace'),
+                        selectedColor: AppTheme.amberBg,
+                        checkmarkColor: Colors.deepOrange,
                       ),
                       const SizedBox(width: 8),
                       FilterChip(
@@ -451,6 +462,8 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
 
     final bool isDeactivated = clientLicense != null && !clientLicense.isActive;
     final bool isStoreActive = clientLicense != null && clientLicense.isActive && !clientLicense.isExpired && clientLicense.type != AdminLicenseType.trial;
+    final bool isInGrace = clientLicense != null && clientLicense.isActive && clientLicense.isInGracePeriod;
+    final bool isPaidExpired = clientLicense != null && clientLicense.isActive && clientLicense.type != AdminLicenseType.trial && clientLicense.isStrictlyExpired;
 
     String trialLabel = 'Mode Essai';
     if (clientLicense != null && clientLicense.expiresAt != null) {
@@ -465,19 +478,35 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
 
     final String statusLabel = isDeactivated
         ? 'Désactivée'
-        : (isStoreActive ? 'Active' : trialLabel);
+        : (isStoreActive
+            ? 'Active'
+            : (isInGrace
+                ? 'En Grâce (${clientLicense.graceDaysLeft}j)'
+                : (isPaidExpired ? 'Expirée' : trialLabel)));
 
     final Color statusBg = isDeactivated
         ? AppTheme.roseBg
-        : (isStoreActive ? AppTheme.emeraldBg : AppTheme.amberBg);
+        : (isStoreActive
+            ? AppTheme.emeraldBg
+            : (isInGrace
+                ? AppTheme.amberBg
+                : (isPaidExpired ? AppTheme.roseBg : AppTheme.amberBg)));
 
     final Color statusColor = isDeactivated
         ? AppTheme.roseAlert
-        : (isStoreActive ? AppTheme.emeraldActive : AppTheme.amberTrial);
+        : (isStoreActive
+            ? AppTheme.emeraldActive
+            : (isInGrace
+                ? Colors.deepOrange
+                : (isPaidExpired ? AppTheme.roseAlert : AppTheme.amberTrial)));
 
     final IconData statusIcon = isDeactivated
         ? Icons.cancel_rounded
-        : (isStoreActive ? Icons.check_circle_rounded : Icons.timer_outlined);
+        : (isStoreActive
+            ? Icons.check_circle_rounded
+            : (isInGrace
+                ? Icons.warning_amber_rounded
+                : (isPaidExpired ? Icons.lock_clock_rounded : Icons.timer_outlined)));
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
