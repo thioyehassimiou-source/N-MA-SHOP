@@ -672,8 +672,8 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        title: const Text('Supprimer la boutique ?'),
-                        content: Text('Voulez-vous supprimer ${client.storeName} de la liste ?'),
+                        title: const Text('Supprimer définitivement la boutique ?'),
+                        content: Text('Voulez-vous supprimer ${client.storeName} ? La boutique et ses licences associées seront supprimées sur ce téléphone et sur le serveur Neon.'),
                         actions: [
                           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
                           ElevatedButton(
@@ -685,7 +685,18 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
                       ),
                     );
                     if (confirm == true) {
-                      ref.read(clientsProvider.notifier).removeClient(client.id);
+                      await ref.read(adminSyncServiceProvider).deleteRemoteClient(client);
+                      await ref.read(clientsProvider.notifier).removeClient(client.id);
+                      ref.read(licensesProvider.notifier).refresh();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('🗑️ ${client.storeName} et ses licences ont été supprimés'),
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
                     }
                   },
                   tooltip: 'Supprimer',

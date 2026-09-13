@@ -234,7 +234,6 @@ class LicenseAdminSyncService {
         final row = existing.first;
         final currentKey = (row[1] as String?) ?? '';
         if (currentKey.startsWith('TRIAL-') || currentKey.isEmpty) {
-          final isTrialStillValid = trialExpiry.isAfter(DateTime.now());
           await connection.execute(
             Sql.named('''
               UPDATE nmashop_activations 
@@ -242,8 +241,7 @@ class LicenseAdminSyncService {
                   owner_name = COALESCE(NULLIF(@ownerName, ''), owner_name),
                   phone = COALESCE(NULLIF(@phone, ''), phone),
                   address = COALESCE(NULLIF(@address, ''), address),
-                  expires_at = @expiresAt,
-                  is_active = CASE WHEN @isTrialValid THEN true ELSE is_active END
+                  expires_at = @expiresAt
               WHERE hardware_id = @hwId AND (license_key LIKE 'TRIAL-%' OR license_key = '');
             '''),
             parameters: {
@@ -252,7 +250,6 @@ class LicenseAdminSyncService {
               'phone': phone ?? '',
               'address': osInfo ?? '',
               'expiresAt': trialExpiry,
-              'isTrialValid': isTrialStillValid,
               'hwId': cleanHwId,
             },
           );
@@ -348,8 +345,8 @@ class LicenseAdminSyncService {
           Sql.named('''
             SELECT is_active, license_key, expires_at, activated_at, (NOW() AT TIME ZONE 'UTC') as server_time 
             FROM nmashop_activations 
-            WHERE license_key = @key OR (hardware_id = @hwId AND @hwId != '')
-            ORDER BY id DESC LIMIT 1
+            WHERE (license_key = @key AND @key != '') OR (hardware_id = @hwId AND @hwId != '')
+            ORDER BY is_active ASC, id DESC LIMIT 1
           '''),
           parameters: {
             'key': key,
@@ -363,7 +360,7 @@ class LicenseAdminSyncService {
             SELECT is_active, license_key, expires_at, activated_at, (NOW() AT TIME ZONE 'UTC') as server_time 
             FROM nmashop_activations 
             WHERE hardware_id = @hwId AND license_key != ''
-            ORDER BY id DESC LIMIT 1
+            ORDER BY is_active ASC, id DESC LIMIT 1
           '''),
           parameters: {'hwId': cleanHwId},
         );

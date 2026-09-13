@@ -49,10 +49,60 @@ class AdminRepository {
     await _prefs.setStringList(_keyClients, raw);
   }
 
+  static const String _keyDeletedLicenses = 'nma_admin_deleted_licenses_v1';
+  static const String _keyDeletedClients = 'nma_admin_deleted_clients_v1';
+
+  // ── Suppression & Tombstones ──────────────────────────────────────────────────
+
+  List<String> getDeletedLicenseKeys() {
+    return _prefs.getStringList(_keyDeletedLicenses) ?? [];
+  }
+
+  Future<void> addDeletedLicenseKey(String keyOrHwId) async {
+    final clean = keyOrHwId.trim().toUpperCase();
+    if (clean.isEmpty) return;
+    final list = getDeletedLicenseKeys();
+    if (!list.contains(clean)) {
+      list.add(clean);
+      await _prefs.setStringList(_keyDeletedLicenses, list);
+    }
+  }
+
+  List<String> getDeletedClientHwIds() {
+    return _prefs.getStringList(_keyDeletedClients) ?? [];
+  }
+
+  Future<void> addDeletedClientHwId(String hwId) async {
+    final clean = hwId.trim().toUpperCase();
+    if (clean.isEmpty) return;
+    final list = getDeletedClientHwIds();
+    if (!list.contains(clean)) {
+      list.add(clean);
+      await _prefs.setStringList(_keyDeletedClients, list);
+    }
+  }
+
   Future<void> deleteClient(String id) async {
-    final clients = getClients()..removeWhere((c) => c.id == id);
+    final clients = getClients();
+    final target = clients.where((c) => c.id == id).firstOrNull;
+    if (target != null && target.hardwareId.isNotEmpty) {
+      await addDeletedClientHwId(target.hardwareId);
+    }
+
+    clients.removeWhere((c) => c.id == id);
     final raw = clients.map((c) => c.toJson()).toList();
     await _prefs.setStringList(_keyClients, raw);
+
+    // Supprimer également les licences associées à ce client
+    if (target != null) {
+      final licenses = getLicenses();
+      final targetHw = target.hardwareId.trim().toUpperCase();
+      licenses.removeWhere((l) =>
+          l.clientId == id ||
+          (targetHw.isNotEmpty && l.hardwareId.trim().toUpperCase() == targetHw));
+      final rawLic = licenses.map((l) => l.toJson()).toList();
+      await _prefs.setStringList(_keyLicenses, rawLic);
+    }
   }
 
   // ── Licences Générées ────────────────────────────────────────────────────────
@@ -60,12 +110,19 @@ class AdminRepository {
   List<LicenseRecord> getLicenses() {
     final raw = _prefs.getStringList(_keyLicenses) ?? [];
     final list = raw.map((str) => LicenseRecord.fromJson(str)).toList();
+    final deleted = getDeletedLicenseKeys();
 
     // Dédupliquer rigoureusement par Hardware ID et par Clé
     final Map<String, LicenseRecord> uniqueMap = {};
     for (final record in list) {
       final cleanHwId = record.hardwareId.trim().toUpperCase();
       final cleanKey = record.licenseKey.trim().toUpperCase();
+
+      // Ignorer si supprimé
+      if (deleted.contains(cleanKey) || (cleanHwId.isNotEmpty && deleted.contains(cleanHwId))) {
+        continue;
+      }
+
       // Utiliser l'empreinte matérielle si disponible comme identifiant unique de poste
       final mapKey = cleanHwId.isNotEmpty ? 'HW:$cleanHwId' : 'KEY:$cleanKey';
 
@@ -73,7 +130,6 @@ class AdminRepository {
         uniqueMap[mapKey] = record;
       } else {
         final existing = uniqueMap[mapKey]!;
-        // Une vraie licence payante / pro remplace systématiquement une licence d'essai
         final existingIsTrial = existing.type == AdminLicenseType.trial || existing.licenseKey.startsWith('TRIAL-');
         final recordIsTrial = record.type == AdminLicenseType.trial || record.licenseKey.startsWith('TRIAL-');
 
@@ -83,10 +139,15 @@ class AdminRepository {
         } else if (!existingIsTrial && recordIsTrial) {
           shouldReplace = false;
         } else {
-          // Si même type, conserver l'enregistrement actif le plus récent ou avec plus de détails
-          shouldReplace = (!existing.isActive && record.isActive) ||
-              (existing.clientName == 'Boutique Client' && record.clientName != 'Boutique Client') ||
-              record.createdAt.isAfter(existing.createdAt);
+          // Si l'un des deux a été explicitement désactivé, conserver la désactivation
+          if (!existing.isActive && record.isActive) {
+            shouldReplace = false; // Ne JAMAIS réactiver par écrasement d'un doublon
+          } else if (existing.isActive && !record.isActive) {
+            shouldReplace = true; // Appliquer la désactivation
+          } else {
+            shouldReplace = (existing.clientName == 'Boutique Client' && record.clientName != 'Boutique Client') ||
+                record.createdAt.isAfter(existing.createdAt);
+          }
         }
 
         if (shouldReplace) {
@@ -136,6 +197,13 @@ class AdminRepository {
     final target = licenses.where((l) => l.id == id).firstOrNull;
     final cleanKey = target?.licenseKey.trim().toUpperCase();
     final cleanHwId = target?.hardwareId.trim().toUpperCase();
+
+    if (cleanKey != null && cleanKey.isNotEmpty) {
+      await addDeletedLicenseKey(cleanKey);
+    }
+    if (cleanHwId != null && cleanHwId.isNotEmpty) {
+      await addDeletedLicenseKey(cleanHwId);
+    }
 
     licenses.removeWhere((l) =>
         l.id == id ||

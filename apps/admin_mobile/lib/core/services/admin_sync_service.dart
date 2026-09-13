@@ -143,6 +143,19 @@ class AdminSyncService {
       final hardwareId = (payload['hardwareId'] ?? '').toString().trim().toUpperCase();
       final licenseKey = (payload['licenseKey'] ?? '').toString().trim().toUpperCase();
       final isActive = (payload['isActive'] as bool?) ?? true;
+
+      // ── Vérification anti-résurrection des éléments supprimés ───────────────
+      final deletedKeys = _repository.getDeletedLicenseKeys();
+      final deletedClients = _repository.getDeletedClientHwIds();
+
+      if (deletedKeys.contains(licenseKey) || (hardwareId.isNotEmpty && deletedKeys.contains(hardwareId))) {
+        // Cette licence a été supprimée par l'administrateur : ne pas la réinsérer
+        return;
+      }
+      if (hardwareId.isNotEmpty && deletedClients.contains(hardwareId)) {
+        // Ce client a été supprimé par l'administrateur : ne pas le réinsérer
+        return;
+      }
       
       final activatedAtStr = payload['activatedAt'];
       final expiryDateStr = payload['expiryDate'];
@@ -219,7 +232,7 @@ class AdminSyncService {
         
         await _repository.saveLicense(record);
       } else {
-        // Enrichir le record existant (ex: mise à niveau d'un essai vers une clé payante ou MAJ statut)
+        // Enrichir le record existant
         final existing = licenses[existingIndex];
 
         // Ne jamais rétrograder une licence payante active vers un simple token d'essai
@@ -232,6 +245,9 @@ class AdminSyncService {
         final effectiveType = (existingIsPaid && incomingIsTrial) ? existing.type : type;
         final effectiveExpiresAt = (existingIsPaid && incomingIsTrial) ? existing.expiresAt : (expiryDate ?? existing.expiresAt);
 
+        // Si l'administrateur avait désactivé la licence localement, respecter ce choix
+        final effectiveIsActive = (!existing.isActive) ? false : isActive;
+
         final updated = existing.copyWith(
           hardwareId: hardwareId.isNotEmpty ? hardwareId : existing.hardwareId,
           clientName: businessName != 'Boutique Inconnue' ? businessName : existing.clientName,
@@ -239,7 +255,7 @@ class AdminSyncService {
           licenseKey: effectiveKey,
           type: effectiveType,
           expiresAt: effectiveExpiresAt,
-          isActive: isActive,
+          isActive: effectiveIsActive,
         );
         await _repository.saveLicense(updated);
       }
@@ -250,7 +266,6 @@ class AdminSyncService {
 
   /// Traitement manuel d'un code QR ou texte copié
   Future<void> importManualPayload(String jsonString) async {
-    // Reste identique pour le support 100% hors-ligne (QR Code)
     try {
       final data = jsonDecode(jsonString);
       if (data is Map<String, dynamic>) {
@@ -275,10 +290,12 @@ class AdminSyncService {
   }) async {
     try {
       final config = NeonConfig.parseConnectionString();
+      // Utilisation directe de l'hôte compute sans passer par PgBouncer pour supporter pg_notify
+      final directHost = (config['host'] as String).replaceAll('-pooler', '');
 
       final connection = await Connection.open(
         Endpoint(
-          host: config['host'],
+          host: directHost,
           port: config['port'],
           database: config['database'],
           username: config['username'],
@@ -312,51 +329,32 @@ class AdminSyncService {
 
       final cleanKey = licenseKey.trim().toUpperCase();
       final cleanHwId = (hardwareId ?? '').trim().toUpperCase();
+      final cleanStore = (storeName ?? '').trim();
 
-      final int affectedRows;
-      if (cleanKey.isNotEmpty && cleanHwId.isNotEmpty) {
-        final res = await connection.execute(
-          Sql.named('''
-            UPDATE nmashop_activations 
-            SET is_active = @isActive,
-                license_key = @key,
-                expires_at = COALESCE(@expiresAt, expires_at),
-                business_name = COALESCE(NULLIF(@businessName, ''), business_name)
-            WHERE license_key = @key OR hardware_id = @hwId
-          '''),
-          parameters: {
-            'isActive': isActive,
-            'key': cleanKey,
-            'hwId': cleanHwId,
-            'expiresAt': expiresAt,
-            'businessName': storeName ?? '',
-          },
-        );
-        affectedRows = res.affectedRows;
-      } else if (cleanKey.isNotEmpty) {
-        final res = await connection.execute(
-          Sql.named('UPDATE nmashop_activations SET is_active = @isActive, expires_at = COALESCE(@expiresAt, expires_at) WHERE license_key = @key'),
-          parameters: {
-            'isActive': isActive,
-            'key': cleanKey,
-            'expiresAt': expiresAt,
-          },
-        );
-        affectedRows = res.affectedRows;
-      } else if (cleanHwId.isNotEmpty) {
-        final res = await connection.execute(
-          Sql.named('UPDATE nmashop_activations SET is_active = @isActive WHERE hardware_id = @hwId'),
-          parameters: {
-            'isActive': isActive,
-            'hwId': cleanHwId,
-          },
-        );
-        affectedRows = res.affectedRows;
-      } else {
-        affectedRows = 0;
-      }
+      // Mettre à jour TOUTES les occurrences pour cette machine ou clé
+      final res = await connection.execute(
+        Sql.named('''
+          UPDATE nmashop_activations 
+          SET is_active = @isActive,
+              license_key = CASE WHEN @key != '' THEN @key ELSE license_key END,
+              expires_at = COALESCE(@expiresAt, expires_at),
+              business_name = COALESCE(NULLIF(@businessName, ''), business_name)
+          WHERE (license_key = @key AND @key != '')
+             OR (hardware_id = @hwId AND @hwId != '')
+             OR (business_name = @businessName AND @businessName != '' AND @businessName != 'Boutique Client' AND @businessName != 'Boutique Inconnue');
+        '''),
+        parameters: {
+          'isActive': isActive,
+          'key': cleanKey,
+          'hwId': cleanHwId,
+          'expiresAt': expiresAt,
+          'businessName': cleanStore,
+        },
+      );
 
-      // Si la ligne n'existait pas encore sur Neon, on l'insère immédiatement avec son statut (actif OU inactif)
+      final affectedRows = res.affectedRows;
+
+      // Si aucune ligne n'a été affectée, insérer pour sceller le statut
       if (affectedRows == 0 && (cleanKey.isNotEmpty || cleanHwId.isNotEmpty)) {
         await connection.execute(
           Sql.named('''
@@ -364,10 +362,10 @@ class AdminSyncService {
               business_name, owner_name, phone, address, hardware_id, license_key, activated_at, expires_at, is_synced, is_active
             ) VALUES (
               @businessName, @ownerName, '', '', @hwId, @key, @activatedAt, @expiresAt, true, @isActive
-            )
+            );
           '''),
           parameters: {
-            'businessName': storeName ?? 'Boutique Client',
+            'businessName': cleanStore.isNotEmpty ? cleanStore : 'Boutique Client',
             'ownerName': 'Client',
             'hwId': cleanHwId,
             'key': cleanKey,
@@ -398,9 +396,144 @@ class AdminSyncService {
       // Diffusion instantanée P2P Réseau Local (LAN UDP Broadcast 0ms)
       _broadcastP2PStatus(cleanKey, cleanHwId, isActive);
 
-      debugPrint('Statut de licence $cleanKey synchronisé sur Neon PostgreSQL: is_active = $isActive');
+      debugPrint('Statut de licence $cleanKey ($cleanHwId) synchronisé sur Neon: is_active = $isActive ($affectedRows lignes MAJ)');
     } catch (e) {
       debugPrint('Erreur lors de la mise à jour du statut distant de la licence: $e');
+    }
+  }
+
+  /// Supprime définitivement une licence sur Neon et en local (avec notification temps réel de révocation)
+  Future<void> deleteRemoteLicense(
+    String licenseKey, {
+    String? hardwareId,
+    String? storeName,
+  }) async {
+    final cleanKey = licenseKey.trim().toUpperCase();
+    final cleanHwId = (hardwareId ?? '').trim().toUpperCase();
+    final cleanStore = (storeName ?? '').trim();
+
+    if (cleanKey.isNotEmpty) await _repository.addDeletedLicenseKey(cleanKey);
+    if (cleanHwId.isNotEmpty) await _repository.addDeletedLicenseKey(cleanHwId);
+
+    try {
+      final config = NeonConfig.parseConnectionString();
+      final directHost = (config['host'] as String).replaceAll('-pooler', '');
+
+      final connection = await Connection.open(
+        Endpoint(
+          host: directHost,
+          port: config['port'],
+          database: config['database'],
+          username: config['username'],
+          password: config['password'],
+        ),
+        settings: ConnectionSettings(
+          sslMode: config['is_secure'] ? SslMode.require : SslMode.disable,
+          connectTimeout: const Duration(seconds: 15),
+          queryTimeout: const Duration(seconds: 15),
+        ),
+      );
+
+      final res = await connection.execute(
+        Sql.named('''
+          DELETE FROM nmashop_activations 
+          WHERE (license_key = @key AND @key != '')
+             OR (hardware_id = @hwId AND @hwId != '')
+             OR (business_name = @storeName AND @storeName != '' AND @storeName != 'Boutique Client' AND @storeName != 'Boutique Inconnue');
+        '''),
+        parameters: {
+          'key': cleanKey,
+          'hwId': cleanHwId,
+          'storeName': cleanStore,
+        },
+      );
+
+      // Notifier le poste client qu'il est désormais révoqué/supprimé
+      try {
+        final payload = jsonEncode({
+          'key': cleanKey,
+          'hwId': cleanHwId,
+          'isActive': false,
+          'deleted': true,
+        });
+        await connection.execute(
+          Sql.named("SELECT pg_notify('nmashop_license_events', @payload);"),
+          parameters: {'payload': payload},
+        );
+      } catch (e) {
+        debugPrint('Erreur pg_notify delete: $e');
+      }
+
+      await connection.close();
+      _broadcastP2PStatus(cleanKey, cleanHwId, false);
+
+      debugPrint('Licence $cleanKey ($cleanHwId) supprimée définitivement de Neon (${res.affectedRows} lignes effacées).');
+    } catch (e) {
+      debugPrint('Erreur suppression distante de licence: $e');
+    }
+  }
+
+  /// Supprime définitivement un client et toutes ses activations sur Neon et en local
+  Future<void> deleteRemoteClient(ClientModel client) async {
+    final cleanHwId = client.hardwareId.trim().toUpperCase();
+    final cleanStore = client.storeName.trim();
+
+    if (cleanHwId.isNotEmpty) {
+      await _repository.addDeletedClientHwId(cleanHwId);
+      await _repository.addDeletedLicenseKey(cleanHwId);
+    }
+
+    try {
+      final config = NeonConfig.parseConnectionString();
+      final directHost = (config['host'] as String).replaceAll('-pooler', '');
+
+      final connection = await Connection.open(
+        Endpoint(
+          host: directHost,
+          port: config['port'],
+          database: config['database'],
+          username: config['username'],
+          password: config['password'],
+        ),
+        settings: ConnectionSettings(
+          sslMode: config['is_secure'] ? SslMode.require : SslMode.disable,
+          connectTimeout: const Duration(seconds: 15),
+          queryTimeout: const Duration(seconds: 15),
+        ),
+      );
+
+      final res = await connection.execute(
+        Sql.named('''
+          DELETE FROM nmashop_activations 
+          WHERE (hardware_id = @hwId AND @hwId != '')
+             OR (business_name = @storeName AND @storeName != '' AND @storeName != 'Boutique Client' AND @storeName != 'Boutique Inconnue');
+        '''),
+        parameters: {
+          'hwId': cleanHwId,
+          'storeName': cleanStore,
+        },
+      );
+
+      // Notifier la machine de la révocation
+      try {
+        final payload = jsonEncode({
+          'key': '',
+          'hwId': cleanHwId,
+          'isActive': false,
+          'deleted': true,
+        });
+        await connection.execute(
+          Sql.named("SELECT pg_notify('nmashop_license_events', @payload);"),
+          parameters: {'payload': payload},
+        );
+      } catch (_) {}
+
+      await connection.close();
+      _broadcastP2PStatus('', cleanHwId, false);
+
+      debugPrint('Client $cleanStore ($cleanHwId) supprimé de Neon (${res.affectedRows} lignes effacées).');
+    } catch (e) {
+      debugPrint('Erreur suppression distante client: $e');
     }
   }
 
@@ -429,10 +562,11 @@ class AdminSyncService {
   Future<void> purgeRemoteActivations() async {
     try {
       final config = NeonConfig.parseConnectionString();
+      final directHost = (config['host'] as String).replaceAll('-pooler', '');
 
       final connection = await Connection.open(
         Endpoint(
-          host: config['host'],
+          host: directHost,
           port: config['port'],
           database: config['database'],
           username: config['username'],

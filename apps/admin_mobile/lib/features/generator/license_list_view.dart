@@ -207,14 +207,14 @@ Voici votre clé d'activation officielle N'MaShop PC :
     Color statusBgColor;
     String statusText;
 
-    if (isPending) {
-      statusColor = Colors.orange;
-      statusBgColor = Colors.orange.withValues(alpha: 0.15);
-      statusText = 'En attente';
-    } else if (!isActive) {
+    if (!isActive) {
       statusColor = AppTheme.roseAlert;
       statusBgColor = AppTheme.roseBg;
       statusText = 'Désactivée';
+    } else if (isPending) {
+      statusColor = Colors.orange;
+      statusBgColor = Colors.orange.withValues(alpha: 0.15);
+      statusText = 'En attente';
     } else if (isTrial) {
       statusColor = AppTheme.amberTrial;
       statusBgColor = AppTheme.amberBg;
@@ -294,22 +294,26 @@ Voici votre clé d'activation officielle N'MaShop PC :
                 Switch(
                   value: isActive,
                   activeThumbColor: AppTheme.emeraldActive,
-                  onChanged: (val) {
-                    ref.read(licensesProvider.notifier).updateLicense(lic.copyWith(isActive: val));
-                    ref.read(adminSyncServiceProvider).updateLicenseRemoteStatus(
+                  onChanged: (val) async {
+                    // Mise à jour optimiste immédiate de l'interface
+                    await ref.read(licensesProvider.notifier).updateLicense(lic.copyWith(isActive: val));
+                    // Synchronisation distante sur Neon et NOTIFY
+                    await ref.read(adminSyncServiceProvider).updateLicenseRemoteStatus(
                       lic.licenseKey,
                       val,
                       hardwareId: lic.hardwareId,
                       storeName: lic.clientName,
                       expiresAt: lic.expiresAt,
                     );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(val ? '🟢 Licence activée pour ${lic.clientName}' : '🔴 Licence désactivée pour ${lic.clientName}'),
-                        behavior: SnackBarBehavior.floating,
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(val ? '🟢 Licence activée pour ${lic.clientName}' : '🔴 Licence désactivée pour ${lic.clientName}'),
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   },
                 ),
               ],
@@ -456,8 +460,8 @@ Voici votre clé d'activation officielle N'MaShop PC :
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        title: const Text('Supprimer la licence ?'),
-                        content: Text('Voulez-vous supprimer cette clé pour ${lic.clientName} ?'),
+                        title: const Text('Supprimer définitivement la licence ?'),
+                        content: Text('Voulez-vous supprimer cette licence pour ${lic.clientName} ? Elle sera supprimée localement et sur le serveur Neon.'),
                         actions: [
                           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
                           ElevatedButton(
@@ -469,13 +473,21 @@ Voici votre clé d'activation officielle N'MaShop PC :
                       ),
                     );
                     if (confirm == true) {
-                      ref.read(licensesProvider.notifier).removeLicense(lic.id);
-                      ref.read(adminSyncServiceProvider).updateLicenseRemoteStatus(
+                      await ref.read(adminSyncServiceProvider).deleteRemoteLicense(
                         lic.licenseKey,
-                        false,
                         hardwareId: lic.hardwareId,
                         storeName: lic.clientName,
                       );
+                      await ref.read(licensesProvider.notifier).removeLicense(lic.id);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('🗑️ Licence supprimée pour ${lic.clientName}'),
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
                     }
                   },
                   tooltip: 'Supprimer',
