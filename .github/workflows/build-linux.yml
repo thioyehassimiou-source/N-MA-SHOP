@@ -1,0 +1,82 @@
+name: 🐧 Build N'MaShop — Linux Bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version de l'application (ex: 1.0.0)"
+        required: false
+        default: "1.0.0"
+  push:
+    branches:
+      - main
+    paths:
+      - "lib/**"
+      - "linux/**"
+      - "pubspec.yaml"
+      - ".github/workflows/build-linux.yml"
+
+jobs:
+  build-linux:
+    name: 🐧 Compiler pour Linux (x64 Release)
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Récupérer le code source ──────────────────────────────────────
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
+
+      # ── 2. Installer les dépendances Linux système ───────────────────────
+      - name: 🛠️ Dépendances Linux (GTK3, CMake, Ninja, Clang)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
+
+      # ── 3. Installer Flutter ──────────────────────────────────────────────
+      - name: 🐦 Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      # ── 4. Dépendances Flutter ───────────────────────────────────────────
+      - name: 📦 Dépendances Flutter (pub get)
+        run: |
+          flutter clean
+          flutter pub get
+
+      # ── 5. Générer le fichier .env et exécuter build_runner ─────────────
+      - name: 🔑 Générer .env et code obfusqué
+        shell: bash
+        run: |
+          echo 'NEON_CONNECTION_STRING="${{ secrets.NEON_CONNECTION_STRING || 'postgresql://neondb_owner:npg_bY9MjSynWF4N@ep-long-scene-aeya27z7-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require' }}"' > .env
+          echo 'LICENSE_SECURITY_SALT="${{ secrets.LICENSE_SECURITY_SALT || 'NMaShop_security_salt_2026' }}"' >> .env
+          echo 'LICENSE_SECRET_F1="${{ secrets.LICENSE_SECRET_F1 || 'Nm4' }}"' >> .env
+          echo 'LICENSE_SECRET_F2="${{ secrets.LICENSE_SECRET_F2 || 'Sh0' }}"' >> .env
+          echo 'LICENSE_SECRET_F3="${{ secrets.LICENSE_SECRET_F3 || 'pGN' }}"' >> .env
+          echo 'LICENSE_SECRET_F4="${{ secrets.LICENSE_SECRET_F4 || '3e!' }}"' >> .env
+          echo 'LICENSE_SECRET_F5="${{ secrets.LICENSE_SECRET_F5 || '2026' }}"' >> .env
+          dart run build_runner build --delete-conflicting-outputs
+
+      # ── 6. Exécuter les tests unitaires et d'intégration ────────────────
+      - name: 🧪 Exécuter les tests Desktop
+        run: flutter test test/
+
+      # ── 7. Compiler l'application pour Linux ─────────────────────────────
+      - name: 🔨 Compiler N'MaShop (Linux Release Obfusqué)
+        run: |
+          mkdir -p build/symbols
+          flutter build linux --release --obfuscate --split-debug-info=build/symbols --build-name=${{ inputs.version || '1.0.0' }}
+
+      # ── 8. Créer l'archive Tarball (.tar.gz) ─────────────────────────────
+      - name: 📦 Créer l'archive Tarball (.tar.gz)
+        run: |
+          tar -czvf NMaShop_Linux_v${{ inputs.version || '1.0.0' }}_x64.tar.gz -C build/linux/x64/release/bundle .
+
+      # ── 9. Uploader l'archive Linux ───────────────────────────────────────
+      - name: ⬆️ Publier l'archive Linux (.tar.gz)
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMaShop-Linux-x64-v${{ inputs.version || '1.0.0' }}
+          path: NMaShop_Linux_v*.tar.gz
+          retention-days: 30
