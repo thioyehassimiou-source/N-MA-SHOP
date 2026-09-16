@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -297,58 +296,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   'Mot de passe oublié ?',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Divider(color: Color(0xFFE2E8F0)),
-            const SizedBox(height: AppSpacing.sm),
-
-            // Bloc de secours raffiné et compact
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                      color: AppColors.brandOrange.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.storefront_rounded, size: 18, color: AppColors.brandOrange),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Pas encore de boutique ?',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
-                        ),
-                        Text(
-                          'Lancez l\'assistant de création',
-                          style: TextStyle(fontSize: 11.5, color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => context.go('/setup'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.brandOrange,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    ),
-                    child: const Text(
-                      'Configurer →',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
-                    ),
-                  ),
-                ],
               ),
             ),
           ],

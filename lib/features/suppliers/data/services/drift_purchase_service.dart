@@ -10,13 +10,16 @@ import '../../../auth/domain/app_user.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../security/domain/services/audit_log_service.dart';
 import '../../domain/purchase_draft.dart';
+import '../../../../core/sync/sync_queue_service.dart';
+import '../../../../core/sync/models/sync_event_payloads.dart';
 
 class DriftPurchaseService {
-  DriftPurchaseService(this._db, this.currentUser, this.auditLog);
+  DriftPurchaseService(this._db, this.currentUser, this.auditLog, this._syncQueue);
 
   final AppDatabase _db;
   final AppUser? currentUser;
   final AuditLogService auditLog;
+  final SyncQueueService _syncQueue;
 
   Future<void> recordPurchase(PurchaseDraft draft) async {
     await _db.transaction(() async {
@@ -69,6 +72,18 @@ class DriftPurchaseService {
                 paymentMethod: draft.paymentMethod,
               ),
             );
+            
+        await _syncQueue.enqueueCashMovement(
+          CashMovementSyncPayload(
+            movementId: purchaseId,
+            reference: 'ACH-${purchaseId.substring(0, 6).toUpperCase()}',
+            description: 'Achat marchandise: ${draft.supplierName}',
+            amount: draft.amountPaid,
+            typeIndex: 1, // outflow
+            paymentMethodIndex: draft.paymentMethod.index,
+            date: date,
+          ),
+        );
       }
 
       // 3. Créer les lignes d'achat et mettre à jour le stock
@@ -202,6 +217,18 @@ class DriftPurchaseService {
                 paymentMethod: method,
               ),
             );
+            
+        await _syncQueue.enqueueCashMovement(
+          CashMovementSyncPayload(
+            movementId: const Uuid().v4(),
+            reference: 'REG-${purchase.id.substring(0, 6).toUpperCase()}',
+            description: 'Règlement dette fournisseur',
+            amount: applied,
+            typeIndex: 1, // outflow
+            paymentMethodIndex: method.index,
+            date: paymentDate,
+          ),
+        );
         await (_db.update(
           _db.purchases,
         )..where((p) => p.id.equals(purchase.id))).write(

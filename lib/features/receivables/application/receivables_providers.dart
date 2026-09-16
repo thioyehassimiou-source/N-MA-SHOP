@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/database_provider.dart';
+import '../../../core/sync/desktop_sync_worker.dart';
 import '../data/repositories/drift_receivables_repository.dart';
 import '../data/services/drift_repayment_service.dart';
 import '../domain/credit_summary.dart';
@@ -20,7 +21,10 @@ final creditSummariesProvider = StreamProvider<List<CreditSummary>>(
 );
 
 final repaymentServiceProvider = Provider<RepaymentService>(
-  (ref) => DriftRepaymentService(db: ref.watch(databaseProvider)),
+  (ref) => DriftRepaymentService(
+    db: ref.watch(databaseProvider),
+    syncQueue: ref.watch(syncQueueServiceProvider),
+  ),
 );
 
 final recordRepaymentUseCaseProvider = Provider<RecordRepaymentUseCase>(

@@ -12,6 +12,7 @@ import 'core/providers/app_settings_provider.dart';
 import 'core/providers/database_provider.dart';
 import 'core/providers/startup_flags.dart';
 import 'core/services/image_storage_service.dart';
+import 'core/sync/desktop_sync_worker.dart';
 import 'features/auth/application/auth_providers.dart';
 
 Future<void> main() async {
@@ -85,6 +86,9 @@ Future<void> main() async {
       }
       await container.read(authProvider.notifier).restoreSession();
     }
+
+    // Démarrage non-bloquant du worker de synchronisation en arrière-plan
+    container.read(desktopSyncWorkerProvider.notifier);
   } catch (e, stack) {
     debugPrint("Erreur lors de l'initialisation au démarrage: $e\n$stack");
   }

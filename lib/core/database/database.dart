@@ -18,6 +18,7 @@ import 'tables/orders.dart';
 import 'tables/deliveries.dart';
 import 'tables/admin_clients.dart';
 import 'tables/admin_licenses.dart';
+import 'tables/sync_queue.dart';
 
 part 'database.g.dart';
 
@@ -43,6 +44,7 @@ part 'database.g.dart';
     AuditLogs,
     AdminClients,
     AdminLicenses,
+    SyncQueue,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -52,7 +54,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -193,6 +195,9 @@ class AppDatabase extends _$AppDatabase {
             await customStatement('CREATE INDEX IF NOT EXISTS idx_sales_user_id ON sales(user_id);');
             await customStatement('CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date);');
           }
+          if (from < 21) {
+            await m.createTable(syncQueue);
+          }
         },
         beforeOpen: (details) async {
           // Intégrité référentielle et optimisations de performance SQLite (pour PC modestes / HDD).
@@ -229,6 +234,7 @@ class AppDatabase extends _$AppDatabase {
       await delete(cashMovements).go();
       await delete(expenses).go();
       await delete(auditLogs).go();
+      await delete(syncQueue).go();
 
       // 3. Entités parentes maîtresses
       await delete(products).go();

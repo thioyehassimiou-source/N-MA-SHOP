@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// Service d'empreinte matérielle unique (Hardware Fingerprint / Machine ID).
 ///
 /// Conçu principalement pour les postes de caisse et PC sous **Windows**
-/// (avec fallback de compatibilité pour Linux/macOS).
+/// (avec fallback de compatibilité pour Linux/macOS/Web).
 ///
 /// Sous Windows, la clé d'identification est extraite directement depuis
 /// `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\MachineGuid`, qui est
@@ -22,6 +23,11 @@ abstract final class HardwareIdService {
   /// Renvoie l'identifiant matériel unique du poste (ex: NMA-8F3A-92B1-4C07).
   static Future<String> getHardwareId() async {
     if (_cachedHardwareId != null) return _cachedHardwareId!;
+
+    if (kIsWeb) {
+      _cachedHardwareId = 'NMA-WEB-8F3A-92B1';
+      return _cachedHardwareId!;
+    }
 
     String machineUniqueToken = '';
 

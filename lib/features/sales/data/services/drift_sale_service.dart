@@ -6,6 +6,8 @@ import '../../../../core/database/tables/audit_logs.dart';
 import '../../../../core/database/tables/stock.dart';
 import '../../../../core/database/tables/users.dart';
 import '../../../../core/domain/payment_method.dart';
+import '../../../../core/sync/models/sync_event_payloads.dart';
+import '../../../../core/sync/sync_queue_service.dart';
 import '../../../auth/domain/app_user.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../security/domain/services/audit_log_service.dart';
@@ -26,6 +28,7 @@ class DriftSaleService implements SaleService {
     required SaleRepository sales,
     required AppUser? currentUser,
     required AuditLogService auditLog,
+    SyncQueueService? syncQueue,
     String Function()? idGenerator,
     DateTime Function()? clock,
   }) : _db = db,
@@ -34,6 +37,7 @@ class DriftSaleService implements SaleService {
        _sales = sales,
        _currentUser = currentUser,
        _auditLog = auditLog,
+       _syncQueue = syncQueue,
        _newId = idGenerator ?? (() => const Uuid().v4()),
        _now = clock ?? DateTime.now;
 
@@ -43,6 +47,7 @@ class DriftSaleService implements SaleService {
   final SaleRepository _sales;
   final AppUser? _currentUser;
   final AuditLogService _auditLog;
+  final SyncQueueService? _syncQueue;
   final String Function() _newId;
   final DateTime Function() _now;
 
@@ -149,6 +154,36 @@ class DriftSaleService implements SaleService {
       });
       await _stock.applySaleExits(exits);
 
+      // ── Enregistrement dans la file locale de synchronisation ──
+      if (_syncQueue != null) {
+        await _syncQueue.enqueueSale(
+          SaleSyncPayload(
+            saleId: saleId,
+            reference: reference,
+            customerId: draft.customerId,
+            date: date,
+            totalAmount: total,
+            amountPaid: amountPaid,
+            paymentMethodIndex: dominant.index,
+            note: draft.note,
+            sellerId: sellerId,
+            sellerName: sellerName,
+            lines: newLines
+                .map(
+                  (l) => SaleLineSyncData(
+                    productId: l.productId,
+                    label: l.label,
+                    quantity: l.quantity,
+                    unitPrice: l.unitPrice,
+                    unitCost: l.unitCost,
+                    lineTotal: l.lineTotal,
+                  ),
+                )
+                .toList(),
+          ),
+        );
+      }
+
       // ── 9. Résultat métier ──
       return RecordedSale(
         saleId: saleId,
@@ -226,6 +261,11 @@ class DriftSaleService implements SaleService {
         actionType: AuditActionType.saleCancelled,
         details: 'Vente ${sale.reference} annulée.',
       );
+
+      // ── Enregistrement dans la file locale de synchronisation ──
+      if (_syncQueue != null) {
+        await _syncQueue.enqueueSaleCancellation(saleId);
+      }
     });
   }
 }

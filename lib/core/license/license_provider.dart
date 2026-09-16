@@ -98,13 +98,8 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       onActivated: (key) async {
         final prefs = ref.read(sharedPreferencesProvider);
         await _svc.unrevokeLicense(prefs);
-        if (key.isNotEmpty && !key.startsWith('TRIAL-')) {
-          final res = await _svc.activateAsync(key, prefs);
-          if (res.result == LicenseActivationResult.success && res.info != null) {
-            state = AsyncData(res.info!);
-            return;
-          }
-        }
+        // Mise à jour de l'état local sans auto-activation silencieuse en arrière-plan.
+        // Le client doit renseigner lui-même la clé reçue sur l'écran d'activation.
         state = AsyncData(await _svc.checkAsync(prefs));
       },
     )..start();
@@ -277,26 +272,14 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
           daysLeft: 0,
         ));
       } else if (remoteInfo.isActive) {
-        // Si la machine avait été marquée révoquée localement mais est active sur le cloud :
+        // Si la machine avait été marquée révoquée localement mais est réactivée sur le cloud :
         final wasRevoked = prefs.getBool('lic_was_revoked_by_admin') ?? false;
-        if (wasRevoked || current.isExpired) {
+        if (wasRevoked) {
           await _svc.unrevokeLicense(prefs);
-        }
-
-        // L'administrateur a activé ou attribué une licence officielle depuis Mobile Admin
-        final keyToUse = remoteInfo.licenseKey.isNotEmpty ? remoteInfo.licenseKey : storedKey;
-        if (keyToUse != null && keyToUse.isNotEmpty && !keyToUse.startsWith('TRIAL-')) {
-          if (!current.isLicensed || current.isExpired || storedKey != keyToUse) {
-            final res = await _svc.activateAsync(keyToUse, prefs);
-            if (res.result == LicenseActivationResult.success && res.info != null) {
-              state = AsyncData(res.info!);
-            } else {
-              state = AsyncData(await _svc.checkAsync(prefs));
-            }
-          }
-        } else if (current.isExpired) {
           state = AsyncData(await _svc.checkAsync(prefs));
         }
+        // L'activation de licence payante n'est plus exécutée silencieusement en arrière-plan.
+        // Le client saisit lui-même sa clé d'activation sur l'écran d'activation.
       }
     } catch (_) {
       // Vérification distante : échec silencieux (hors-ligne acceptable)

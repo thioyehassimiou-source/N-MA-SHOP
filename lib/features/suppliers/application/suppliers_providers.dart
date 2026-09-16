@@ -9,6 +9,8 @@ import '../domain/supplier_summary.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../security/application/security_providers.dart';
 
+import '../../../core/sync/desktop_sync_worker.dart';
+
 final suppliersRepositoryProvider = Provider<SuppliersRepository>((ref) {
   return DriftSuppliersRepository(ref.watch(databaseProvider));
 });
@@ -18,6 +20,7 @@ final purchaseServiceProvider = Provider<DriftPurchaseService>((ref) {
     ref.watch(databaseProvider),
     ref.watch(authProvider),
     ref.watch(auditLogServiceProvider),
+    ref.watch(syncQueueServiceProvider),
   );
 });
 

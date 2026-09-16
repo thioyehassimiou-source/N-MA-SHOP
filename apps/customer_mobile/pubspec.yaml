@@ -1,0 +1,29 @@
+name: customer_mobile
+description: "N'MaShop Mobile — Le téléphone du patron"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.6.1
+  dio: ^5.8.0+1
+  flutter_secure_storage: ^9.2.4
+  shared_preferences: ^2.5.2
+  intl: ^0.20.2
+  uuid: ^4.5.1
+  mobile_scanner: ^6.0.4
+  fl_chart: ^0.70.2
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

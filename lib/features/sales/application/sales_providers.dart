@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/database_provider.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../security/application/security_providers.dart';
+import '../../../core/sync/desktop_sync_worker.dart';
 import '../data/repositories/drift_customer_repository.dart';
 import '../data/repositories/drift_product_repository.dart';
 import '../data/repositories/drift_sale_repository.dart';
@@ -41,6 +42,7 @@ final saleServiceProvider = Provider<SaleService>(
     sales: ref.watch(saleRepositoryProvider),
     currentUser: ref.watch(authProvider),
     auditLog: ref.watch(auditLogServiceProvider),
+    syncQueue: ref.watch(syncQueueServiceProvider),
   ),
 );
 

@@ -2,6 +2,8 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/database.dart';
+import '../../../../core/sync/models/sync_event_payloads.dart';
+import '../../../../core/sync/sync_queue_service.dart';
 import '../../domain/errors.dart';
 import '../../domain/repayment_draft.dart';
 import '../../domain/services/repayment_service.dart';
@@ -14,13 +16,16 @@ import '../../domain/services/repayment_service.dart';
 class DriftRepaymentService implements RepaymentService {
   DriftRepaymentService({
     required AppDatabase db,
+    SyncQueueService? syncQueue,
     String Function()? idGenerator,
     DateTime Function()? clock,
   }) : _db = db,
+       _syncQueue = syncQueue,
        _newId = idGenerator ?? (() => const Uuid().v4()),
        _now = clock ?? DateTime.now;
 
   final AppDatabase _db;
+  final SyncQueueService? _syncQueue;
   final String Function() _newId;
   final DateTime Function() _now;
 
@@ -57,12 +62,13 @@ class DriftRepaymentService implements RepaymentService {
         if (remaining <= 0) break;
         final due = sale.totalAmount - sale.amountPaid;
         final applied = remaining < due ? remaining : due;
+        final paymentId = _newId();
 
         await _db
             .into(_db.creditPayments)
             .insert(
               CreditPaymentsCompanion.insert(
-                id: _newId(),
+                id: paymentId,
                 saleId: sale.id,
                 customerId: draft.customerId,
                 amount: applied,
@@ -73,6 +79,20 @@ class DriftRepaymentService implements RepaymentService {
         await (_db.update(_db.sales)..where((s) => s.id.equals(sale.id))).write(
           SalesCompanion(amountPaid: Value(sale.amountPaid + applied)),
         );
+
+        if (_syncQueue != null) {
+          await _syncQueue.enqueueCreditPayment(
+            CreditPaymentSyncPayload(
+              paymentId: paymentId,
+              saleId: sale.id,
+              customerId: draft.customerId,
+              amount: applied,
+              paymentMethodIndex: draft.method.index,
+              date: date,
+            ),
+          );
+        }
+
         remaining -= applied;
       }
 

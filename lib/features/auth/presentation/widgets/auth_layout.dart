@@ -22,7 +22,7 @@ class AuthLayout extends StatelessWidget {
     required this.pitch,
     required this.child,
     this.onBack,
-    this.showBackButton = true,
+    this.showBackButton = false,
   });
 
   /// Titre du formulaire (« Content de vous revoir »).
