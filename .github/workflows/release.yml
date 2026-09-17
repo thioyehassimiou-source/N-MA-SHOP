@@ -163,6 +163,12 @@ jobs:
           name: NMaShop-Windows-Setup-v${{ inputs.version || '1.0.0' }}
           path: ./release-assets
 
+      - name: 📥 Télécharger l'installeur ZIP sans blocage navigateur (.zip)
+        uses: actions/download-artifact@v4
+        with:
+          name: NMaShop-Windows-Installer-ZIP-v${{ inputs.version || '1.0.0' }}
+          path: ./release-assets
+
       - name: 📥 Télécharger la version portable Windows (.zip)
         uses: actions/download-artifact@v4
         with:
