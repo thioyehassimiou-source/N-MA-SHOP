@@ -73,6 +73,7 @@ jobs:
       - name: ⚙️ Compiler l'installeur avec Inno Setup
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows\setup.iss"
+          Compress-Archive -Path "build\windows\NMaShop_Setup_v1.0.0.exe" -DestinationPath "build\windows\NMaShop_Installer.zip" -Force
         shell: pwsh
 
       - name: ⬆️ Upload Installeur Windows (.exe)
@@ -80,6 +81,13 @@ jobs:
         with:
           name: NMaShop-Windows-Setup-v${{ inputs.version || '1.0.0' }}
           path: build/windows/NMaShop_Setup_*.exe
+          retention-days: 30
+
+      - name: ⬆️ Upload Installeur ZIP (.zip)
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMaShop-Windows-Installer-ZIP-v${{ inputs.version || '1.0.0' }}
+          path: build/windows/NMaShop_Installer.zip
           retention-days: 30
 
       - name: ⬆️ Upload Version Portable (.zip)
