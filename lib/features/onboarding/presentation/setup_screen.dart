@@ -218,7 +218,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
               : DateTime.now();
           final expiry = LicenseCore.computeTrialExpiry(firstLaunch);
 
-          LicenseAdminSyncService.reportTrialInstallation(
+          await LicenseAdminSyncService.reportTrialInstallation(
             hardwareId: hwId,
             firstLaunch: firstLaunch,
             trialExpiry: expiry,
@@ -226,8 +226,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             ownerName: user.fullName,
             phone: _phoneController.text.trim(),
             osInfo: Platform.operatingSystem.toUpperCase(),
-          );
-        } catch (_) {}
+          ).timeout(const Duration(seconds: 4), onTimeout: () {
+            debugPrint('[TELEMETRY] Timeout synchronisation essai vers Neon');
+          });
+        } catch (e) {
+          debugPrint('[TELEMETRY] Erreur synchronisation essai: $e');
+        }
       }
 
       // Si l'utilisateur a activé une clé de licence, resynchroniser les infos du propriétaire et de la boutique
@@ -247,8 +251,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             activatedAt: DateTime.now(),
             expiryDate: currentLicense.expiryDate,
           );
-          LicenseAdminSyncService.notifyActivation(payload);
-        } catch (_) {}
+          await LicenseAdminSyncService.notifyActivation(payload).timeout(const Duration(seconds: 4), onTimeout: () {
+            debugPrint('[TELEMETRY] Timeout synchronisation activation vers Neon');
+          });
+        } catch (e) {
+          debugPrint('[TELEMETRY] Erreur synchronisation activation: $e');
+        }
       }
 
       if (mounted) {

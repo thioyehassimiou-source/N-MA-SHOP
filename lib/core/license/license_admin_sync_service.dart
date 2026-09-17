@@ -241,7 +241,8 @@ class LicenseAdminSyncService {
                   owner_name = COALESCE(NULLIF(@ownerName, ''), owner_name),
                   phone = COALESCE(NULLIF(@phone, ''), phone),
                   address = COALESCE(NULLIF(@address, ''), address),
-                  expires_at = @expiresAt
+                  expires_at = @expiresAt,
+                  is_synced = false
               WHERE hardware_id = @hwId AND (license_key LIKE 'TRIAL-%' OR license_key = '');
             '''),
             parameters: {
