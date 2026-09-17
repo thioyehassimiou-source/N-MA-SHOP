@@ -73,7 +73,11 @@ jobs:
       - name: ⚙️ Compiler l'installeur avec Inno Setup
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows\setup.iss"
-          Compress-Archive -Path "build\windows\NMaShop_Setup_v1.0.0.exe" -DestinationPath "build\windows\NMaShop_Installer.zip" -Force
+        shell: pwsh
+
+      - name: 📦 Compresser l'installeur dans un ZIP d'installation
+        run: |
+          Compress-Archive -Path "build\windows\NMaShop_Setup_*.exe" -DestinationPath "build\windows\NMaShop_Installer.zip" -Force
         shell: pwsh
 
       - name: ⬆️ Upload Installeur Windows (.exe)
