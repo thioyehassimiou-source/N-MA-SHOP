@@ -157,29 +157,12 @@ jobs:
       - name: 📥 Créer le répertoire de distribution
         run: mkdir -p ./release-assets
 
-      - name: 📥 Télécharger l'installeur Windows (.exe)
+      - name: 📥 Télécharger tous les artefacts compilés (Windows & Linux)
         uses: actions/download-artifact@v4
         with:
-          name: NMaShop-Windows-Setup-v${{ inputs.version || '1.0.0' }}
+          pattern: NMaShop-*
           path: ./release-assets
-
-      - name: 📥 Télécharger l'installeur ZIP sans blocage navigateur (.zip)
-        uses: actions/download-artifact@v4
-        with:
-          name: NMaShop-Windows-Installer-ZIP-v${{ inputs.version || '1.0.0' }}
-          path: ./release-assets
-
-      - name: 📥 Télécharger la version portable Windows (.zip)
-        uses: actions/download-artifact@v4
-        with:
-          name: NMaShop-Windows-Portable-v${{ inputs.version || '1.0.0' }}
-          path: ./release-assets
-
-      - name: 📥 Télécharger l'archive Linux (.tar.gz)
-        uses: actions/download-artifact@v4
-        with:
-          name: NMaShop-Linux-x64-v${{ inputs.version || '1.0.0' }}
-          path: ./release-assets
+          merge-multiple: true
 
       - name: 🚀 Créer la Release GitHub Officielle
         uses: softprops/action-gh-release@v2

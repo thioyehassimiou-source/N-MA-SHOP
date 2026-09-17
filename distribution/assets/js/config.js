@@ -12,9 +12,9 @@ const CONFIG = {
   LAST_UPDATE: "Septembre 2026",
   LICENSE_TRIAL: "7 jours d'essai gratuit complet (100% hors-ligne)",
   
-  // Liens de téléchargement du logiciel Windows & Multiplateforme (Google Drive Public & Local)
-  DOWNLOAD_URL: "https://drive.google.com/file/d/1IWq4wV0ECcWJyno4FagN2jcKyd_GUsaK/view?usp=sharing",
-  DOWNLOAD_PORTABLE_URL: "https://drive.google.com/file/d/1IWq4wV0ECcWJyno4FagN2jcKyd_GUsaK/view?usp=sharing",
+  // Liens de téléchargement du logiciel Windows & Multiplateforme (ZIP Facile Sans Blocage)
+  DOWNLOAD_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.0.5/NMaShop_Installer.zip",
+  DOWNLOAD_PORTABLE_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.0.5/NMaShop_Windows_Portable_v1.0.0.zip",
   DOWNLOAD_LINUX_URL: "downloads/nmashop_linux_release.tar.gz",
   DOWNLOAD_APK_URL: "https://drive.google.com/uc?export=download&id=1yHueBEciq3z7Xh4dKOafJoY3OHN3ZsAN",
   
