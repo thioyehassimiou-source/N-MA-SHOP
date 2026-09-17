@@ -130,7 +130,7 @@ class LicenseCore {
   }
 
   static DateTime computeTrialExpiry(DateTime from) =>
-      DateTime(from.year, from.month, from.day).add(const Duration(days: trialDays));
+      from.add(const Duration(days: trialDays));
 
   // ── Génération de clés liée à l'Hardware ID (Pour App Admin Mobile) ─────────
 
