@@ -13,8 +13,8 @@ const CONFIG = {
   LICENSE_TRIAL: "7 jours d'essai gratuit complet (100% hors-ligne)",
   
   // Liens de téléchargement du logiciel Windows & Multiplateforme (Drive Officiel Windows)
-  DOWNLOAD_URL: "https://drive.google.com/uc?export=download&id=1grZnk2MUdO7yKHpT-EO4MsO7TduLbYNm",
-  DOWNLOAD_PORTABLE_URL: "https://drive.google.com/uc?export=download&id=1grZnk2MUdO7yKHpT-EO4MsO7TduLbYNm",
+  DOWNLOAD_URL: "https://drive.google.com/uc?export=download&id=1IWq4wV0ECcWJyno4FagN2jcKyd_GUsaK",
+  DOWNLOAD_PORTABLE_URL: "https://drive.google.com/uc?export=download&id=1IWq4wV0ECcWJyno4FagN2jcKyd_GUsaK",
   DOWNLOAD_LINUX_URL: "downloads/nmashop_linux_release.tar.gz",
   DOWNLOAD_APK_URL: "https://drive.google.com/uc?export=download&id=1yHueBEciq3z7Xh4dKOafJoY3OHN3ZsAN",
   
