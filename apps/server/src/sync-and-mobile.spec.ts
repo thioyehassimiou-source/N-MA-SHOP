@@ -1,3 +1,5 @@
+process.env.DATABASE_DRIVER = 'memory';
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DatabaseModule } from './database/database.module.js';
@@ -38,6 +40,117 @@ describe('NMaShop Mobile Ecosystem — Backend Core Integration', () => {
     await db.upsertShop('LICENSE-SHOP-A', 'Shop A', 'GNF');
     await db.upsertShop('LICENSE-SHOP-B', 'Shop B', 'GNF');
     await db.upsertShop('TEST-OUTOFORDER-SHOP', 'Boutique OOO', 'GNF');
+  });
+
+  describe('0. Inscription Autonome Mobile (POST /auth/register)', () => {
+    it('permet l\'inscription autonome en créant la boutique, le device et les jetons JWT', async () => {
+      const regRes = await authService.register({
+        shopName: 'Boutique Diallo & Frères',
+        currency: 'GNF',
+        pin: '1234',
+        deviceName: 'Smartphone Patron',
+        deviceId: 'mob-a1b2c3d4-unique-1',
+      });
+
+      expect(regRes.success).toBe(true);
+      expect(regRes.accessToken).toBeDefined();
+      expect(regRes.refreshToken).toBeDefined();
+      expect(regRes.shop).toBeDefined();
+      expect(regRes.shop.id).toBeDefined();
+      expect(regRes.shop.name).toBe('Boutique Diallo & Frères');
+      expect(regRes.shop.currency).toBe('GNF');
+
+      // Vérifier l'absence du PIN en clair ou haché dans la réponse API
+      expect((regRes as any).pin).toBeUndefined();
+      expect((regRes as any).pinHash).toBeUndefined();
+
+      // Vérifier l'existence en base de données
+      const shopInDb = await db.findShopById(regRes.shop.id);
+      expect(shopInDb).toBeDefined();
+      expect(shopInDb?.businessName).toBe('Boutique Diallo & Frères');
+      expect(shopInDb?.licenseKey).toMatch(/^NMA-MOB-/);
+
+      const deviceInDb = await db.findDevice('mob-a1b2c3d4-unique-1');
+      expect(deviceInDb).toBeDefined();
+      expect(deviceInDb?.tenantId).toBe(regRes.shop.id);
+      expect(deviceInDb?.deviceName).toBe('Smartphone Patron');
+      expect(deviceInDb?.pinHash).not.toBe('1234');
+    });
+
+    it('rejet de l\'inscription si le deviceId est déjà utilisé', async () => {
+      await authService.register({
+        shopName: 'Boutique Première',
+        currency: 'GNF',
+        pin: '1234',
+        deviceName: 'Téléphone 1',
+        deviceId: 'mob-duplicate-id',
+      });
+
+      await expect(
+        authService.register({
+          shopName: 'Boutique Deuxième Attempt',
+          currency: 'GNF',
+          pin: '5678',
+          deviceName: 'Téléphone 2',
+          deviceId: 'mob-duplicate-id',
+        }),
+      ).rejects.toThrow(/déjà enregistré/i);
+    });
+
+    it('rejet de l\'inscription si le code PIN ou le nom est invalide', async () => {
+      await expect(
+        authService.register({
+          shopName: '',
+          currency: 'GNF',
+          pin: '1234',
+          deviceName: 'Phone',
+          deviceId: 'mob-invalid-1',
+        }),
+      ).rejects.toThrow(/nom/i);
+
+      await expect(
+        authService.register({
+          shopName: 'Boutique Valid',
+          currency: 'GNF',
+          pin: '12', // PIN trop court
+          deviceName: 'Phone',
+          deviceId: 'mob-invalid-2',
+        }),
+      ).rejects.toThrow(/PIN/i);
+    });
+
+    it('permet la connexion par login (PIN + deviceId) immédiatement après l\'inscription', async () => {
+      const regRes = await authService.register({
+        shopName: 'Boutique Mode & Style',
+        currency: 'GNF',
+        pin: '4321',
+        deviceName: 'Pixel 8 Pro',
+        deviceId: 'mob-pixel-8-pro',
+      });
+
+      const loginRes = await authService.login({
+        deviceId: 'mob-pixel-8-pro',
+        pin: '4321',
+      });
+
+      expect(loginRes.success).toBe(true);
+      expect(loginRes.accessToken).toBeDefined();
+      expect(loginRes.shop.id).toBe(regRes.shop.id);
+    });
+
+    it('permet d\'accéder aux données Mobile (dashboard, profil) avec le tenantId de la boutique créée', async () => {
+      const regRes = await authService.register({
+        shopName: 'Alimentation Générale Conakry',
+        currency: 'GNF',
+        pin: '9876',
+        deviceName: 'Redmi Note 12',
+        deviceId: 'mob-redmi-note-12',
+      });
+
+      const dashboard = await mobileService.getDashboard(regRes.shop.id);
+      expect(dashboard.shop.name).toBe('Alimentation Générale Conakry');
+      expect(dashboard.shop.currency).toBe('GNF');
+    });
   });
 
   describe('1. Flux de Jumelage & Authentification', () => {

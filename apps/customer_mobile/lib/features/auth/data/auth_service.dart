@@ -8,55 +8,34 @@ final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(storage);
 });
 
+class AuthResult {
+  final bool isSuccess;
+  final String? errorMessage;
+
+  AuthResult._({required this.isSuccess, this.errorMessage});
+
+  factory AuthResult.success() => AuthResult._(isSuccess: true);
+  factory AuthResult.failure(String message) => AuthResult._(isSuccess: false, errorMessage: message);
+}
+
 class AuthService {
   final StorageService _storage;
 
   AuthService(this._storage);
 
-  Future<Map<String, dynamic>> claimPairing({
-    required String serverUrl,
-    required String token,
-    required String pin,
+  Future<AuthResult> registerShop({
     required String shopName,
-    required String currency,
+    String currency = 'GNF',
+    required String pin,
+    required String deviceName,
   }) async {
-    final deviceId = await _storage.getOrCreateDeviceId();
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: serverUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
-      ),
-    );
+    if (shopName.trim().isEmpty) {
+      return AuthResult.failure('Veuillez saisir un nom de boutique valide.');
+    }
+    if (pin.length < 4 || pin.length > 8) {
+      return AuthResult.failure('Le code PIN doit contenir entre 4 et 8 chiffres.');
+    }
 
-    final response = await dio.post(
-      '/api/v1/auth/pair/claim',
-      data: {
-        'token': token,
-        'deviceId': deviceId,
-        'deviceName': 'Smartphone Patron ($deviceId)',
-        'pin': pin,
-      },
-    );
-
-    final data = response.data as Map<String, dynamic>;
-    final accessToken = data['accessToken'] as String;
-    final refreshToken = data['refreshToken'] as String;
-    final shop = data['shop'] as Map<String, dynamic>?;
-
-    await _storage.saveAuthData(
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-      shopId: shop?['id'] ?? 'default-shop',
-      shopName: shop?['name'] ?? shopName,
-      currency: shop?['currency'] ?? currency,
-      serverUrl: serverUrl,
-    );
-
-    return data;
-  }
-
-  Future<bool> loginWithPin(String pin) async {
     final deviceId = await _storage.getOrCreateDeviceId();
     final serverUrl = await _storage.getServerUrl();
 
@@ -64,6 +43,80 @@ class AuthService {
       BaseOptions(
         baseUrl: serverUrl,
         connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
+
+    try {
+      final response = await dio.post(
+        '/api/v1/auth/register',
+        data: {
+          'shopName': shopName.trim(),
+          'currency': currency.trim().isEmpty ? 'GNF' : currency.trim(),
+          'pin': pin,
+          'deviceName': deviceName.trim().isEmpty ? 'Smartphone Patron' : deviceName.trim(),
+          'deviceId': deviceId,
+        },
+      );
+
+      final data = response.data as Map<String, dynamic>;
+      if (data['success'] == true) {
+        final accessToken = data['accessToken'] as String;
+        final refreshToken = data['refreshToken'] as String;
+        final shop = data['shop'] as Map<String, dynamic>;
+
+        await _storage.saveAuthData(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          shopId: shop['id'] as String,
+          shopName: shop['name'] as String,
+          currency: shop['currency'] as String,
+          serverUrl: serverUrl,
+        );
+
+        return AuthResult.success();
+      } else {
+        return AuthResult.failure('Échec de la création de la boutique.');
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final respData = e.response?.data;
+        if (respData is Map<String, dynamic> && respData['message'] != null) {
+          final msg = respData['message'];
+          final messageStr = msg is List ? msg.join(', ') : msg.toString();
+          if (messageStr.contains('déjà enregistré') || messageStr.contains('deviceId')) {
+            return AuthResult.failure('Cet appareil possède déjà un compte N’MaShop. Essayez de vous connecter.');
+          }
+          return AuthResult.failure(messageStr);
+        }
+      }
+      return AuthResult.failure('Impossible de contacter N’MaShop. Vérifiez votre connexion Internet et réessayez.');
+    } catch (e) {
+      return AuthResult.failure('Une erreur inattendue est survenue.');
+    }
+  }
+
+  Future<AuthResult> loginWithPin(String pin) async {
+    if (pin.length < 4 || pin.length > 8) {
+      return AuthResult.failure('Le code PIN doit contenir entre 4 et 8 chiffres.');
+    }
+
+    final deviceId = await _storage.getOrCreateDeviceId();
+    final serverUrl = await _storage.getServerUrl();
+
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: serverUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
       ),
     );
 
@@ -77,76 +130,36 @@ class AuthService {
       );
 
       final data = response.data as Map<String, dynamic>;
-      final accessToken = data['accessToken'] as String;
-      final refreshToken = data['refreshToken'] as String;
-      final shop = data['shop'] as Map<String, dynamic>?;
+      if (data['success'] == true) {
+        final accessToken = data['accessToken'] as String;
+        final refreshToken = data['refreshToken'] as String;
+        final shop = data['shop'] as Map<String, dynamic>?;
 
-      await _storage.saveAuthData(
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-        shopId: shop?['id'] ?? 'shop',
-        shopName: shop?['name'] ?? (await _storage.getShopName()),
-        currency: shop?['currency'] ?? (await _storage.getCurrency()),
-        serverUrl: serverUrl,
-      );
+        await _storage.saveAuthData(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          shopId: shop?['id'] ?? 'shop',
+          shopName: shop?['name'] ?? (await _storage.getShopName()),
+          currency: shop?['currency'] ?? (await _storage.getCurrency()),
+          serverUrl: serverUrl,
+        );
 
-      return true;
+        return AuthResult.success();
+      } else {
+        return AuthResult.failure('Identifiants incorrects.');
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final respData = e.response?.data;
+        if (respData is Map<String, dynamic> && respData['message'] != null) {
+          final msg = respData['message'];
+          final messageStr = msg is List ? msg.join(', ') : msg.toString();
+          return AuthResult.failure(messageStr);
+        }
+      }
+      return AuthResult.failure('Impossible de contacter N’MaShop. Vérifiez votre connexion Internet et réessayez.');
     } catch (_) {
-      return false;
-    }
-  }
-
-  Future<String?> autoPairDemoDevice() async {
-    final serverUrl = await _storage.getServerUrl();
-    final deviceId = await _storage.getOrCreateDeviceId();
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: serverUrl,
-        connectTimeout: const Duration(seconds: 8),
-        receiveTimeout: const Duration(seconds: 10),
-      ),
-    );
-
-    try {
-      // 1. Init pairing token on server
-      await dio.post(
-        '/api/v1/auth/pair/init',
-        data: {
-          'token': 'auto-demo-token',
-          'machineId': 'desktop-mac-auto',
-          'shopName': 'Boutique N\'MaShop Guinée',
-          'licenseKey': 'NMA-2026-GUINEE-001',
-        },
-      );
-
-      // 2. Claim pairing to obtain JWT
-      final claimRes = await dio.post(
-        '/api/v1/auth/pair/claim',
-        data: {
-          'token': 'auto-demo-token',
-          'deviceId': deviceId,
-          'deviceName': 'Mobile Patron ($deviceId)',
-          'pin': '1234',
-        },
-      );
-
-      final data = claimRes.data as Map<String, dynamic>;
-      final accessToken = data['accessToken'] as String;
-      final refreshToken = data['refreshToken'] as String;
-      final shop = data['shop'] as Map<String, dynamic>?;
-
-      await _storage.saveAuthData(
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-        shopId: shop?['id'] ?? 'shop-auto',
-        shopName: shop?['name'] ?? 'Boutique N\'MaShop Guinée',
-        currency: shop?['currency'] ?? 'GNF',
-        serverUrl: serverUrl,
-      );
-
-      return accessToken;
-    } catch (_) {
-      return null;
+      return AuthResult.failure('Une erreur inattendue est survenue.');
     }
   }
 

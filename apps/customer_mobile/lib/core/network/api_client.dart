@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../features/auth/data/auth_service.dart';
 import '../storage/secure_storage_service.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) => StorageService());
@@ -34,11 +33,7 @@ class ApiClient {
             options.baseUrl = serverUrl;
           }
 
-          var token = await _storage.getAccessToken();
-          if ((token == null || token.isEmpty) && !options.path.contains('/auth/')) {
-            token = await AuthService(_storage).autoPairDemoDevice();
-          }
-
+          final token = await _storage.getAccessToken();
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }

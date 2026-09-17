@@ -2,8 +2,8 @@ import { Injectable, UnauthorizedException, BadRequestException, Logger } from '
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { DatabaseService } from '../database/database.service.js';
-import { PairInitDto, PairClaimDto, LoginDto, RefreshTokenDto } from './auth.dto.js';
+import { DatabaseService, ShopRecord, DeviceRecord } from '../database/database.service.js';
+import { PairInitDto, PairClaimDto, LoginDto, RefreshTokenDto, RegisterShopDto } from './auth.dto.js';
 
 @Injectable()
 export class AuthService {
@@ -13,6 +13,73 @@ export class AuthService {
     private readonly db: DatabaseService,
     private readonly jwtService: JwtService,
   ) {}
+
+  async register(dto: RegisterShopDto) {
+    if (!dto.shopName || dto.shopName.trim().length === 0) {
+      throw new BadRequestException('Le nom de la boutique est obligatoire.');
+    }
+    if (!dto.deviceId || dto.deviceId.trim().length === 0) {
+      throw new BadRequestException('L\'identifiant de l\'appareil (deviceId) est obligatoire.');
+    }
+    if (!dto.pin || dto.pin.length < 4 || dto.pin.length > 8) {
+      throw new BadRequestException('Le code PIN doit comporter entre 4 et 8 chiffres.');
+    }
+
+    const existingDevice = await this.db.findDevice(dto.deviceId);
+    if (existingDevice) {
+      throw new BadRequestException('Cet identifiant d\'appareil (deviceId) est déjà enregistré.');
+    }
+
+    const licenseKey = `NMA-MOB-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+    const pinHash = await bcrypt.hash(dto.pin, 10);
+    const initialRefreshTokenVal = crypto.randomBytes(40).toString('hex');
+    const refreshTokenHash = crypto.createHash('sha256').update(initialRefreshTokenVal).digest('hex');
+
+    let result: { shop: ShopRecord; device: DeviceRecord };
+    try {
+      result = await this.db.registerMobileShopAndDevice({
+        licenseKey,
+        shopName: dto.shopName.trim(),
+        currency: dto.currency || 'GNF',
+        deviceId: dto.deviceId.trim(),
+        deviceName: dto.deviceName.trim(),
+        pinHash,
+        refreshTokenHash,
+      });
+    } catch (err: any) {
+      if (err.message === 'DEVICE_ALREADY_EXISTS') {
+        throw new BadRequestException('Cet identifiant d\'appareil (deviceId) est déjà enregistré.');
+      }
+      this.logger.error(`Erreur lors de l'inscription autonome: ${err.message}`, err.stack);
+      throw new BadRequestException('Échec de la création de la boutique.');
+    }
+
+    const { shop, device } = result;
+
+    const payload = {
+      sub: device.id,
+      deviceId: device.deviceId,
+      tenantId: device.tenantId,
+      shopName: shop.businessName,
+      role: 'owner',
+    };
+
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const refreshToken = this.jwtService.sign({ ...payload, type: 'refresh', tokenVal: initialRefreshTokenVal }, { expiresIn: '90d' });
+
+    this.logger.log(`Inscription autonome réussie : boutique "${shop.businessName}" (ID: ${shop.id}) - Appareil "${device.deviceName}" (${device.deviceId})`);
+
+    return {
+      success: true,
+      accessToken,
+      refreshToken,
+      shop: {
+        id: shop.id,
+        name: shop.businessName,
+        currency: shop.currency,
+      },
+    };
+  }
 
   async initPairing(dto: PairInitDto) {
     const shop = await this.db.upsertShop(dto.licenseKey, dto.shopName, dto.currency || 'GNF');
@@ -87,7 +154,7 @@ export class AuthService {
   async login(dto: LoginDto) {
     const device = await this.db.findDevice(dto.deviceId);
     if (!device) {
-      throw new UnauthorizedException('Appareil non reconnu. Veuillez scanner le QR Code sur la caisse pour le jumeler.');
+      throw new UnauthorizedException('Appareil non reconnu. Veuillez d\'abord créer votre boutique.');
     }
     if (device.isRevoked) {
       throw new UnauthorizedException('Cet appareil a été révoqué par le propriétaire.');

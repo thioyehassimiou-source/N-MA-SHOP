@@ -5,8 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/network/api_client.dart';
 import 'core/theme/app_colors.dart';
 import 'features/auth/presentation/auth_landing_screen.dart';
-import 'features/auth/presentation/pin_lock_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'features/shell/main_navigation_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,7 +63,7 @@ class AppGate extends ConsumerStatefulWidget {
 
 class _AppGateState extends ConsumerState<AppGate> {
   bool? _hasSeenOnboarding;
-  bool? _isPaired;
+  bool? _isLoggedIn;
 
   @override
   void initState() {
@@ -72,24 +72,32 @@ class _AppGateState extends ConsumerState<AppGate> {
   }
 
   Future<void> _checkAppState() async {
-    final prefs = await SharedPreferences.getInstance();
-    final hasSeenOnboarding = prefs.getBool(OnboardingScreen.prefKeyHasSeenOnboarding) ?? false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hasSeenOnboarding = prefs.getBool(OnboardingScreen.prefKeyHasSeenOnboarding) ?? false;
 
-    final storage = ref.read(storageServiceProvider);
-    final paired = await storage.isPaired();
+      final storage = ref.read(storageServiceProvider);
+      final loggedIn = await storage.isLoggedIn();
 
-    if (mounted) {
-      setState(() {
-        _hasSeenOnboarding = hasSeenOnboarding;
-        _isPaired = paired;
-      });
+      if (mounted) {
+        setState(() {
+          _hasSeenOnboarding = hasSeenOnboarding;
+          _isLoggedIn = loggedIn;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _hasSeenOnboarding = true;
+          _isLoggedIn = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Écran de chargement splash minimaliste
-    if (_hasSeenOnboarding == null || _isPaired == null) {
+    if (_hasSeenOnboarding == null || _isLoggedIn == null) {
       return Scaffold(
         backgroundColor: AppColors.brandNavyDark,
         body: Center(
@@ -119,17 +127,15 @@ class _AppGateState extends ConsumerState<AppGate> {
       );
     }
 
-    // 1. Premier lancement : Onboarding immersif
     if (!_hasSeenOnboarding!) {
       return const OnboardingScreen();
     }
 
-    // 2. Déjà jumelé : Écran de déverrouillage par code PIN
-    if (_isPaired!) {
-      return const PinLockScreen();
+    if (!_isLoggedIn!) {
+      return const AuthLandingScreen();
     }
 
-    // 3. Non jumelé : Passerelle de connexion & jumelage
-    return const AuthLandingScreen();
+    return const MainNavigationShell();
   }
 }
+

@@ -37,12 +37,13 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
     ];
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _currentIndex,
         children: screens,
       ),
       drawer: Drawer(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.surfaceContainerLowest,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
@@ -58,9 +59,9 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       gradient: AppColors.primaryGradient,
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 28),
+                    child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 26),
                   ),
                   const SizedBox(height: 12),
                   const Text(
@@ -68,51 +69,51 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
                     style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const Text(
-                    'Le téléphone du patron • Guinée',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                    'Gestion Commerciale & Caisse POS',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                   ),
                 ],
               ),
             ),
             ListTile(
               leading: const Icon(Icons.notifications_active_outlined, color: AppColors.brandOrange),
-              title: const Text('Centre d\'alertes', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text('Ruptures de stock & alertes caisse', style: TextStyle(fontSize: 11)),
+              title: const Text('Centre d\'alertes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Ruptures de stock & alertes caisse', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
               onTap: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AlertsScreen()));
               },
             ),
             ListTile(
-              leading: const Icon(Icons.people_alt_outlined, color: Colors.purple),
-              title: const Text('Créances & Débiteurs', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text('Suivi des clients à crédit', style: TextStyle(fontSize: 11)),
+              leading: const Icon(Icons.people_alt_outlined, color: AppColors.brandNavy),
+              title: const Text('Créances & Débiteurs', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Suivi des clients à crédit', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
               onTap: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceivablesScreen()));
               },
             ),
             ListTile(
-              leading: const Icon(Icons.auto_stories_rounded, color: Colors.blue),
-              title: const Text('Onboarding de bienvenue', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text('Revoir la présentation des fonctionnalités', style: TextStyle(fontSize: 11)),
+              leading: const Icon(Icons.help_outline_rounded, color: AppColors.brandEmerald),
+              title: const Text('Guide de bienvenue', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Présentation des fonctionnalités', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
               onTap: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OnboardingScreen()));
               },
             ),
-            const Divider(),
+            const Divider(color: AppColors.outline),
             ListTile(
               leading: const Icon(Icons.settings_outlined, color: AppColors.onSurface),
-              title: const Text('Paramètres de l\'application'),
+              title: const Text('Paramètres de l\'application', style: TextStyle(fontSize: 13)),
               onTap: () {
                 Navigator.of(context).pop();
-                setState(() => _currentIndex = 4); // Onglet Paramètres
+                setState(() => _currentIndex = 4);
               },
             ),
             ListTile(
               leading: const Icon(Icons.logout, color: AppColors.error),
-              title: const Text('Dissocier cette boutique', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+              title: const Text('Dissocier cette boutique', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 13)),
               onTap: () async {
                 Navigator.of(context).pop();
                 await ref.read(authServiceProvider).logout();
@@ -129,10 +130,10 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+          border: Border(top: BorderSide(color: AppColors.outline, width: 1)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12,
+              color: Color(0x0F000000),
               blurRadius: 10,
               offset: Offset(0, -3),
             ),
@@ -170,7 +171,7 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
           children: [
             Icon(
               isSelected ? activeIcon : icon,
-              color: isSelected ? AppColors.primary : const Color(0xFF64748B),
+              color: isSelected ? AppColors.brandOrange : const Color(0xFF64748B),
               size: 22,
             ),
             const SizedBox(height: 4),
@@ -179,7 +180,7 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? AppColors.primary : const Color(0xFF64748B),
+                color: isSelected ? AppColors.brandOrange : const Color(0xFF64748B),
               ),
             ),
           ],

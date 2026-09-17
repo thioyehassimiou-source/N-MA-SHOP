@@ -132,6 +132,7 @@ export declare class DatabaseService implements OnModuleInit, OnModuleDestroy {
         expenses: Map<string, ExpenseRecord>;
         cashMovements: Map<string, CashMovementRecord>;
     };
+    constructor();
     onModuleInit(): Promise<void>;
     onModuleDestroy(): Promise<void>;
     cleanAllForTesting(): Promise<void>;
@@ -156,6 +157,18 @@ export declare class DatabaseService implements OnModuleInit, OnModuleDestroy {
         pinHash: string;
         refreshTokenHash?: string;
     }): Promise<DeviceRecord>;
+    registerMobileShopAndDevice(params: {
+        licenseKey: string;
+        shopName: string;
+        currency: string;
+        deviceId: string;
+        deviceName: string;
+        pinHash: string;
+        refreshTokenHash: string;
+    }): Promise<{
+        shop: ShopRecord;
+        device: DeviceRecord;
+    }>;
     updateDeviceLastSeen(deviceId: string): Promise<void>;
     updateDeviceRefreshToken(deviceId: string, refreshTokenHash: string): Promise<void>;
     updateDeviceFailedPin(deviceId: string, failedCount: number, lockoutUntil: Date | null): Promise<void>;

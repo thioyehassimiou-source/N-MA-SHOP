@@ -142,9 +142,9 @@ void main() {
         ),
       );
 
-      expect(find.text('Votre boutique dans votre poche'), findsOneWidget);
-      expect(find.text('⚡ Zéro latence'), findsOneWidget);
-      expect(find.text('Continuer'), findsOneWidget);
+      expect(find.text('Encaissez chaque vente en quelques secondes'), findsOneWidget);
+      expect(find.text('VENTES & CAISSE'), findsOneWidget);
+      expect(find.text('Suivant'), findsOneWidget);
     });
 
     testWidgets('affiche la passerelle d\'authentification AuthLandingScreen', (tester) async {
@@ -156,9 +156,8 @@ void main() {
         ),
       );
 
-      expect(find.text('Connexion & Jumelage'), findsOneWidget);
-      expect(find.text('Scanner le QR Code sur la caisse'), findsOneWidget);
-      expect(find.text('Visiter l\'application en Mode Démo (1 clic)'), findsOneWidget);
+      expect(find.text('Ouvrir ma boutique'), findsOneWidget);
+      expect(find.text('Créer une nouvelle boutique'), findsOneWidget);
     });
   });
 }

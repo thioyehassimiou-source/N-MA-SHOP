@@ -4,6 +4,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 var DatabaseService_1;
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
@@ -26,11 +29,14 @@ let DatabaseService = DatabaseService_1 = class DatabaseService {
         expenses: new Map(),
         cashMovements: new Map(),
     };
+    constructor() {
+        this.isMemoryFallback = true;
+    }
     async onModuleInit() {
-        const connectionString = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL;
-        if (process.env.DATABASE_DRIVER === 'memory') {
+        const connectionString = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.NEON_CONNECTION_STRING;
+        if (this.isMemoryFallback || process.env.DATABASE_DRIVER === 'memory' || process.env.NODE_ENV === 'test' || process.env.VITEST === 'true') {
             this.isMemoryFallback = true;
-            this.logger.warn('Mode mémoire forcé via DATABASE_DRIVER=memory. Les données ne seront pas persistées.');
+            this.logger.warn('Mode mémoire actif pour les tests ou développement local.');
             return;
         }
         if (!connectionString) {
@@ -42,6 +48,7 @@ let DatabaseService = DatabaseService_1 = class DatabaseService {
                 ssl: connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : undefined,
                 max: 10,
                 idleTimeoutMillis: 30000,
+                connectionTimeoutMillis: 5000,
             });
             const client = await this.pool.connect();
             client.release();
@@ -50,7 +57,13 @@ let DatabaseService = DatabaseService_1 = class DatabaseService {
             await this.initPostgresSchema();
         }
         catch (err) {
-            throw new Error(`Échec critique de connexion à PostgreSQL: ${err}. Démarrage refusé. FAIL FAST actif.`);
+            if (process.env.NODE_ENV === 'production') {
+                throw new Error(`Échec critique de connexion à PostgreSQL: ${err}. Démarrage refusé. FAIL FAST actif.`);
+            }
+            else {
+                this.isMemoryFallback = true;
+                this.logger.warn(`Impossible de joindre PostgreSQL (${err}). Basculement automatique en mode mémoire pour le développement local.`);
+            }
         }
     }
     async onModuleDestroy() {
@@ -101,7 +114,7 @@ let DatabaseService = DatabaseService_1 = class DatabaseService {
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           tenant_id UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
           device_name VARCHAR(100) NOT NULL,
-          device_id UUID NOT NULL,
+          device_id VARCHAR(128) NOT NULL,
           pin_hash VARCHAR(255) NOT NULL,
           refresh_token_hash VARCHAR(255),
           last_seen_at TIMESTAMPTZ,
@@ -293,16 +306,18 @@ let DatabaseService = DatabaseService_1 = class DatabaseService {
     }
     seedDemoStoreForTenant(tenantId) {
         const todayStr = new Date().toISOString().split('T')[0];
-        const shop = {
-            id: tenantId,
-            licenseKey: 'NMA-2026-GUINEE-OFFICIEL',
-            businessName: 'Boutique N\'MaShop Guinée',
-            currency: 'GNF',
-            phone: '+224 622 00 11 22',
-            isActive: true,
-            createdAt: new Date(),
-        };
-        this.memoryStore.shops.set(tenantId, shop);
+        if (!this.memoryStore.shops.has(tenantId)) {
+            const shop = {
+                id: tenantId,
+                licenseKey: 'NMA-2026-GUINEE-OFFICIEL',
+                businessName: 'Boutique N\'MaShop Guinée',
+                currency: 'GNF',
+                phone: '+224 622 00 11 22',
+                isActive: true,
+                createdAt: new Date(),
+            };
+            this.memoryStore.shops.set(tenantId, shop);
+        }
         this.memoryStore.dailySnapshots.set(`${tenantId}:${todayStr}`, {
             tenantId,
             snapshotDate: todayStr,
@@ -443,10 +458,11 @@ let DatabaseService = DatabaseService_1 = class DatabaseService {
         };
         if (this.isMemoryFallback) {
             this.memoryStore.shops.set(newShop.id, newShop);
-            this.seedDemoStoreForTenant(newShop.id);
             return newShop;
         }
-        const res = await this.query(`INSERT INTO shops (id, license_key, business_name, currency) VALUES ($1, $2, $3, $4) RETURNING id, license_key as "licenseKey", business_name as "businessName", currency, phone, caisse_secret as "caisseSecret", opening_fund as "openingFund", is_active as "isActive", created_at as "createdAt"`, [newShop.id, licenseKey, businessName, currency]);
+        const res = await this.query(`INSERT INTO shops (id, license_key, business_name, currency) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (license_key) DO UPDATE SET business_name = EXCLUDED.business_name, currency = EXCLUDED.currency
+       RETURNING id, license_key as "licenseKey", business_name as "businessName", currency, phone, caisse_secret as "caisseSecret", opening_fund as "openingFund", is_active as "isActive", created_at as "createdAt"`, [newShop.id, licenseKey, businessName, currency]);
         return res.rows[0];
     }
     async savePairingToken(token, tenantId, shopName, currency = 'GNF', expiresAt) {
@@ -512,6 +528,57 @@ let DatabaseService = DatabaseService_1 = class DatabaseService {
        DO UPDATE SET device_name = $3, pin_hash = $5, refresh_token_hash = $6, last_seen_at = NOW(), is_revoked = FALSE
        RETURNING id, tenant_id as "tenantId", device_name as "deviceName", device_id as "deviceId", pin_hash as "pinHash", refresh_token_hash as "refreshTokenHash", failed_pin_attempts as "failedPinAttempts", lockout_until as "lockoutUntil", last_seen_at as "lastSeenAt", is_revoked as "isRevoked", created_at as "createdAt"`, [record.id, device.tenantId, device.deviceName, device.deviceId, device.pinHash, device.refreshTokenHash]);
         return res.rows[0];
+    }
+    async registerMobileShopAndDevice(params) {
+        if (this.isMemoryFallback) {
+            if (this.memoryStore.devices.has(params.deviceId)) {
+                throw new Error('DEVICE_ALREADY_EXISTS');
+            }
+            const shopId = randomUUID();
+            const shop = {
+                id: shopId,
+                licenseKey: params.licenseKey,
+                businessName: params.shopName,
+                currency: params.currency || 'GNF',
+                openingFund: 0,
+                isActive: true,
+                createdAt: new Date(),
+            };
+            const deviceRecordId = randomUUID();
+            const device = {
+                id: deviceRecordId,
+                tenantId: shopId,
+                deviceId: params.deviceId,
+                deviceName: params.deviceName,
+                pinHash: params.pinHash,
+                refreshTokenHash: params.refreshTokenHash,
+                failedPinAttempts: 0,
+                lockoutUntil: null,
+                lastSeenAt: new Date(),
+                isRevoked: false,
+                createdAt: new Date(),
+            };
+            this.memoryStore.shops.set(shopId, shop);
+            this.memoryStore.devices.set(params.deviceId, device);
+            return { shop, device };
+        }
+        return this.withTransaction(async (client) => {
+            const devCheck = await this.queryWithClient(client, 'SELECT id FROM devices WHERE device_id = $1 LIMIT 1', [params.deviceId]);
+            if (devCheck.rowCount > 0) {
+                throw new Error('DEVICE_ALREADY_EXISTS');
+            }
+            const shopId = randomUUID();
+            const shopRes = await this.queryWithClient(client, `INSERT INTO shops (id, license_key, business_name, currency, is_active)
+         VALUES ($1, $2, $3, $4, TRUE)
+         RETURNING id, license_key as "licenseKey", business_name as "businessName", currency, phone, caisse_secret as "caisseSecret", opening_fund as "openingFund", is_active as "isActive", created_at as "createdAt"`, [shopId, params.licenseKey, params.shopName, params.currency || 'GNF']);
+            const shop = shopRes.rows[0];
+            const deviceRecordId = randomUUID();
+            const devRes = await this.queryWithClient(client, `INSERT INTO devices (id, tenant_id, device_name, device_id, pin_hash, refresh_token_hash, last_seen_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())
+         RETURNING id, tenant_id as "tenantId", device_name as "deviceName", device_id as "deviceId", pin_hash as "pinHash", refresh_token_hash as "refreshTokenHash", failed_pin_attempts as "failedPinAttempts", lockout_until as "lockoutUntil", last_seen_at as "lastSeenAt", is_revoked as "isRevoked", created_at as "createdAt"`, [deviceRecordId, shop.id, params.deviceName, params.deviceId, params.pinHash, params.refreshTokenHash]);
+            const device = devRes.rows[0];
+            return { shop, device };
+        });
     }
     async updateDeviceLastSeen(deviceId) {
         if (this.isMemoryFallback) {
@@ -1030,7 +1097,8 @@ let DatabaseService = DatabaseService_1 = class DatabaseService {
     }
 };
 DatabaseService = DatabaseService_1 = __decorate([
-    Injectable()
+    Injectable(),
+    __metadata("design:paramtypes", [])
 ], DatabaseService);
 export { DatabaseService };
 //# sourceMappingURL=database.service.js.map

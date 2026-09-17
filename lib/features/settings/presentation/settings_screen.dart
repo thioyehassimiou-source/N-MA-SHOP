@@ -39,7 +39,6 @@ import '../../../core/providers/database_provider.dart';
 import '../../../core/services/export_service.dart';
 import '../../../core/sync/desktop_sync_worker.dart';
 import '../../../core/utils/url_launcher_helper.dart';
-import 'widgets/mobile_pairing_dialog.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key, this.initialTabIndex = 0});
@@ -479,15 +478,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               Divider(color: context.colors.outlineVariant),
-              const SizedBox(height: AppSpacing.xs),
-              _buildSecurityItem(
-                Icons.smartphone_rounded,
-                'Liaison Mobile (Pilotage patron)',
-                trailing: AppButton.secondary(
-                  label: 'Lier smartphone',
-                  onPressed: () => MobilePairingDialog.show(context),
-                ),
-              ),
               const SizedBox(height: AppSpacing.xs),
               Consumer(
                 builder: (context, ref, _) {

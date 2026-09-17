@@ -1,11 +1,21 @@
 import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from '../database/database.service.js';
-import { PairInitDto, PairClaimDto, LoginDto, RefreshTokenDto } from './auth.dto.js';
+import { PairInitDto, PairClaimDto, LoginDto, RefreshTokenDto, RegisterShopDto } from './auth.dto.js';
 export declare class AuthService {
     private readonly db;
     private readonly jwtService;
     private readonly logger;
     constructor(db: DatabaseService, jwtService: JwtService);
+    register(dto: RegisterShopDto): Promise<{
+        success: boolean;
+        accessToken: string;
+        refreshToken: string;
+        shop: {
+            id: string;
+            name: string;
+            currency: string;
+        };
+    }>;
     initPairing(dto: PairInitDto): Promise<{
         success: boolean;
         shopId: string;

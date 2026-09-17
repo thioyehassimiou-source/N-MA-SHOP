@@ -7,65 +7,97 @@ import '../../../../core/utils/formatters.dart';
 final stockFilterProvider = StateProvider<String>((ref) => 'all'); // 'all', 'low', 'out'
 final stockSearchProvider = StateProvider<String>((ref) => '');
 
+final customProductsProvider = StateProvider<List<Map<String, dynamic>>>((ref) => []);
+
 final stockDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
+  final addedProds = ref.watch(customProductsProvider);
+
+  Map<String, dynamic> baseData;
   try {
     final res = await apiClient.get('/api/v1/mobile/stock');
-    return res.data as Map<String, dynamic>;
+    baseData = res.data as Map<String, dynamic>;
   } catch (_) {
-    return {
+    baseData = {
       'totalProducts': 142,
+      'totalInventoryValue': 18500000,
       'lowStockCount': 3,
       'outOfStockCount': 1,
-      'products': [
+      'items': [
         {
           'id': 'prod-1',
           'name': 'Huile Mayonnaise 5L',
-          'reference': 'HUI-5L',
+          'barcode': 'HUI-5L',
           'quantity': 0,
           'lowStockThreshold': 5,
           'unitPrice': 145000,
-          'category': 'Alimentation',
+          'status': 'out',
         },
         {
           'id': 'prod-2',
           'name': 'Sac de Riz Blanc 50kg',
-          'reference': 'RIZ-50KG',
+          'barcode': 'RIZ-50KG',
           'quantity': 3,
           'lowStockThreshold': 10,
           'unitPrice': 340000,
-          'category': 'Céréales',
+          'status': 'low',
         },
         {
           'id': 'prod-3',
           'name': 'Sucre En Poudre 25kg',
-          'reference': 'SUC-25KG',
+          'barcode': 'SUC-25KG',
           'quantity': 4,
           'lowStockThreshold': 5,
           'unitPrice': 220000,
-          'category': 'Alimentation',
+          'status': 'low',
         },
         {
           'id': 'prod-4',
           'name': 'Lait Concentré Bonnet Rouge',
-          'reference': 'LAI-BR',
+          'barcode': 'LAI-BR',
           'quantity': 48,
           'lowStockThreshold': 12,
           'unitPrice': 9500,
-          'category': 'Boissons',
+          'status': 'ok',
         },
         {
           'id': 'prod-5',
           'name': 'Savon Diama Paquet',
-          'reference': 'SAV-DIA',
+          'barcode': 'SAV-DIA',
           'quantity': 26,
           'lowStockThreshold': 8,
           'unitPrice': 15000,
-          'category': 'Hygiène',
+          'status': 'ok',
         },
       ],
     };
   }
+
+  if (addedProds.isNotEmpty) {
+    final items = List<Map<String, dynamic>>.from(baseData['items'] ?? []);
+    var totalVal = (baseData['totalInventoryValue'] as num?) ?? 0;
+    var lowCount = (baseData['lowStockCount'] as num?) ?? 0;
+    var outCount = (baseData['outOfStockCount'] as num?) ?? 0;
+
+    for (final p in addedProds) {
+      items.insert(0, p);
+      final qty = (p['quantity'] as num?) ?? 0;
+      final price = (p['unitPrice'] as num?) ?? 0;
+      final status = p['status'] as String? ?? 'ok';
+
+      totalVal += (qty * price);
+      if (status == 'low') lowCount++;
+      if (status == 'out') outCount++;
+    }
+
+    baseData['items'] = items;
+    baseData['totalProducts'] = (baseData['totalProducts'] as int? ?? 142) + addedProds.length;
+    baseData['totalInventoryValue'] = totalVal;
+    baseData['lowStockCount'] = lowCount;
+    baseData['outOfStockCount'] = outCount;
+  }
+
+  return baseData;
 });
 
 class StockScreen extends ConsumerWidget {
@@ -100,6 +132,15 @@ class StockScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 4),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddProductModal(context, ref),
+        backgroundColor: AppColors.brandNavy,
+        icon: const Icon(Icons.add_box_rounded, color: Colors.white),
+        label: const Text(
+          'Nouveau Produit',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: stockAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
@@ -328,7 +369,177 @@ class StockScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _showAddProductModal(BuildContext context, WidgetRef ref) {
+    final nameCtrl = TextEditingController();
+    final barcodeCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
+    final qtyCtrl = TextEditingController();
+    final thresholdCtrl = TextEditingController(text: '5');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.brandNavy.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.add_box_rounded, color: AppColors.brandNavy, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('GESTION DU STOCK', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.brandNavy, letterSpacing: 1.0)),
+                        Text('Nouveau Produit / Article', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.brandNavy)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Nom de l\'article / Produit',
+                    hintText: 'ex: Cartouche Huile 1L',
+                    prefixIcon: const Icon(Icons.inventory_2_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                TextField(
+                  controller: barcodeCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Code-barres / Référence (optionnel)',
+                    hintText: 'ex: 615102930491',
+                    prefixIcon: const Icon(Icons.qr_code_rounded),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: priceCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Prix Unitaire (GNF)',
+                          hintText: 'ex: 35000',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: qtyCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Stock Initial',
+                          hintText: 'ex: 20',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                TextField(
+                  controller: thresholdCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Seuil d\'alerte stock bas',
+                    hintText: 'ex: 5',
+                    prefixIcon: const Icon(Icons.warning_amber_rounded),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                ElevatedButton(
+                  onPressed: () {
+                    final name = nameCtrl.text.trim();
+                    final price = num.tryParse(priceCtrl.text.trim()) ?? 0;
+                    final qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+                    final threshold = int.tryParse(thresholdCtrl.text.trim()) ?? 5;
+
+                    if (name.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Veuillez renseigner le nom du produit')),
+                      );
+                      return;
+                    }
+
+                    final status = qty == 0 ? 'out' : (qty <= threshold ? 'low' : 'ok');
+                    final newProduct = {
+                      'id': 'prod-${DateTime.now().millisecondsSinceEpoch}',
+                      'name': name,
+                      'barcode': barcodeCtrl.text.trim().isNotEmpty ? barcodeCtrl.text.trim() : 'REF-${DateTime.now().millisecondsSinceEpoch % 10000}',
+                      'quantity': qty,
+                      'lowStockThreshold': threshold,
+                      'unitPrice': price,
+                      'status': status,
+                    };
+
+                    ref.read(customProductsProvider.notifier).update((state) => [newProduct, ...state]);
+                    ref.invalidate(stockDataProvider);
+
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Produit "$name" ajouté au stock avec succès !'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.brandNavy,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Créer le produit', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
+
 
 extension IterableExt<T> on Iterable<T> {
   Iterable<T> filter(bool Function(T) test) sync* {

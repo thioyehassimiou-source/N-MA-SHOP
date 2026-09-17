@@ -20,3 +20,10 @@ export declare class LoginDto {
 export declare class RefreshTokenDto {
     refreshToken: string;
 }
+export declare class RegisterShopDto {
+    shopName: string;
+    currency?: string;
+    pin: string;
+    deviceName: string;
+    deviceId: string;
+}

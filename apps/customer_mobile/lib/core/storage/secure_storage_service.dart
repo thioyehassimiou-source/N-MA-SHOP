@@ -14,7 +14,10 @@ class StorageService {
   static const _keyServerUrl = 'nmashop_server_url';
   static const _keyLastSync = 'nmashop_last_sync';
 
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    webOptions: WebOptions(dbName: 'nmashop_secure', publicKey: 'nmashop_web_key'),
+  );
 
   static String get defaultServerUrl {
     if (kIsWeb) return 'http://localhost:3000';
@@ -42,8 +45,14 @@ class StorageService {
     required String currency,
     required String serverUrl,
   }) async {
-    await _secureStorage.write(key: _keyAccessToken, value: accessToken);
-    await _secureStorage.write(key: _keyRefreshToken, value: refreshToken);
+    try {
+      await _secureStorage.write(key: _keyAccessToken, value: accessToken);
+      await _secureStorage.write(key: _keyRefreshToken, value: refreshToken);
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyAccessToken, accessToken);
+      await prefs.setString(_keyRefreshToken, refreshToken);
+    }
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyShopId, shopId);
@@ -53,15 +62,30 @@ class StorageService {
   }
 
   Future<String?> getAccessToken() async {
-    return _secureStorage.read(key: _keyAccessToken);
+    try {
+      return await _secureStorage.read(key: _keyAccessToken);
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyAccessToken);
+    }
   }
 
   Future<String?> getRefreshToken() async {
-    return _secureStorage.read(key: _keyRefreshToken);
+    try {
+      return await _secureStorage.read(key: _keyRefreshToken);
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyRefreshToken);
+    }
   }
 
   Future<void> saveAccessToken(String token) async {
-    await _secureStorage.write(key: _keyAccessToken, value: token);
+    try {
+      await _secureStorage.write(key: _keyAccessToken, value: token);
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyAccessToken, token);
+    }
   }
 
   Future<String> getServerUrl() async {
@@ -79,10 +103,17 @@ class StorageService {
     return prefs.getString(_keyCurrency) ?? 'GNF';
   }
 
-  Future<bool> isPaired() async {
-    final token = await getAccessToken();
-    return token != null && token.isNotEmpty;
+  Future<bool> isLoggedIn() async {
+    try {
+      final token = await getAccessToken();
+      return token != null && token.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
   }
+
+  Future<bool> isPaired() async => isLoggedIn();
+
 
   Future<DateTime?> getLastSync() async {
     final prefs = await SharedPreferences.getInstance();
@@ -96,8 +127,12 @@ class StorageService {
   }
 
   Future<void> clearAll() async {
-    await _secureStorage.deleteAll();
+    try {
+      await _secureStorage.deleteAll();
+    } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyAccessToken);
+    await prefs.remove(_keyRefreshToken);
     await prefs.remove(_keyShopId);
     await prefs.remove(_keyShopName);
     await prefs.remove(_keyCurrency);

@@ -7,14 +7,19 @@ import '../../../../core/utils/formatters.dart';
 final salesPeriodProvider = StateProvider<String>((ref) => 'today');
 final salesSearchProvider = StateProvider<String>((ref) => '');
 
+final customSalesProvider = StateProvider<List<Map<String, dynamic>>>((ref) => []);
+
 final salesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
   final period = ref.watch(salesPeriodProvider);
+  final addedSales = ref.watch(customSalesProvider);
+  
+  Map<String, dynamic> baseData;
   try {
     final res = await apiClient.get('/api/v1/mobile/sales', queryParameters: {'period': period});
-    return res.data as Map<String, dynamic>;
+    baseData = res.data as Map<String, dynamic>;
   } catch (_) {
-    return {
+    baseData = {
       'summary': {
         'totalSales': 4850000,
         'totalProfit': 1250000,
@@ -65,6 +70,34 @@ final salesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
       ],
     };
   }
+
+  if (addedSales.isNotEmpty) {
+    final summary = Map<String, dynamic>.from(baseData['summary'] ?? {});
+    final recent = List<Map<String, dynamic>>.from(baseData['recentSales'] ?? []);
+    
+    for (final newSale in addedSales) {
+      recent.insert(0, newSale);
+      final amt = (newSale['totalAmount'] as num?) ?? 0;
+      final paid = (newSale['amountPaid'] as num?) ?? amt;
+      final pIndex = newSale['paymentMethodIndex'] ?? 0;
+      
+      summary['totalSales'] = ((summary['totalSales'] as num?) ?? 0) + amt;
+      summary['salesCount'] = ((summary['salesCount'] as num?) ?? 0) + 1;
+      
+      if (pIndex == 0) {
+        summary['cashCollected'] = ((summary['cashCollected'] as num?) ?? 0) + paid;
+      } else if (pIndex == 1) {
+        summary['momoCollected'] = ((summary['momoCollected'] as num?) ?? 0) + paid;
+      } else if (pIndex == 2) {
+        summary['creditIssued'] = ((summary['creditIssued'] as num?) ?? 0) + (amt - paid);
+      }
+    }
+    
+    baseData['summary'] = summary;
+    baseData['recentSales'] = recent;
+  }
+  
+  return baseData;
 });
 
 class SalesScreen extends ConsumerWidget {
@@ -99,6 +132,15 @@ class SalesScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 4),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddSaleModal(context, ref),
+        backgroundColor: AppColors.brandOrange,
+        icon: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white),
+        label: const Text(
+          'Nouvelle Vente',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: Column(
         children: [
@@ -587,4 +629,170 @@ class SalesScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _showAddSaleModal(BuildContext context, WidgetRef ref) {
+    final clientCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    int selectedMethod = 0; // 0: Espèces, 1: Mobile Money, 2: Crédit
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.brandOrange.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.add_shopping_cart_rounded, color: AppColors.brandOrange, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('NOUVELLE VENTE POS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.brandOrange, letterSpacing: 1.0)),
+                          Text('Saisir une transaction', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.brandNavy)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  TextField(
+                    controller: clientCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Nom du Client / Client Comptoir',
+                      hintText: 'ex: Ousmane Sow',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  TextField(
+                    controller: amountCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Montant de la vente (GNF)',
+                      hintText: 'ex: 150000',
+                      prefixIcon: const Icon(Icons.payments_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text('Mode de Règlement', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.brandNavy)),
+                  const SizedBox(height: 8),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text('Espèces'),
+                          selected: selectedMethod == 0,
+                          onSelected: (_) => setState(() => selectedMethod = 0),
+                          selectedColor: AppColors.brandNavy,
+                          labelStyle: TextStyle(color: selectedMethod == 0 ? Colors.white : AppColors.brandNavy, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text('Mobile Money'),
+                          selected: selectedMethod == 1,
+                          onSelected: (_) => setState(() => selectedMethod = 1),
+                          selectedColor: AppColors.brandOrange,
+                          labelStyle: TextStyle(color: selectedMethod == 1 ? Colors.white : AppColors.brandNavy, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text('Crédit'),
+                          selected: selectedMethod == 2,
+                          onSelected: (_) => setState(() => selectedMethod = 2),
+                          selectedColor: Colors.purple,
+                          labelStyle: TextStyle(color: selectedMethod == 2 ? Colors.white : AppColors.brandNavy, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  ElevatedButton(
+                    onPressed: () {
+                      final amount = num.tryParse(amountCtrl.text.trim()) ?? 0;
+                      if (amount <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Veuillez saisir un montant valide (> 0 GNF)')),
+                        );
+                        return;
+                      }
+
+                      final clientName = clientCtrl.text.trim().isNotEmpty ? clientCtrl.text.trim() : 'Client Comptoir';
+                      final refNum = 'FAC-${DateTime.now().year}-${(DateTime.now().millisecondsSinceEpoch % 1000).toString().padLeft(3, '0')}';
+
+                      final newSale = {
+                        'id': 'sale-${DateTime.now().millisecondsSinceEpoch}',
+                        'reference': refNum,
+                        'customerName': clientName,
+                        'totalAmount': amount,
+                        'amountPaid': selectedMethod == 2 ? 0 : amount,
+                        'paymentMethodIndex': selectedMethod,
+                        'createdAt': DateTime.now().toIso8601String(),
+                      };
+
+                      ref.read(customSalesProvider.notifier).update((state) => [newSale, ...state]);
+                      ref.invalidate(salesDataProvider);
+
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Vente $refNum de ${AppFormatters.formatCurrency(amount)} enregistrée avec succès !'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandOrange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Enregistrer la vente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
+

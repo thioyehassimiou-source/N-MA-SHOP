@@ -80,3 +80,35 @@ export class RefreshTokenDto {
   @IsNotEmpty()
   refreshToken: string;
 }
+
+export class RegisterShopDto {
+  @ApiProperty({ example: 'Boutique Diallo & Frères', description: 'Nom commercial de la boutique' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(2, 100)
+  shopName: string;
+
+  @ApiPropertyOptional({ example: 'GNF', default: 'GNF', description: 'Devise principale de la boutique' })
+  @IsString()
+  @IsOptional()
+  currency?: string;
+
+  @ApiProperty({ example: '1234', description: 'Code PIN secret à 4-8 chiffres' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(4, 8)
+  pin: string;
+
+  @ApiProperty({ example: 'Smartphone Patron', description: 'Nom de l\'appareil du commerçant' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(2, 100)
+  deviceName: string;
+
+  @ApiProperty({ example: 'mob-a1b2c3d4-5678', description: 'Identifiant unique de l\'appareil mobile' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(5, 128)
+  deviceId: string;
+}
+

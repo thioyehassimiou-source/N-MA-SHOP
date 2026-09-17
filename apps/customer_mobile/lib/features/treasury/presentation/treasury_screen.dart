@@ -4,13 +4,18 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 
+final customExpensesProvider = StateProvider<List<Map<String, dynamic>>>((ref) => []);
+
 final treasuryDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
+  final addedExpenses = ref.watch(customExpensesProvider);
+
+  Map<String, dynamic> baseData;
   try {
     final res = await apiClient.get('/api/v1/mobile/treasury');
-    return res.data as Map<String, dynamic>;
+    baseData = res.data as Map<String, dynamic>;
   } catch (_) {
-    return {
+    baseData = {
       'theoreticalCashInHand': 3850000,
       'momoCollectedToday': 1450000,
       'expensesToday': 180000,
@@ -42,6 +47,25 @@ final treasuryDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((r
       ],
     };
   }
+
+  if (addedExpenses.isNotEmpty) {
+    final exps = List<Map<String, dynamic>>.from(baseData['recentExpenses'] ?? []);
+    var theoretical = (baseData['theoreticalCashInHand'] as num?) ?? 0;
+    var totalExpToday = (baseData['expensesToday'] as num?) ?? 0;
+
+    for (final exp in addedExpenses) {
+      exps.insert(0, exp);
+      final amt = (exp['amount'] as num?) ?? 0;
+      theoretical -= amt;
+      totalExpToday += amt;
+    }
+
+    baseData['recentExpenses'] = exps;
+    baseData['theoreticalCashInHand'] = theoretical;
+    baseData['expensesToday'] = totalExpToday;
+  }
+
+  return baseData;
 });
 
 class TreasuryScreen extends ConsumerWidget {
@@ -74,6 +98,15 @@ class TreasuryScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 4),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddExpenseModal(context, ref),
+        backgroundColor: AppColors.error,
+        icon: const Icon(Icons.receipt_rounded, color: Colors.white),
+        label: const Text(
+          'Saisir Dépense',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: treasuryAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
@@ -359,4 +392,127 @@ class TreasuryScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _showAddExpenseModal(BuildContext context, WidgetRef ref) {
+    final descCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.receipt_long_rounded, color: AppColors.error, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('SORTIE DE CAISSE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.error, letterSpacing: 1.0)),
+                        Text('Déclarer une Dépense', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.brandNavy)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                TextField(
+                  controller: descCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Motif / Libellé de la dépense',
+                    hintText: 'ex: Achat fournitures bureau',
+                    prefixIcon: const Icon(Icons.description_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Montant décaissé (GNF)',
+                    hintText: 'ex: 50000',
+                    prefixIcon: const Icon(Icons.remove_circle_outline_rounded),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                ElevatedButton(
+                  onPressed: () {
+                    final desc = descCtrl.text.trim();
+                    final amount = num.tryParse(amountCtrl.text.trim()) ?? 0;
+
+                    if (amount <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Veuillez saisir un montant valide (> 0 GNF)')),
+                      );
+                      return;
+                    }
+
+                    final refNum = 'DEP-${(DateTime.now().millisecondsSinceEpoch % 1000).toString().padLeft(3, '0')}';
+                    final newExpense = {
+                      'id': 'exp-${DateTime.now().millisecondsSinceEpoch}',
+                      'reference': refNum,
+                      'description': desc.isNotEmpty ? desc : 'Dépense de caisse',
+                      'amount': amount,
+                      'createdAt': DateTime.now().toIso8601String(),
+                    };
+
+                    ref.read(customExpensesProvider.notifier).update((state) => [newExpense, ...state]);
+                    ref.invalidate(treasuryDataProvider);
+
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Dépense de ${AppFormatters.formatCurrency(amount)} enregistrée avec succès !'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Enregistrer la dépense', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
+

@@ -117,4 +117,45 @@ __decorate([
     IsNotEmpty(),
     __metadata("design:type", String)
 ], RefreshTokenDto.prototype, "refreshToken", void 0);
+export class RegisterShopDto {
+    shopName;
+    currency;
+    pin;
+    deviceName;
+    deviceId;
+}
+__decorate([
+    ApiProperty({ example: 'Boutique Diallo & Frères', description: 'Nom commercial de la boutique' }),
+    IsString(),
+    IsNotEmpty(),
+    Length(2, 100),
+    __metadata("design:type", String)
+], RegisterShopDto.prototype, "shopName", void 0);
+__decorate([
+    ApiPropertyOptional({ example: 'GNF', default: 'GNF', description: 'Devise principale de la boutique' }),
+    IsString(),
+    IsOptional(),
+    __metadata("design:type", String)
+], RegisterShopDto.prototype, "currency", void 0);
+__decorate([
+    ApiProperty({ example: '1234', description: 'Code PIN secret à 4-8 chiffres' }),
+    IsString(),
+    IsNotEmpty(),
+    Length(4, 8),
+    __metadata("design:type", String)
+], RegisterShopDto.prototype, "pin", void 0);
+__decorate([
+    ApiProperty({ example: 'Smartphone Patron', description: 'Nom de l\'appareil du commerçant' }),
+    IsString(),
+    IsNotEmpty(),
+    Length(2, 100),
+    __metadata("design:type", String)
+], RegisterShopDto.prototype, "deviceName", void 0);
+__decorate([
+    ApiProperty({ example: 'mob-a1b2c3d4-5678', description: 'Identifiant unique de l\'appareil mobile' }),
+    IsString(),
+    IsNotEmpty(),
+    Length(5, 128),
+    __metadata("design:type", String)
+], RegisterShopDto.prototype, "deviceId", void 0);
 //# sourceMappingURL=auth.dto.js.map

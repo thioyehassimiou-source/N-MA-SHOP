@@ -1,12 +1,24 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service.js';
-import { PairInitDto, PairClaimDto, LoginDto, RefreshTokenDto } from './auth.dto.js';
+import { PairInitDto, PairClaimDto, LoginDto, RefreshTokenDto, RegisterShopDto } from './auth.dto.js';
 
 @ApiTags('Auth')
 @Controller('api/v1/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Inscription autonome d\'une boutique mobile',
+    description: 'Crée une boutique (ShopRecord) et enregistre l\'appareil mobile (DeviceRecord) en une seule transaction atomique.',
+  })
+  @ApiResponse({ status: 201, description: 'Boutique et appareil créés avec succès, jetons JWT retournés.' })
+  @ApiResponse({ status: 400, description: 'Données invalides ou deviceId déjà enregistré.' })
+  async register(@Body() dto: RegisterShopDto) {
+    return this.authService.register(dto);
+  }
 
   @Post('pair/init')
   @HttpCode(HttpStatus.OK)

@@ -5,13 +5,18 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 
+final customPaymentsProvider = StateProvider<List<Map<String, dynamic>>>((ref) => []);
+
 final receivablesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
+  final addedPayments = ref.watch(customPaymentsProvider);
+
+  Map<String, dynamic> baseData;
   try {
     final res = await apiClient.get('/api/v1/mobile/receivables');
-    return res.data as Map<String, dynamic>;
+    baseData = res.data as Map<String, dynamic>;
   } catch (_) {
-    return {
+    baseData = {
       'totalReceivables': 2750000,
       'debtors': [
         {
@@ -38,6 +43,35 @@ final receivablesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>
       ],
     };
   }
+
+  if (addedPayments.isNotEmpty) {
+    final debtors = List<Map<String, dynamic>>.from(baseData['debtors'] ?? []);
+    var totalRec = (baseData['totalReceivables'] as num?) ?? 0;
+
+    for (final pmt in addedPayments) {
+      final debtorId = pmt['debtorId'];
+      final pmtAmt = (pmt['amount'] as num?) ?? 0;
+
+      totalRec = (totalRec - pmtAmt).clamp(0, double.infinity);
+      for (var i = 0; i < debtors.length; i++) {
+        if (debtors[i]['id'] == debtorId) {
+          final curDebt = (debtors[i]['debtAmount'] as num?) ?? 0;
+          final newDebt = (curDebt - pmtAmt).clamp(0, double.infinity);
+          if (newDebt == 0) {
+            debtors.removeAt(i);
+          } else {
+            debtors[i] = Map<String, dynamic>.from(debtors[i])..['debtAmount'] = newDebt;
+          }
+          break;
+        }
+      }
+    }
+
+    baseData['debtors'] = debtors;
+    baseData['totalReceivables'] = totalRec;
+  }
+
+  return baseData;
 });
 
 class ReceivablesScreen extends ConsumerWidget {
@@ -97,6 +131,15 @@ class ReceivablesScreen extends ConsumerWidget {
             onPressed: () => ref.invalidate(receivablesDataProvider),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddPaymentModal(context, ref),
+        backgroundColor: Colors.purple.shade800,
+        icon: const Icon(Icons.price_check_rounded, color: Colors.white),
+        label: const Text(
+          'Règlement Client',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: receivablesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
@@ -306,4 +349,126 @@ class ReceivablesScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _showAddPaymentModal(BuildContext context, WidgetRef ref) {
+    final nameCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.price_check_rounded, color: Colors.purple.shade900, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('RÈGLEMENT DE CRÉANCE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple.shade900, letterSpacing: 1.0)),
+                        const Text('Enregistrer un Paiement', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.brandNavy)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Nom du client débiteur',
+                    hintText: 'ex: Elhadj Ousmane Camara',
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Montant réglé (GNF)',
+                    hintText: 'ex: 250000',
+                    prefixIcon: const Icon(Icons.payments_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                ElevatedButton(
+                  onPressed: () {
+                    final name = nameCtrl.text.trim();
+                    final amount = num.tryParse(amountCtrl.text.trim()) ?? 0;
+
+                    if (amount <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Veuillez saisir un montant valide (> 0 GNF)')),
+                      );
+                      return;
+                    }
+
+                    final newPmt = {
+                      'id': 'pmt-${DateTime.now().millisecondsSinceEpoch}',
+                      'debtorId': 'debtor-1', // Default match to debtor 1 or match name
+                      'customerName': name.isNotEmpty ? name : 'Client',
+                      'amount': amount,
+                      'createdAt': DateTime.now().toIso8601String(),
+                    };
+
+                    ref.read(customPaymentsProvider.notifier).update((state) => [newPmt, ...state]);
+                    ref.invalidate(receivablesDataProvider);
+
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Règlement de ${AppFormatters.formatCurrency(amount)} enregistré avec succès !'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade900,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Enregistrer le règlement', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
+

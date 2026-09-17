@@ -5,7 +5,6 @@ import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/data/auth_service.dart';
 import '../../auth/presentation/auth_landing_screen.dart';
-import '../../auth/presentation/pin_setup_screen.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../../onboarding/presentation/onboarding_screen.dart';
 
@@ -365,29 +364,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 20),
 
           // Section 3 : Sécurité & Appareil
-          _buildSectionHeader('SÉCURITÉ DU PATRON', Icons.security_rounded),
-          _buildCard(
-            children: [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.password_rounded, color: AppColors.brandNavy),
-                title: const Text('Changer mon code PIN secret', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                subtitle: const Text('Modifiez les 4 chiffres de protection d\'accès', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => PinSetupScreen(
-                        token: 'change-pin',
-                        serverUrl: _serverUrl,
-                        shopName: _shopName,
-                        currency: _currency,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const Divider(color: AppColors.border),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.phone_android_rounded, color: AppColors.onSurfaceVariant),
@@ -409,13 +385,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const Divider(color: AppColors.border),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.link_off_rounded, color: AppColors.error),
-                title: const Text('Dissocier cette boutique', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 13)),
-                subtitle: const Text('Efface le jeton et vous déconnecte de cette caisse', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                leading: const Icon(Icons.logout_rounded, color: AppColors.error),
+                title: const Text('Se déconnecter', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: const Text('Ferme la session locale sur ce téléphone', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 onTap: _confirmLogout,
               ),
-            ],
-          ),
           const SizedBox(height: 24),
 
           // Assistance & Version
