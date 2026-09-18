@@ -152,6 +152,9 @@ class AdminSyncService {
         // En cas de nouvelle installation ou réinstallation, lever la suppression temporaire
         await _repository.removeDeletedClientHwId(hardwareId);
         await _repository.removeDeletedLicenseKey(licenseKey);
+        if (hardwareId.isNotEmpty) {
+          await _repository.removeDeletedLicenseKey(hardwareId);
+        }
       } else {
         final deletedKeys = _repository.getDeletedLicenseKeys();
         final deletedClients = _repository.getDeletedClientHwIds();
