@@ -230,34 +230,32 @@ class LicenseAdminSyncService {
         );
         debugPrint('[TELEMETRY] Machine d\'essai $cleanHwId enregistrée sur Neon cloud.');
       } else {
-        // Déjà existante : si c'est toujours une clé TRIAL, rafraîchir les métadonnées sans écraser is_active
-        final row = existing.first;
-        final currentKey = (row[1] as String?) ?? '';
-        if (currentKey.startsWith('TRIAL-') || currentKey.isEmpty) {
-          await connection.execute(
-            Sql.named('''
-              UPDATE nmashop_activations 
-              SET business_name = COALESCE(NULLIF(@businessName, ''), business_name),
-                  owner_name = COALESCE(NULLIF(@ownerName, ''), owner_name),
-                  phone = COALESCE(NULLIF(@phone, ''), phone),
-                  address = COALESCE(NULLIF(@address, ''), address),
-                  activated_at = @activatedAt,
-                  expires_at = @expiresAt,
-                  is_active = true,
-                  is_synced = false
-              WHERE hardware_id = @hwId AND (license_key LIKE 'TRIAL-%' OR license_key = '');
-            '''),
-            parameters: {
-              'businessName': businessName ?? '',
-              'ownerName': ownerName ?? '',
-              'phone': phone ?? '',
-              'address': osInfo ?? '',
-              'activatedAt': firstLaunch,
-              'expiresAt': trialExpiry,
-              'hwId': cleanHwId,
-            },
-          );
-        }
+        // Déjà existante : rafraîchir les métadonnées de l'essai et la clé d'essai
+        await connection.execute(
+          Sql.named('''
+            UPDATE nmashop_activations 
+            SET business_name = COALESCE(NULLIF(@businessName, ''), business_name),
+                owner_name = COALESCE(NULLIF(@ownerName, ''), owner_name),
+                phone = COALESCE(NULLIF(@phone, ''), phone),
+                address = COALESCE(NULLIF(@address, ''), address),
+                license_key = @licenseKey,
+                activated_at = @activatedAt,
+                expires_at = @expiresAt,
+                is_active = true,
+                is_synced = false
+            WHERE hardware_id = @hwId;
+          '''),
+          parameters: {
+            'businessName': businessName ?? '',
+            'ownerName': ownerName ?? '',
+            'phone': phone ?? '',
+            'address': osInfo ?? '',
+            'licenseKey': defaultKey,
+            'activatedAt': firstLaunch,
+            'expiresAt': trialExpiry,
+            'hwId': cleanHwId,
+          },
+        );
       }
 
       await connection.close();
