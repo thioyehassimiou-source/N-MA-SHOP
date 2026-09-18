@@ -146,11 +146,10 @@ class AdminSyncService {
 
       // ── Vérification anti-résurrection des éléments supprimés ───────────────
       final isNewOrUpdatedSetup = businessName.isNotEmpty &&
-          businessName != 'Boutique Inconnue' &&
-          !businessName.startsWith('Poste ');
+          businessName != 'Boutique Inconnue';
 
-      if (isNewOrUpdatedSetup) {
-        // En cas de réinstallation légitime avec nom de boutique, lever la suppression temporaire
+      if (isNewOrUpdatedSetup && isActive) {
+        // En cas de nouvelle installation ou réinstallation, lever la suppression temporaire
         await _repository.removeDeletedClientHwId(hardwareId);
         await _repository.removeDeletedLicenseKey(licenseKey);
       } else {

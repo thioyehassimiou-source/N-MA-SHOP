@@ -110,21 +110,28 @@ class LicenseService {
 
     // Protection anti-réinitialisation avancée : collecter toutes les sources locales en UTC
     if (!wasRevokedByAdmin) {
-      final List<DateTime> candidates = [];
-      if (firstLaunch != null) candidates.add(firstLaunch.toUtc());
-
-      final primaryAnchor = await _readSecurityAnchor(hwId);
-      if (primaryAnchor != null) candidates.add(primaryAnchor.toUtc());
-
-      final secondaryAnchor = await _readSecondaryAnchor(hwId);
-      if (secondaryAnchor != null) candidates.add(secondaryAnchor.toUtc());
-
       final dbAnchor = await _readDatabaseTrialAnchor();
-      if (dbAnchor != null) candidates.add(dbAnchor.toUtc());
 
-      if (candidates.isNotEmpty) {
-        // La date retenue est obligatoirement la PLUS ANCIENNE parmi toutes les sources
-        firstLaunch = candidates.reduce((a, b) => a.isBefore(b) ? a : b);
+      // Si SharedPreferences ET la base de données ont été supprimés (réinitialisation/désinstallation complète) :
+      // Les anciennes ancres furtives résiduelles sur le disque sont ignorées pour permettre une réinstallation propre à 7j 0h
+      if (firstLaunchStr == null && dbAnchor == null) {
+        firstLaunch = null;
+      } else {
+        final List<DateTime> candidates = [];
+        if (firstLaunch != null) candidates.add(firstLaunch.toUtc());
+
+        final primaryAnchor = await _readSecurityAnchor(hwId);
+        if (primaryAnchor != null) candidates.add(primaryAnchor.toUtc());
+
+        final secondaryAnchor = await _readSecondaryAnchor(hwId);
+        if (secondaryAnchor != null) candidates.add(secondaryAnchor.toUtc());
+
+        if (dbAnchor != null) candidates.add(dbAnchor.toUtc());
+
+        if (candidates.isNotEmpty) {
+          // La date retenue est obligatoirement la PLUS ANCIENNE parmi toutes les sources
+          firstLaunch = candidates.reduce((a, b) => a.isBefore(b) ? a : b);
+        }
       }
       await _cleanUpLegacyFiles();
     }
@@ -176,6 +183,7 @@ class LicenseService {
   /// Permet de réinitialiser complètement l'essai pour les tests de développement.
   static Future<void> resetTrialForTesting(SharedPreferences prefs) async {
     await prefs.remove(_prefFirstLaunch);
+    await prefs.remove(_prefLastKnownTime);
     await prefs.remove(_prefKey);
     await prefs.remove(_prefBoundHwId);
     await prefs.remove('lic_was_revoked_by_admin');
