@@ -87,6 +87,10 @@ class LicenseInfo {
   String get trialCountdownLabel {
     final dur = remainingDuration;
     if (dur == null || dur <= Duration.zero) return 'Essai expiré';
+    final totalHours = dur.inHours;
+    if (totalHours >= 167) {
+      return 'Essai : 7 jours restants';
+    }
     final days = dur.inDays;
     final hours = dur.inHours % 24;
     final minutes = dur.inMinutes % 60;

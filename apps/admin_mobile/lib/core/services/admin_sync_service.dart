@@ -242,15 +242,15 @@ class AdminSyncService {
         // Enrichir le record existant
         final existing = licenses[existingIndex];
 
-        // Ne jamais rétrograder une licence payante active vers un simple token d'essai
-        final existingIsPaid = !existing.licenseKey.startsWith('TRIAL-') && existing.licenseKey != 'ESSAI-GRATUIT';
-        final incomingIsTrial = licenseKey.startsWith('TRIAL-') || licenseKey == 'ESSAI-GRATUIT';
+        // Si l'arrivée est un nouvel essai plus récent (réinitialisation PC), appliquer la mise à jour
+        final isNewerTrial = incomingIsTrial && activatedAt.isAfter(existing.createdAt.add(const Duration(minutes: 5)));
+        final overrideKey = existingIsPaid && incomingIsTrial && !isNewerTrial;
 
-        final effectiveKey = (existingIsPaid && incomingIsTrial)
+        final effectiveKey = overrideKey
             ? existing.licenseKey
             : (licenseKey.isNotEmpty ? licenseKey : existing.licenseKey);
-        final effectiveType = (existingIsPaid && incomingIsTrial) ? existing.type : type;
-        final effectiveExpiresAt = (existingIsPaid && incomingIsTrial) ? existing.expiresAt : (expiryDate ?? existing.expiresAt);
+        final effectiveType = overrideKey ? existing.type : type;
+        final effectiveExpiresAt = overrideKey ? existing.expiresAt : (expiryDate ?? existing.expiresAt);
 
         // Si l'administrateur avait désactivé la licence localement, respecter ce choix
         final effectiveIsActive = (!existing.isActive) ? false : isActive;
