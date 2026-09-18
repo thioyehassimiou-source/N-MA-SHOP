@@ -633,7 +633,7 @@ class LicenseService {
       try {
         DateTime? earliestDate;
 
-        // 1. Lire la table système interne si déjà créée
+        // Lire la table système interne si déjà créée
         try {
           final res = db.select("SELECT name FROM sqlite_master WHERE type='table' AND name='_system_meta'");
           if (res.isNotEmpty) {
@@ -643,25 +643,6 @@ class LicenseService {
             }
           }
         } catch (_) {}
-
-        // 2. Contrôle d'antériorité heuristique sur les données métier existantes
-        final checkTables = ['sales', 'products', 'users', 'audit_logs'];
-        for (final tbl in checkTables) {
-          try {
-            final tableExists = db.select("SELECT name FROM sqlite_master WHERE type='table' AND name='$tbl'");
-            if (tableExists.isNotEmpty) {
-              final minRes = db.select("SELECT MIN(created_at) as min_dt FROM $tbl");
-              if (minRes.isNotEmpty && minRes.first['min_dt'] != null) {
-                final d = DateTime.tryParse(minRes.first['min_dt'].toString());
-                if (d != null) {
-                  if (earliestDate == null || d.isBefore(earliestDate)) {
-                    earliestDate = d;
-                  }
-                }
-              }
-            }
-          } catch (_) {}
-        }
 
         _cachedDbTrialAnchor = earliestDate;
         return earliestDate;

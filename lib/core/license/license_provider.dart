@@ -105,6 +105,16 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
     )..start();
   }
 
+  /// Permet de réinitialiser complètement l'essai à 7j 0h pour les tests.
+  Future<LicenseInfo> resetTrialForTesting() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await LicenseService.resetTrialForTesting(prefs);
+    final info = await _svc.checkAsync(prefs);
+    state = AsyncData(info);
+    _reportTrialInstallationAsync(info);
+    return info;
+  }
+
   // ── Surveillance distante Neon PostgreSQL ──────────────────────────────────
 
   DateTime? _lastRemoteCheckTime;
