@@ -145,16 +145,24 @@ class AdminSyncService {
       final isActive = (payload['isActive'] as bool?) ?? true;
 
       // ── Vérification anti-résurrection des éléments supprimés ───────────────
-      final deletedKeys = _repository.getDeletedLicenseKeys();
-      final deletedClients = _repository.getDeletedClientHwIds();
+      final isNewOrUpdatedSetup = businessName.isNotEmpty &&
+          businessName != 'Boutique Inconnue' &&
+          !businessName.startsWith('Poste ');
 
-      if (deletedKeys.contains(licenseKey) || (hardwareId.isNotEmpty && deletedKeys.contains(hardwareId))) {
-        // Cette licence a été supprimée par l'administrateur : ne pas la réinsérer
-        return;
-      }
-      if (hardwareId.isNotEmpty && deletedClients.contains(hardwareId)) {
-        // Ce client a été supprimé par l'administrateur : ne pas le réinsérer
-        return;
+      if (isNewOrUpdatedSetup) {
+        // En cas de réinstallation légitime avec nom de boutique, lever la suppression temporaire
+        await _repository.removeDeletedClientHwId(hardwareId);
+        await _repository.removeDeletedLicenseKey(licenseKey);
+      } else {
+        final deletedKeys = _repository.getDeletedLicenseKeys();
+        final deletedClients = _repository.getDeletedClientHwIds();
+
+        if (deletedKeys.contains(licenseKey) || (hardwareId.isNotEmpty && deletedKeys.contains(hardwareId))) {
+          return;
+        }
+        if (hardwareId.isNotEmpty && deletedClients.contains(hardwareId)) {
+          return;
+        }
       }
       
       final activatedAtStr = payload['activatedAt'];

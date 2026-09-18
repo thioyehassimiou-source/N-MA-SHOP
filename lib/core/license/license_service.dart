@@ -97,8 +97,10 @@ class LicenseService {
     }
 
     // ── 4. Période d'Essai (7 Jours) ─────────────────────────────────────────
+    final nowUtc = now.toUtc();
+
     final firstLaunchStr = prefs.getString(_prefFirstLaunch);
-    DateTime? firstLaunch = firstLaunchStr != null ? DateTime.tryParse(firstLaunchStr) : null;
+    DateTime? firstLaunch = firstLaunchStr != null ? DateTime.tryParse(firstLaunchStr)?.toUtc() : null;
 
     final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
     if (firstLaunch != null && firstLaunch.year <= 2020 && !wasRevokedByAdmin) {
@@ -106,19 +108,19 @@ class LicenseService {
       await prefs.remove(_prefFirstLaunch);
     }
 
-    // Protection anti-réinitialisation avancée : collecter toutes les sources locales
+    // Protection anti-réinitialisation avancée : collecter toutes les sources locales en UTC
     if (!wasRevokedByAdmin) {
       final List<DateTime> candidates = [];
-      if (firstLaunch != null) candidates.add(firstLaunch);
+      if (firstLaunch != null) candidates.add(firstLaunch.toUtc());
 
       final primaryAnchor = await _readSecurityAnchor(hwId);
-      if (primaryAnchor != null) candidates.add(primaryAnchor);
+      if (primaryAnchor != null) candidates.add(primaryAnchor.toUtc());
 
       final secondaryAnchor = await _readSecondaryAnchor(hwId);
-      if (secondaryAnchor != null) candidates.add(secondaryAnchor);
+      if (secondaryAnchor != null) candidates.add(secondaryAnchor.toUtc());
 
       final dbAnchor = await _readDatabaseTrialAnchor();
-      if (dbAnchor != null) candidates.add(dbAnchor);
+      if (dbAnchor != null) candidates.add(dbAnchor.toUtc());
 
       if (candidates.isNotEmpty) {
         // La date retenue est obligatoirement la PLUS ANCIENNE parmi toutes les sources
@@ -129,11 +131,11 @@ class LicenseService {
 
     if (firstLaunch == null) {
       // Premier lancement légitime absolu
-      await prefs.setString(_prefFirstLaunch, now.toIso8601String());
-      await _writeSecurityAnchor(now.toIso8601String(), hwId);
-      await _writeSecondaryAnchor(now.toIso8601String(), hwId);
-      await _writeDatabaseTrialAnchor(now.toIso8601String());
-      final expiry = LicenseCore.computeTrialExpiry(now);
+      await prefs.setString(_prefFirstLaunch, nowUtc.toIso8601String());
+      await _writeSecurityAnchor(nowUtc.toIso8601String(), hwId);
+      await _writeSecondaryAnchor(nowUtc.toIso8601String(), hwId);
+      await _writeDatabaseTrialAnchor(nowUtc.toIso8601String());
+      final expiry = LicenseCore.computeTrialExpiry(nowUtc);
       return LicenseInfo(
         status: LicenseStatus.trial,
         type: LicenseType.trial,
@@ -151,8 +153,8 @@ class LicenseService {
 
     final expiry = LicenseCore.computeTrialExpiry(firstLaunch);
 
-    if (now.isBefore(expiry)) {
-      final diff = expiry.difference(now);
+    if (nowUtc.isBefore(expiry)) {
+      final diff = expiry.difference(nowUtc);
       final days = diff.inDays;
       return LicenseInfo(
         status: LicenseStatus.trial,
@@ -169,6 +171,40 @@ class LicenseService {
       expiryDate: expiry,
       daysLeft: 0,
     );
+  }
+
+  /// Permet de réinitialiser complètement l'essai pour les tests de développement.
+  static Future<void> resetTrialForTesting(SharedPreferences prefs) async {
+    await prefs.remove(_prefFirstLaunch);
+    await prefs.remove(_prefKey);
+    await prefs.remove(_prefBoundHwId);
+    await prefs.remove('lic_was_revoked_by_admin');
+    _cachedDbTrialAnchor = null;
+
+    try {
+      final hwId = await HardwareIdService.getHardwareId();
+      final anchorFile = await _getSecurityAnchorFile();
+      if (anchorFile != null && await anchorFile.exists()) {
+        await anchorFile.delete();
+      }
+      final mirrorFile = _getSecondaryMirrorAnchorFile();
+      if (mirrorFile != null && await mirrorFile.exists()) {
+        await mirrorFile.delete();
+      }
+    } catch (_) {}
+
+    try {
+      final appDir = await getApplicationSupportDirectory();
+      final dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));
+      if (await dbFile.exists()) {
+        final db = sqlite3.sqlite3.open(dbFile.path);
+        try {
+          db.execute("DELETE FROM _system_meta WHERE key = 'trial_start';");
+        } catch (_) {} finally {
+          db.close();
+        }
+      }
+    } catch (_) {}
   }
 
   /// Version synchrone de démarrage rapide (fallback).

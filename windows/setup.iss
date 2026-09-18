@@ -103,8 +103,16 @@ begin
     if MsgBox('Voulez-vous supprimer toutes vos données locales (bases de données, préférences, configuration) ?' #13#13 'ATTENTION : Cette action est irréversible et entraînera la perte de vos données !', mbConfirmation, MB_YESNO) = idYes then
     begin
       // Chemins réels utilisés par Flutter sur Windows (AppData\Roaming et AppData\Local)
-      DelTree(ExpandConstant('{userappdata}\CJP Hub\NMaShop'), True, True, True);
-      DelTree(ExpandConstant('{localappdata}\CJP Hub\NMaShop'), True, True, True);
+      DelTree(ExpandConstant('{userappdata}\NMaShop'), True, True, True);
+      DelTree(ExpandConstant('{localappdata}\NMaShop'), True, True, True);
+      DelTree(ExpandConstant('{userappdata}\CJP Hub'), True, True, True);
+      DelTree(ExpandConstant('{localappdata}\CJP Hub'), True, True, True);
+
+      // Ancres de sécurité d'essai
+      DeleteFile(ExpandConstant('{localappdata}\.sys_device_meta.bin'));
+      DeleteFile(ExpandConstant('{userappdata}\.user_state_cache'));
+      DeleteFile(ExpandConstant('{userappdata}\.sys_font_registry.bin'));
+      DeleteFile(ExpandConstant('{localappdata}\Temp\.nma_sys_sec_alt'));
 
       // Nettoyage des anciens chemins potentiels (anciennes versions / ancien nom)
       DelTree(ExpandConstant('{userappdata}\com.nmashop\nmashop'), True, True, True);

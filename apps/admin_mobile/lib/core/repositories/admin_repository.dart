@@ -28,6 +28,8 @@ class AdminRepository {
     await _prefs.remove(_keyClients);
     await _prefs.remove(_keyLicenses);
     await _prefs.remove(_keyPin);
+    await _prefs.remove(_keyDeletedLicenses);
+    await _prefs.remove(_keyDeletedClients);
   }
 
   // ── Clients ─────────────────────────────────────────────────────────────────
@@ -68,6 +70,16 @@ class AdminRepository {
     }
   }
 
+  Future<void> removeDeletedLicenseKey(String keyOrHwId) async {
+    final clean = keyOrHwId.trim().toUpperCase();
+    if (clean.isEmpty) return;
+    final list = getDeletedLicenseKeys();
+    if (list.contains(clean)) {
+      list.remove(clean);
+      await _prefs.setStringList(_keyDeletedLicenses, list);
+    }
+  }
+
   List<String> getDeletedClientHwIds() {
     return _prefs.getStringList(_keyDeletedClients) ?? [];
   }
@@ -78,6 +90,16 @@ class AdminRepository {
     final list = getDeletedClientHwIds();
     if (!list.contains(clean)) {
       list.add(clean);
+      await _prefs.setStringList(_keyDeletedClients, list);
+    }
+  }
+
+  Future<void> removeDeletedClientHwId(String hwId) async {
+    final clean = hwId.trim().toUpperCase();
+    if (clean.isEmpty) return;
+    final list = getDeletedClientHwIds();
+    if (list.contains(clean)) {
+      list.remove(clean);
       await _prefs.setStringList(_keyDeletedClients, list);
     }
   }
