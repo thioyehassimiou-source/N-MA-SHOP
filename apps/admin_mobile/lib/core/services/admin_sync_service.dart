@@ -242,15 +242,19 @@ class AdminSyncService {
         // Enrichir le record existant
         final existing = licenses[existingIndex];
 
-        // Si l'arrivée est un nouvel essai plus récent (réinitialisation PC), appliquer la mise à jour
-        final isNewerTrial = incomingIsTrial && activatedAt.isAfter(existing.createdAt.add(const Duration(minutes: 5)));
-        final overrideKey = existingIsPaid && incomingIsTrial && !isNewerTrial;
+        final incomingIsTrial = licenseKey.startsWith('TRIAL-') || licenseKey == 'ESSAI-GRATUIT';
+        final existingIsPaid = !existing.licenseKey.startsWith('TRIAL-') && existing.licenseKey != 'ESSAI-GRATUIT';
 
-        final effectiveKey = overrideKey
+        // Si la télémétrie entrante est un token d'essai (TRIAL-XXXX) :
+        // Si la clé a changé ou si le ré-enregistrement d'essai est récent, appliquer le Mode Essai
+        final isNewerTrial = incomingIsTrial && (existing.licenseKey != licenseKey || activatedAt.isAfter(existing.createdAt.add(const Duration(minutes: 5))));
+        final preservePaidKey = existingIsPaid && incomingIsTrial && !isNewerTrial;
+
+        final effectiveKey = preservePaidKey
             ? existing.licenseKey
             : (licenseKey.isNotEmpty ? licenseKey : existing.licenseKey);
-        final effectiveType = overrideKey ? existing.type : type;
-        final effectiveExpiresAt = overrideKey ? existing.expiresAt : (expiryDate ?? existing.expiresAt);
+        final effectiveType = preservePaidKey ? existing.type : type;
+        final effectiveExpiresAt = preservePaidKey ? existing.expiresAt : (expiryDate ?? existing.expiresAt);
 
         // Si l'administrateur avait désactivé la licence localement, respecter ce choix
         final effectiveIsActive = (!existing.isActive) ? false : isActive;
