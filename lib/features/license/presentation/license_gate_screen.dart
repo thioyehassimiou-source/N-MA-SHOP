@@ -373,30 +373,6 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  Center(
-                    child: TextButton.icon(
-                      onPressed: () async {
-                        await ref.read(licenseProvider.notifier).resetTrialForTesting();
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Période d\'essai réinitialisée à 7 jours 0 heure !'),
-                              backgroundColor: Color(0xFF16A34A),
-                            ),
-                          );
-                          context.go('/');
-                        }
-                      },
-                      icon: const Icon(Icons.refresh_rounded, size: 14, color: Color(0xFF94A3B8)),
-                      label: const Text(
-                        'Réinitialiser l\'essai à 7 jours (Mode Test / Développeur)',
-                        style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
