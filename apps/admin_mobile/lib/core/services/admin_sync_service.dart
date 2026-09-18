@@ -242,31 +242,14 @@ class AdminSyncService {
         // Enrichir le record existant
         final existing = licenses[existingIndex];
 
-        final incomingIsTrial = licenseKey.startsWith('TRIAL-') || licenseKey == 'ESSAI-GRATUIT';
-        final existingIsPaid = !existing.licenseKey.startsWith('TRIAL-') && existing.licenseKey != 'ESSAI-GRATUIT';
-
-        // Si la télémétrie entrante est un token d'essai (TRIAL-XXXX) :
-        // Si la clé a changé ou si le ré-enregistrement d'essai est récent, appliquer le Mode Essai
-        final isNewerTrial = incomingIsTrial && (existing.licenseKey != licenseKey || activatedAt.isAfter(existing.createdAt.add(const Duration(minutes: 5))));
-        final preservePaidKey = existingIsPaid && incomingIsTrial && !isNewerTrial;
-
-        final effectiveKey = preservePaidKey
-            ? existing.licenseKey
-            : (licenseKey.isNotEmpty ? licenseKey : existing.licenseKey);
-        final effectiveType = preservePaidKey ? existing.type : type;
-        final effectiveExpiresAt = preservePaidKey ? existing.expiresAt : (expiryDate ?? existing.expiresAt);
-
-        // Si l'administrateur avait désactivé la licence localement, respecter ce choix
-        final effectiveIsActive = (!existing.isActive) ? false : isActive;
-
         final updated = existing.copyWith(
           hardwareId: hardwareId.isNotEmpty ? hardwareId : existing.hardwareId,
           clientName: businessName != 'Boutique Inconnue' ? businessName : existing.clientName,
           clientId: clientId.isNotEmpty ? clientId : existing.clientId,
-          licenseKey: effectiveKey,
-          type: effectiveType,
-          expiresAt: effectiveExpiresAt,
-          isActive: effectiveIsActive,
+          licenseKey: licenseKey.isNotEmpty ? licenseKey : existing.licenseKey,
+          type: type,
+          expiresAt: expiryDate ?? existing.expiresAt,
+          isActive: isActive,
         );
         await _repository.saveLicense(updated);
       }
