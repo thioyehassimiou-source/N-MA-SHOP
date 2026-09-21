@@ -3,7 +3,7 @@
 ; Gère le remplacement et la désinstallation propre automatique des anciennes versions.
 
 #define MyAppName "N'MaShop"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.7"
 #define MyAppPublisher "Hassimiou Thioye Développeur"
 #define MyAppURL "https://github.com/thioyehassimiou-source/N-MA-SHOP"
 #define MyAppContact "thioyehassimiou@gmail.com"
@@ -22,8 +22,8 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\N'MaShop
-; Ne jamais réinstaller dans l'ancien dossier pour éviter les résidus corrompus
-UsePreviousAppDir=no
+; Toujours réutiliser le dossier d'installation existant lors d'une mise à jour
+UsePreviousAppDir=yes
 DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallFilesDir={app}
@@ -35,7 +35,7 @@ RestartApplications=no
 
 ; Nom et emplacement du fichier d'installation généré
 OutputDir=..\build\windows
-OutputBaseFilename=NMaShop_Setup_v1.0.0
+OutputBaseFilename=NMaShop_Setup_v1.1.7
 
 ; Icône de l'installeur (.exe)
 SetupIconFile=runner\resources\app_icon.ico
