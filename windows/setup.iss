@@ -3,7 +3,7 @@
 ; Gère le remplacement et la désinstallation propre automatique des anciennes versions.
 
 #define MyAppName "N'MaShop"
-#define MyAppVersion "1.1.7"
+#define MyAppVersion "1.1.8"
 #define MyAppPublisher "Hassimiou Thioye Développeur"
 #define MyAppURL "https://github.com/thioyehassimiou-source/N-MA-SHOP"
 #define MyAppContact "thioyehassimiou@gmail.com"
@@ -35,7 +35,7 @@ RestartApplications=no
 
 ; Nom et emplacement du fichier d'installation généré
 OutputDir=..\build\windows
-OutputBaseFilename=NMaShop_Setup_v1.1.7
+OutputBaseFilename=NMaShop_Setup_v1.1.8
 
 ; Icône de l'installeur (.exe)
 SetupIconFile=runner\resources\app_icon.ico

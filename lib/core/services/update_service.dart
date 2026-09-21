@@ -33,7 +33,7 @@ class AppVersionInfo {
 
 /// Service de gestion des mises à jour N'MaShop.
 abstract final class UpdateService {
-  static const String currentVersion = '1.1.7';
+  static const String currentVersion = '1.1.8';
   static const String buildNumber = '2026.1';
   static const String releaseDate = 'Septembre 2026';
 
