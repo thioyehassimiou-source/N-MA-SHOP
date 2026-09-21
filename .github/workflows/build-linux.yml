@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version de l'application (ex: 1.0.0)"
+        description: "Version de l'application (ex: 1.1.7)"
         required: false
-        default: "1.0.0"
+        default: "1.1.7"
   push:
     branches:
       - main
@@ -22,81 +22,75 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ── 1. Récupérer le code source ──────────────────────────────────────
       - name: 📥 Checkout du code
         uses: actions/checkout@v4
 
-      # ── 2. Installer les dépendances Linux système ───────────────────────
+      - name: 📌 Déterminer la version
+        shell: bash
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+          fi
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
+            VERSION="1.1.7"
+          fi
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: 🛠️ Dépendances Linux (GTK3, CMake, Ninja, Clang)
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
 
-      # ── 3. Installer Flutter ──────────────────────────────────────────────
       - name: 🐦 Installer Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           cache: true
 
-      # ── 4. Dépendances Flutter ───────────────────────────────────────────
       - name: 📦 Dépendances Flutter (pub get)
         run: |
           flutter clean
           flutter pub get
 
-      # ── 5. Générer le fichier .env et exécuter build_runner ─────────────
       - name: 🔑 Générer .env et code obfusqué
         shell: bash
         run: |
+          cat << 'EOF' > .env
+NEON_CONNECTION_STRING=postgresql://neondb_owner:npg_bY9MjSynWF4N@ep-long-scene-aeya27z7-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require
+LICENSE_SECURITY_SALT=NMaShop_security_salt_2026
+LICENSE_SECRET_F1=Nm4
+LICENSE_SECRET_F2=Sh0
+LICENSE_SECRET_F3=pGN
+LICENSE_SECRET_F4=3e!
+LICENSE_SECRET_F5=2026
+EOF
           NEON="${{ secrets.NEON_CONNECTION_STRING }}"
-          if [ -z "$NEON" ]; then
-            NEON="postgresql://neondb_owner:npg_bY9MjSynWF4N@ep-long-scene-aeya27z7-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
+          if [ -n "$NEON" ]; then
+            echo "NEON_CONNECTION_STRING=$NEON" > .env
           fi
-          echo "NEON_CONNECTION_STRING=\"$NEON\"" > .env
-
           SALT="${{ secrets.LICENSE_SECURITY_SALT }}"
-          if [ -z "$SALT" ]; then
-            SALT="NMaShop_security_salt_2026"
+          if [ -n "$SALT" ]; then
+            echo "LICENSE_SECURITY_SALT=$SALT" >> .env
           fi
-          echo "LICENSE_SECURITY_SALT=\"$SALT\"" >> .env
-
-          F1="${{ secrets.LICENSE_SECRET_F1 }}"
-          echo "LICENSE_SECRET_F1=\"${F1:-Nm4}\"" >> .env
-
-          F2="${{ secrets.LICENSE_SECRET_F2 }}"
-          echo "LICENSE_SECRET_F2=\"${F2:-Sh0}\"" >> .env
-
-          F3="${{ secrets.LICENSE_SECRET_F3 }}"
-          echo "LICENSE_SECRET_F3=\"${F3:-pGN}\"" >> .env
-
-          F4="${{ secrets.LICENSE_SECRET_F4 }}"
-          echo "LICENSE_SECRET_F4=\"${F4:-3e!}\"" >> .env
-
-          F5="${{ secrets.LICENSE_SECRET_F5 }}"
-          echo "LICENSE_SECRET_F5=\"${F5:-2026}\"" >> .env
-
           dart run build_runner build --delete-conflicting-outputs
 
-      # ── 6. Exécuter les tests unitaires et d'intégration ────────────────
       - name: 🧪 Exécuter les tests Desktop
         run: flutter test test/
 
-      # ── 7. Compiler l'application pour Linux ─────────────────────────────
       - name: 🔨 Compiler N'MaShop (Linux Release Obfusqué)
         run: |
           mkdir -p build/symbols
-          flutter build linux --release --obfuscate --split-debug-info=build/symbols --build-name=${{ inputs.version || '1.0.0' }}
+          flutter build linux --release --obfuscate --split-debug-info=build/symbols --build-name=${{ env.APP_VERSION }}
 
-      # ── 8. Créer l'archive Tarball (.tar.gz) ─────────────────────────────
       - name: 📦 Créer l'archive Tarball (.tar.gz)
         run: |
-          tar -czvf NMaShop_Linux_v${{ inputs.version || '1.0.0' }}_x64.tar.gz -C build/linux/x64/release/bundle .
+          tar -czvf NMaShop_Linux_v${{ env.APP_VERSION }}_x64.tar.gz -C build/linux/x64/release/bundle .
 
-      # ── 9. Uploader l'archive Linux ───────────────────────────────────────
       - name: ⬆️ Publier l'archive Linux (.tar.gz)
         uses: actions/upload-artifact@v4
         with:
-          name: NMaShop-Linux-x64-v${{ inputs.version || '1.0.0' }}
+          name: NMaShop-Linux-x64-v${{ env.APP_VERSION }}
           path: NMaShop_Linux_v*.tar.gz
           retention-days: 30

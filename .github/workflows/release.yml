@@ -1,21 +1,17 @@
 name: 🚀 N'MaShop — Publication Release Officielle (Windows & Linux)
 
 on:
-  # Déclenchement manuel avec choix du numéro de version
   workflow_dispatch:
     inputs:
       version:
-        description: "Version de la release (ex: 1.0.0)"
+        description: "Version de la release (ex: 1.1.7)"
         required: true
-        default: "1.0.0"
-
-  # Déclenchement automatique lors du push d'un tag (ex: git tag v1.0.0 && git push origin v1.0.0)
+        default: "1.1.7"
   push:
     tags:
       - 'v*'
 
 jobs:
-  # ── 1. COMPILATION WINDOWS ─────────────────────────────────────────────────
   build-windows:
     name: 🪟 Build Windows (Installeur .exe & Portable .zip)
     runs-on: windows-latest
@@ -23,6 +19,19 @@ jobs:
     steps:
       - name: 📥 Checkout du code
         uses: actions/checkout@v4
+
+      - name: 📌 Déterminer la version
+        shell: bash
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+          fi
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
+            VERSION="1.1.7"
+          fi
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: 🐦 Installer Flutter
         uses: subosito/flutter-action@v2
@@ -38,40 +47,30 @@ jobs:
       - name: 🔑 Générer .env et code obfusqué
         shell: bash
         run: |
+          cat << 'EOF' > .env
+NEON_CONNECTION_STRING=postgresql://neondb_owner:npg_bY9MjSynWF4N@ep-long-scene-aeya27z7-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require
+LICENSE_SECURITY_SALT=NMaShop_security_salt_2026
+LICENSE_SECRET_F1=Nm4
+LICENSE_SECRET_F2=Sh0
+LICENSE_SECRET_F3=pGN
+LICENSE_SECRET_F4=3e!
+LICENSE_SECRET_F5=2026
+EOF
           NEON="${{ secrets.NEON_CONNECTION_STRING }}"
-          if [ -z "$NEON" ]; then
-            NEON="postgresql://neondb_owner:npg_bY9MjSynWF4N@ep-long-scene-aeya27z7-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
+          if [ -n "$NEON" ]; then
+            echo "NEON_CONNECTION_STRING=$NEON" > .env
           fi
-          echo "NEON_CONNECTION_STRING=\"$NEON\"" > .env
-
           SALT="${{ secrets.LICENSE_SECURITY_SALT }}"
-          if [ -z "$SALT" ]; then
-            SALT="NMaShop_security_salt_2026"
+          if [ -n "$SALT" ]; then
+            echo "LICENSE_SECURITY_SALT=$SALT" >> .env
           fi
-          echo "LICENSE_SECURITY_SALT=\"$SALT\"" >> .env
-
-          F1="${{ secrets.LICENSE_SECRET_F1 }}"
-          echo "LICENSE_SECRET_F1=\"${F1:-Nm4}\"" >> .env
-
-          F2="${{ secrets.LICENSE_SECRET_F2 }}"
-          echo "LICENSE_SECRET_F2=\"${F2:-Sh0}\"" >> .env
-
-          F3="${{ secrets.LICENSE_SECRET_F3 }}"
-          echo "LICENSE_SECRET_F3=\"${F3:-pGN}\"" >> .env
-
-          F4="${{ secrets.LICENSE_SECRET_F4 }}"
-          echo "LICENSE_SECRET_F4=\"${F4:-3e!}\"" >> .env
-
-          F5="${{ secrets.LICENSE_SECRET_F5 }}"
-          echo "LICENSE_SECRET_F5=\"${F5:-2026}\"" >> .env
-
           dart run build_runner build --delete-conflicting-outputs
 
       - name: 🧪 Exécuter les tests Desktop
         run: flutter test test/
 
       - name: 🔨 Compiler l'application (Windows Release Obfusqué)
-        run: flutter build windows --release --obfuscate --split-debug-info=build/symbols --build-name=${{ inputs.version || '1.0.0' }}
+        run: flutter build windows --release --obfuscate --split-debug-info=build/symbols --build-name=${{ env.APP_VERSION }}
 
       - name: 🧩 Copier sqlite3.dll dans le bundle Release
         run: |
@@ -82,7 +81,7 @@ jobs:
 
       - name: 📦 Créer l'archive Portable (ZIP)
         run: |
-          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "build\windows\NMaShop_Windows_Portable_v${{ inputs.version || '1.0.0' }}.zip" -Force
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "build\windows\NMaShop_Windows_Portable_v${{ env.APP_VERSION }}.zip" -Force
         shell: powershell
 
       - name: 📥 Télécharger VC++ Redistributable pour l'installeur
@@ -103,25 +102,24 @@ jobs:
       - name: ⬆️ Upload Installeur Windows (.exe)
         uses: actions/upload-artifact@v4
         with:
-          name: NMaShop-Windows-Setup-v${{ inputs.version || '1.0.0' }}
+          name: NMaShop-Windows-Setup-v${{ env.APP_VERSION }}
           path: build/windows/NMaShop_Setup_*.exe
           retention-days: 30
 
       - name: ⬆️ Upload Installeur ZIP (.zip)
         uses: actions/upload-artifact@v4
         with:
-          name: NMaShop-Windows-Installer-ZIP-v${{ inputs.version || '1.0.0' }}
+          name: NMaShop-Windows-Installer-ZIP-v${{ env.APP_VERSION }}
           path: build/windows/NMaShop_Installer.zip
           retention-days: 30
 
       - name: ⬆️ Upload Version Portable (.zip)
         uses: actions/upload-artifact@v4
         with:
-          name: NMaShop-Windows-Portable-v${{ inputs.version || '1.0.0' }}
+          name: NMaShop-Windows-Portable-v${{ env.APP_VERSION }}
           path: build/windows/NMaShop_Windows_Portable_v*.zip
           retention-days: 30
 
-  # ── 2. COMPILATION LINUX ───────────────────────────────────────────────────
   build-linux:
     name: 🐧 Build Linux (x64 Release .tar.gz)
     runs-on: ubuntu-latest
@@ -129,6 +127,19 @@ jobs:
     steps:
       - name: 📥 Checkout du code
         uses: actions/checkout@v4
+
+      - name: 📌 Déterminer la version
+        shell: bash
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+          fi
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
+            VERSION="1.1.7"
+          fi
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: 🛠️ Installer les dépendances Linux système
         run: |
@@ -149,33 +160,23 @@ jobs:
       - name: 🔑 Générer .env et code obfusqué
         shell: bash
         run: |
+          cat << 'EOF' > .env
+NEON_CONNECTION_STRING=postgresql://neondb_owner:npg_bY9MjSynWF4N@ep-long-scene-aeya27z7-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require
+LICENSE_SECURITY_SALT=NMaShop_security_salt_2026
+LICENSE_SECRET_F1=Nm4
+LICENSE_SECRET_F2=Sh0
+LICENSE_SECRET_F3=pGN
+LICENSE_SECRET_F4=3e!
+LICENSE_SECRET_F5=2026
+EOF
           NEON="${{ secrets.NEON_CONNECTION_STRING }}"
-          if [ -z "$NEON" ]; then
-            NEON="postgresql://neondb_owner:npg_bY9MjSynWF4N@ep-long-scene-aeya27z7-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require"
+          if [ -n "$NEON" ]; then
+            echo "NEON_CONNECTION_STRING=$NEON" > .env
           fi
-          echo "NEON_CONNECTION_STRING=\"$NEON\"" > .env
-
           SALT="${{ secrets.LICENSE_SECURITY_SALT }}"
-          if [ -z "$SALT" ]; then
-            SALT="NMaShop_security_salt_2026"
+          if [ -n "$SALT" ]; then
+            echo "LICENSE_SECURITY_SALT=$SALT" >> .env
           fi
-          echo "LICENSE_SECURITY_SALT=\"$SALT\"" >> .env
-
-          F1="${{ secrets.LICENSE_SECRET_F1 }}"
-          echo "LICENSE_SECRET_F1=\"${F1:-Nm4}\"" >> .env
-
-          F2="${{ secrets.LICENSE_SECRET_F2 }}"
-          echo "LICENSE_SECRET_F2=\"${F2:-Sh0}\"" >> .env
-
-          F3="${{ secrets.LICENSE_SECRET_F3 }}"
-          echo "LICENSE_SECRET_F3=\"${F3:-pGN}\"" >> .env
-
-          F4="${{ secrets.LICENSE_SECRET_F4 }}"
-          echo "LICENSE_SECRET_F4=\"${F4:-3e!}\"" >> .env
-
-          F5="${{ secrets.LICENSE_SECRET_F5 }}"
-          echo "LICENSE_SECRET_F5=\"${F5:-2026}\"" >> .env
-
           dart run build_runner build --delete-conflicting-outputs
 
       - name: 🧪 Exécuter les tests Desktop
@@ -184,20 +185,19 @@ jobs:
       - name: 🔨 Compiler l'application (Linux Release Obfusqué)
         run: |
           mkdir -p build/symbols
-          flutter build linux --release --obfuscate --split-debug-info=build/symbols --build-name=${{ inputs.version || '1.0.0' }}
+          flutter build linux --release --obfuscate --split-debug-info=build/symbols --build-name=${{ env.APP_VERSION }}
 
       - name: 📦 Créer l'archive Tarball (.tar.gz)
         run: |
-          tar -czvf NMaShop_Linux_v${{ inputs.version || '1.0.0' }}_x64.tar.gz -C build/linux/x64/release/bundle .
+          tar -czvf NMaShop_Linux_v${{ env.APP_VERSION }}_x64.tar.gz -C build/linux/x64/release/bundle .
 
       - name: ⬆️ Upload Archive Linux (.tar.gz)
         uses: actions/upload-artifact@v4
         with:
-          name: NMaShop-Linux-x64-v${{ inputs.version || '1.0.0' }}
+          name: NMaShop-Linux-x64-v${{ env.APP_VERSION }}
           path: NMaShop_Linux_v*.tar.gz
           retention-days: 30
 
-  # ── 3. PUBLICATION AUTOMATIQUE DE LA RELEASE GITHUB ────────────────────────
   publish-release:
     name: 🏷️ Publier la Release GitHub
     needs: [build-windows, build-linux]
@@ -209,6 +209,19 @@ jobs:
       - name: 📥 Créer le répertoire de distribution
         run: mkdir -p ./release-assets
 
+      - name: 📌 Déterminer la version
+        shell: bash
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+          fi
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
+            VERSION="1.1.7"
+          fi
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: 📥 Télécharger tous les artefacts compilés (Windows & Linux)
         uses: actions/download-artifact@v4
         with:
@@ -219,10 +232,10 @@ jobs:
       - name: 🚀 Créer la Release GitHub Officielle
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', inputs.version || '1.0.0') }}
-          name: N'MaShop Desktop v${{ inputs.version || '1.0.0' }} (Windows & Linux)
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', env.APP_VERSION) }}
+          name: N'MaShop Desktop v${{ env.APP_VERSION }} (Windows & Linux)
           body: |
-            🎉 **Publication Officielle de Production — N'MaShop Desktop v${{ inputs.version || '1.0.0' }}**
+            🎉 **Publication Officielle de Production — N'MaShop Desktop v${{ env.APP_VERSION }}**
             
             Logiciel de gestion commerciale, caisse POS et comptabilité 100% hors-ligne pour commerçants et grossistes.
             
