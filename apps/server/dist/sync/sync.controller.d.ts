@@ -13,4 +13,18 @@ export declare class SyncController {
         status: string;
         serverTime: string;
     }>;
+    uploadBackup(body: any): Promise<{
+        success: boolean;
+        message: string;
+        b2Storage: {
+            success: boolean;
+            fileId: string;
+            fileName: string;
+            fileUrl: string;
+            sizeBytes: number;
+            sha1: string;
+            uploadedAt: string;
+        } | null;
+        timestamp: string;
+    }>;
 }

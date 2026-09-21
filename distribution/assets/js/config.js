@@ -6,31 +6,30 @@ const CONFIG = {
   APP_NAME: "N’MaShop",
   APP_SLOGAN: "Gérer · Vendre · Grandir",
   APP_VERSION: "1.1.8",
-  APP_SIZE: "48 Mo",
+  APP_SIZE: "82 Mo",
   APP_OS: "Windows 10 / 11 (64-bit)",
   APP_ARCH: "x64 (PC de bureau & Ordinateurs portables)",
   LAST_UPDATE: "Septembre 2026",
-  LICENSE_TRIAL: "7 jours d'essai gratuit complet (100% hors-ligne)",
+  LICENSE_TRIAL: "7 jours d'essai gratuit complet (100% hors-ligne, sans engagement)",
   
-  // Liens de téléchargement du logiciel Windows & Multiplateforme (Installeur ZIP Propre - Contient uniquement NMaShop_Setup_v1.0.0.exe)
+  // Liens de téléchargement du logiciel Windows & Multiplateforme
   DOWNLOAD_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.1.8/NMaShop_Installer.zip",
   DOWNLOAD_PORTABLE_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.1.8/NMaShop_Windows_Portable_v1.0.0.zip",
   DOWNLOAD_LINUX_URL: "downloads/nmashop_linux_release.tar.gz",
-  DOWNLOAD_APK_URL: "https://drive.google.com/uc?export=download&id=1yHueBEciq3z7Xh4dKOafJoY3OHN3ZsAN",
+  DOWNLOAD_APK_URL: "downloads/NMaShop_Admin_Mobile_v1.0.0.apk",
   
-  // Auteur & Conception Réelle (Conforme AppContacts & Cahier des Charges)
+  // Auteur & Conception Réelle (Transparence Fondateur)
   DEV_NAME: "Hassimiou Thioye",
-  DEV_TITLE: "Développeur & Concepteur N'MaShop",
+  DEV_TITLE: "Développeur & Concepteur N'MaShop (Université de Labé)",
   DEV_EMAIL: "thioyehassimiou@gmail.com",
   DEV_LOCATION: "Labé & Conakry, Guinée",
 
-  // Vidéo de démonstration locale (issue du dossier audio_demo)
+  // Vidéo de démonstration locale
   DEMO_VIDEO_PATH: "assets/video/nmashop_demo_web.mp4",
-  DEMO_AUDIO_PATH: "assets/audio/voix_off_complete.mp3",
 
   // Contacts officiels Guinée
   WHATSAPP_PHONE: "224624193069",
-  WHATSAPP_URL: "https://wa.me/224624193069?text=Bonjour%20l%27%C3%A9quipe%20N%E2%80%99MaShop%2C%20je%20souhaite%20activer%20une%20licence%20pour%20ma%20boutique.",
+  WHATSAPP_URL: "https://wa.me/224624193069?text=Bonjour%20l%27%C3%A9quipe%20N%E2%80%99MaShop%2C%20je%20souhaite%20en%20savoir%20plus%20sur%20le%20logiciel%20de%20caisse.",
   WHATSAPP_DISPLAY: "+224 624 19 30 69",
   
   // TARIFS OFFICIELS PRÉDÉFINIS (Gestion des Licences N'MaShop)
@@ -39,24 +38,24 @@ const CONFIG = {
       NAME: "Essai Découverte",
       PRICE: "0 GNF",
       PERIOD: "7 jours offerts",
-      BADGE: "Sans engagement",
-      DESC: "Installez et commencez à vendre immédiatement sur votre PC.",
+      BADGE: "100% Gratuit",
+      DESC: "Installez et commencez à vendre immédiatement sur votre PC sans carte ni engagement.",
       FEATURES: [
         "Toutes les fonctionnalités débloquées",
         "Fonctionne 100% hors-ligne (zéro coupure)",
-        "Ventes et caisse illimitées",
-        "Gestion du stock et alertes de seuil",
+        "Ventes et caisse illimitées pendant 7j",
+        "Gestion du stock et alertes de seuil bas",
         "Carnet de crédits clients numérique",
-        "Aucune carte bancaire requise"
+        "Aucune carte ni moyen de paiement requis"
       ],
-      CTA: "Démarrer l'essai 7 jours",
+      CTA: "Télécharger l'essai gratuit 7 jours",
       ACTION: "download"
     },
     MONTHLY: {
       NAME: "Licence Mensuelle",
       PRICE: "150 000 GNF",
-      PERIOD: "/ mois (30 jours)",
-      BADGE: "Flexibilité totale",
+      PERIOD: "/ mois",
+      BADGE: "Flexibilité sans engagement",
       DESC: "Idéal pour équiper votre commerce avec un budget maîtrisé mois par mois.",
       FEATURES: [
         "Ventes et encaissements illimités",
@@ -64,6 +63,7 @@ const CONFIG = {
         "Suivi du stock en temps réel (CMP)",
         "Gestion des créances clients & relances",
         "Comptabilité de base & clôture de caisse",
+        "Sauvegarde Cloud automatique sécurisée",
         "Mises à jour et assistance incluses"
       ],
       CTA: "Prendre l'offre Mensuelle",
@@ -73,17 +73,19 @@ const CONFIG = {
     ANNUAL: {
       NAME: "Licence Annuelle",
       PRICE: "1 500 000 GNF",
+      MONTHLY_EQUIVALENT: "soit 125 000 GNF / mois",
       PERIOD: "/ an (365 jours)",
-      BADGE: "2 MOIS OFFERTS · RECOMMANDÉ",
+      BADGE: "2 MOIS OFFERTS · LE + POPULAIRE",
       POPULAR: true,
-      SAVINGS: "Économisez 300 000 GNF",
-      DESC: "La formule favorite des boutiques et magasins pour toute une année de sérénité.",
+      SAVINGS: "Économisez 300 000 GNF par an",
+      DESC: "La formule préférée des magasins pour une année entière de sérénité.",
       FEATURES: [
         "Tous les avantages de la licence mensuelle",
-        "Rapports financiers détaillés & Bilan des marges (PDF/CSV)",
+        "Soit 125 000 GNF/mois (2 mois complets offerts)",
+        "Thèmes de caisse personnalisés exclusifs",
+        "Rapports financiers détaillés & Bilan (PDF/CSV)",
         "Gestion multi-vendeurs avec commissions",
-        "2 mois complets offerts (1 500 000 au lieu de 1 800 000)",
-        "Sauvegardes automatiques sécurisées",
+        "Sauvegardes Cloud automatiques (Backblaze B2)",
         "Support technique prioritaire WhatsApp 7j/7"
       ],
       CTA: "Choisir la formule Annuelle",
@@ -93,16 +95,17 @@ const CONFIG = {
     LIFETIME: {
       NAME: "Licence À Vie",
       PRICE: "3 500 000 GNF",
-      PERIOD: "Paiement unique",
-      BADGE: "Investissement Définitif",
-      DESC: "Achetez le logiciel une fois pour toutes. Zéro abonnement récurrent à payer.",
+      PERIOD: "Paiement unique définitif",
+      BADGE: "Rentabilité Maximale",
+      DESC: "Achetez le logiciel une fois pour toutes. Aucun abonnement récurrent à payer.",
       FEATURES: [
         "Utilisation illimitée à vie sur votre PC",
-        "Aucun abonnement mensuel ni annuel",
+        "Aucun abonnement mensuel ni annuel récurrent",
         "Base de données locale définitivement à vous",
         "Toutes les fonctionnalités présentes et futures",
-        "Gestion complète Stock, Ventes, Crédits, Rapports",
-        "Accompagnement VIP et formation sur mesure"
+        "Thèmes exclusifs Annuel / À Vie débloqués",
+        "Sauvegardes Cloud automatiques incluses",
+        "Accompagnement VIP et assistance directe"
       ],
       CTA: "Acquérir la Licence À Vie",
       ACTION: "whatsapp",

@@ -201,6 +201,7 @@ class AppDatabase extends _$AppDatabase {
         },
         beforeOpen: (details) async {
           // Intégrité référentielle et optimisations de performance SQLite (pour PC modestes / HDD).
+          await customStatement('PRAGMA busy_timeout = 5000;');
           await customStatement('PRAGMA foreign_keys = ON');
           await customStatement('PRAGMA journal_mode = WAL');
           await customStatement('PRAGMA synchronous = NORMAL');
@@ -268,7 +269,12 @@ LazyDatabase _openConnection() {
     }
     final file = newFile;
     
-    return NativeDatabase.createInBackground(file);
+    return NativeDatabase.createInBackground(
+      file,
+      setup: (db) {
+        db.execute('PRAGMA busy_timeout = 5000;');
+      },
+    );
   });
 }
 

@@ -5,16 +5,116 @@ import 'package:crypto/crypto.dart';
 import 'package:csv/csv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../database/database.dart';
+import 'hardware_id_service.dart';
 
 /// Service gérant les exports (CSV, Backup DB .nma)
 class ExportService {
   static const String _nmaHeader = 'NMA_BACKUP_V2\n';
   static const String _nmaDelimiter = '\n---NMA_DATA---\n';
+
+  /// Génère et téléverse la sauvegarde conteneur .nma directement sur le Cloud (Backblaze B2 via le serveur NestJS)
+  static Future<Map<String, dynamic>> backupDatabaseToCloud({
+    required String serverUrl,
+    required String licenseKey,
+    String? caisseSecret,
+  }) async {
+    try {
+      final dir = await getApplicationSupportDirectory();
+      var dbFile = File(p.join(dir.path, 'nmashop.sqlite'));
+
+      if (!await dbFile.exists()) {
+        final legacyFile = File(p.join(dir.path, 'gescompta.sqlite'));
+        if (await legacyFile.exists()) {
+          dbFile = legacyFile;
+        } else {
+          return {'success': false, 'error': 'Fichier base de données SQLite introuvable'};
+        }
+      }
+
+      final rawBytes = await dbFile.readAsBytes();
+      final checksum = sha256.convert(rawBytes).toString();
+      final compressedBytes = gzip.encode(rawBytes);
+
+      final metadata = {
+        'app': "N'MaShop",
+        'format': 'NMA_BACKUP_V2',
+        'version': '1.0.0',
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+        'checksum': checksum,
+        'uncompressedSize': rawBytes.length,
+      };
+
+      final metaJson = jsonEncode(metadata);
+      final headerBytes = utf8.encode('$_nmaHeader$metaJson$_nmaDelimiter');
+
+      final builder = BytesBuilder();
+      builder.add(headerBytes);
+      builder.add(compressedBytes);
+      final finalBytes = builder.toBytes();
+
+      final String fileName = "sauvegarde_nmashop_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.nma";
+      final base64Payload = base64Encode(finalBytes);
+
+      final uri = Uri.parse('$serverUrl/api/v1/sync/backup/upload');
+      final hwid = await HardwareIdService.getHardwareId();
+
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      final bodyMap = {
+        'licenseKey': licenseKey,
+        'filename': fileName,
+        'backupBase64': base64Payload,
+      };
+      final bodyStr = jsonEncode(bodyMap);
+
+      String? signature;
+      if (caisseSecret != null && caisseSecret.isNotEmpty) {
+        final rawPayload = '$nowIso.$bodyStr';
+        final hmac = Hmac(sha256, utf8.encode(caisseSecret));
+        signature = hmac.convert(utf8.encode(rawPayload)).toString();
+      }
+
+      final headers = {
+        HttpHeaders.contentTypeHeader: 'application/json',
+        'X-Machine-Id': hwid,
+        'X-License-Key': licenseKey,
+        'X-Timestamp': nowIso,
+        if (signature != null) 'X-Signature': signature,
+      };
+
+      final response = await http
+          .post(
+            uri,
+            headers: headers,
+            body: bodyStr,
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final resData = jsonDecode(response.body) as Map<String, dynamic>;
+        return {
+          'success': true,
+          'message': resData['message'] ?? 'Sauvegarde enregistrée dans le Cloud Backblaze B2.',
+          'b2Storage': resData['b2Storage'],
+        };
+      } else {
+        return {
+          'success': false,
+          'error': 'Erreur serveur Cloud (HTTP ${response.statusCode})',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erreur de connexion Cloud: $e',
+      };
+    }
+  }
 
   /// Exporte la liste des ventes au format CSV et demande à l'utilisateur où l'enregistrer.
   static Future<bool> exportSalesToCsv(AppDatabase db) async {
@@ -67,7 +167,61 @@ class ExportService {
   }
 
   /// Exporte la base de données dans le format conteneur propriétaire .nma
-  /// (compressé gzip, sécurisé par empreinte SHA-256, portable multiplateforme).
+  /// Sauvegarde automatiquement le fichier .nma en arrière-plan (sans ouvrir l'explorateur de fichiers).
+  static Future<File?> backupDatabaseSilently() async {
+    try {
+      final dir = await getApplicationSupportDirectory();
+      var dbFile = File(p.join(dir.path, 'nmashop.sqlite'));
+
+      if (!await dbFile.exists()) {
+        final legacyFile = File(p.join(dir.path, 'gescompta.sqlite'));
+        if (await legacyFile.exists()) {
+          dbFile = legacyFile;
+        } else {
+          return null;
+        }
+      }
+
+      final rawBytes = await dbFile.readAsBytes();
+      final checksum = sha256.convert(rawBytes).toString();
+      final compressedBytes = gzip.encode(rawBytes);
+
+      final metadata = {
+        'app': "N'MaShop",
+        'format': 'NMA_BACKUP_V2',
+        'version': '1.0.0',
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+        'checksum': checksum,
+        'uncompressedSize': rawBytes.length,
+      };
+
+      final metaJson = jsonEncode(metadata);
+      final headerBytes = utf8.encode('$_nmaHeader$metaJson$_nmaDelimiter');
+
+      final builder = BytesBuilder();
+      builder.add(headerBytes);
+      builder.add(compressedBytes);
+      final finalBytes = builder.toBytes();
+
+      final backupsDir = Directory(p.join(dir.path, 'backups'));
+      if (!await backupsDir.exists()) {
+        await backupsDir.create(recursive: true);
+      }
+
+      final String fileName = "sauvegarde_nmashop_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.nma";
+      final targetFile = File(p.join(backupsDir.path, fileName));
+      await targetFile.writeAsBytes(finalBytes, flush: true);
+
+      return targetFile;
+    } catch (e) {
+      // ignore: avoid_print
+      print('Erreur sauvegarde silencieuse: $e');
+      return null;
+    }
+  }
+
+  /// Exporte la base de données dans le format conteneur propriétaire .nma
+  /// avec ouverture de la boîte de dialogue d'enregistrement sur disque/clé USB.
   static Future<bool> backupDatabase() async {
     try {
       final dir = await getApplicationSupportDirectory();
@@ -115,7 +269,6 @@ class ExportService {
 
       if (savedPath == null) return false;
 
-      // Sur desktop, s'assurer que les bytes sont bien écrits au chemin retourné si l'OS ne l'a pas fait automatiquement
       final filePath = savedPath.scheme == 'file' ? savedPath.toFilePath() : savedPath.path;
       final targetFile = File(p.normalize(p.absolute(filePath)));
       if (!await targetFile.exists() || await targetFile.length() == 0) {

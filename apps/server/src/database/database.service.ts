@@ -144,13 +144,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   };
 
   constructor() {
-    this.isMemoryFallback = true;
+    this.isMemoryFallback = false;
   }
 
   async onModuleInit() {
     const connectionString = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.NEON_CONNECTION_STRING;
 
-    if (this.isMemoryFallback || process.env.DATABASE_DRIVER === 'memory' || process.env.NODE_ENV === 'test' || process.env.VITEST === 'true') {
+    if (process.env.DATABASE_DRIVER === 'memory' || process.env.NODE_ENV === 'test' || process.env.VITEST === 'true') {
       this.isMemoryFallback = true;
       this.logger.warn('Mode mémoire actif pour les tests ou développement local.');
       return;

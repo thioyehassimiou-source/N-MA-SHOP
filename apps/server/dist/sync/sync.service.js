@@ -10,11 +10,14 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var SyncService_1;
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
+import { B2StorageService } from './b2-storage.service.js';
 let SyncService = SyncService_1 = class SyncService {
     db;
+    b2Storage;
     logger = new Logger(SyncService_1.name);
-    constructor(db) {
+    constructor(db, b2Storage) {
         this.db = db;
+        this.b2Storage = b2Storage;
     }
     async processBatch(dto) {
         let shop = await this.db.findShopByLicense(dto.licenseKey);
@@ -298,10 +301,33 @@ let SyncService = SyncService_1 = class SyncService {
             }
         }
     }
+    async saveCloudBackup(dto) {
+        this.logger.log(`Sauvegarde Cloud reçue depuis la caisse Desktop pour la licence ${dto.licenseKey || 'N/A'}`);
+        let b2Result = null;
+        if (dto.backupBase64) {
+            try {
+                const buffer = Buffer.from(dto.backupBase64, 'base64');
+                const filename = dto.filename || `backup_${dto.licenseKey || 'pos'}_${Date.now()}.nma`;
+                b2Result = await this.b2Storage.uploadBackup(filename, buffer, {
+                    licenseKey: dto.licenseKey || 'N/A',
+                });
+            }
+            catch (err) {
+                this.logger.error(`Impossible d'enregistrer la sauvegarde sur Backblaze B2: ${err.message}`);
+            }
+        }
+        return {
+            success: true,
+            message: 'Sauvegarde Cloud traitée avec succès.',
+            b2Storage: b2Result,
+            timestamp: new Date().toISOString(),
+        };
+    }
 };
 SyncService = SyncService_1 = __decorate([
     Injectable(),
-    __metadata("design:paramtypes", [DatabaseService])
+    __metadata("design:paramtypes", [DatabaseService,
+        B2StorageService])
 ], SyncService);
 export { SyncService };
 //# sourceMappingURL=sync.service.js.map

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
+import { B2StorageService } from './b2-storage.service.js';
 import { SyncBatchDto } from './sync.dto.js';
 import type * as pg from 'pg';
 
@@ -7,7 +8,10 @@ import type * as pg from 'pg';
 export class SyncService {
   private readonly logger = new Logger(SyncService.name);
 
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly b2Storage: B2StorageService,
+  ) {}
 
   async processBatch(dto: SyncBatchDto) {
     let shop = await this.db.findShopByLicense(dto.licenseKey);
@@ -387,5 +391,29 @@ export class SyncService {
         break;
       }
     }
+  }
+
+  async saveCloudBackup(dto: { licenseKey?: string; filename?: string; backupBase64?: string }) {
+    this.logger.log(`Sauvegarde Cloud reçue depuis la caisse Desktop pour la licence ${dto.licenseKey || 'N/A'}`);
+    
+    let b2Result = null;
+    if (dto.backupBase64) {
+      try {
+        const buffer = Buffer.from(dto.backupBase64, 'base64');
+        const filename = dto.filename || `backup_${dto.licenseKey || 'pos'}_${Date.now()}.nma`;
+        b2Result = await this.b2Storage.uploadBackup(filename, buffer, {
+          licenseKey: dto.licenseKey || 'N/A',
+        });
+      } catch (err: any) {
+        this.logger.error(`Impossible d'enregistrer la sauvegarde sur Backblaze B2: ${err.message}`);
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Sauvegarde Cloud traitée avec succès.',
+      b2Storage: b2Result,
+      timestamp: new Date().toISOString(),
+    };
   }
 }

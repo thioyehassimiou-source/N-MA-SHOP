@@ -38,7 +38,6 @@ import '../../onboarding/presentation/setup_screen.dart' show kDomaines, kDevise
 import '../../../core/providers/database_provider.dart';
 import '../../../core/services/export_service.dart';
 import '../../../core/sync/desktop_sync_worker.dart';
-import '../../../core/utils/url_launcher_helper.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key, this.initialTabIndex = 0});
@@ -398,18 +397,60 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   color: context.colors.primary,
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
               _buildSecurityItem(
-                Icons.save_alt,
-                'Sauvegarde des données (Fichier .nma sécurisé)',
-                trailing: AppButton.secondary(
-                  label: 'Sauvegarder',
+                Icons.cloud_upload_rounded,
+                'Sauvegarde Cloud automatique (Backblaze B2 & Neon)',
+                trailing: AppButton(
+                  label: 'Sauvegarder dans le Cloud',
+                  icon: Icons.cloud_upload_rounded,
                   onPressed: () async {
-                    final success = await ExportService.backupDatabase();
-                    if (mounted && success) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: const Text('Sauvegarde .nma réussie avec succès'), backgroundColor: context.colors.primary),
-                      );
+                    final license = ref.read(licenseInfoProvider);
+                    final prefs = ref.read(sharedPreferencesProvider);
+                    final serverUrl = prefs.getString('custom_server_url')?.trim().isNotEmpty == true
+                        ? prefs.getString('custom_server_url')!.trim()
+                        : 'https://api.nmashop.gn';
+                    final caisseSecret = prefs.getString('caisse_secret');
+                    final licenseKey = license.key ?? 'DEFAULT-LICENSE';
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Row(
+                          children: [
+                            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                            SizedBox(width: 12),
+                            Text('Téléversement de la sauvegarde vers le Cloud...'),
+                          ],
+                        ),
+                        duration: Duration(seconds: 4),
+                      ),
+                    );
+
+                    final res = await ExportService.backupDatabaseToCloud(
+                      serverUrl: serverUrl,
+                      licenseKey: licenseKey,
+                      caisseSecret: caisseSecret,
+                    );
+
+                    if (mounted) {
+                      if (res['success'] == true) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('✅ ${res['message'] ?? 'Sauvegarde Cloud enregistrée dans le Cloud !'}'),
+                            backgroundColor: const Color(0xFF10B981),
+                          ),
+                        );
+                      } else {
+                        // Fallback vers sauvegarde locale silencieuse sans ouverture de l'explorateur
+                        final localFile = await ExportService.backupDatabaseSilently();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(localFile != null
+                                ? '✅ Sauvegarde de sécurité .nma enregistrée en arrière-plan !'
+                                : '❌ Échec de la création de la sauvegarde.'),
+                            backgroundColor: localFile != null ? const Color(0xFF10B981) : context.colors.error,
+                          ),
+                        );
+                      }
                     }
                   },
                 ),

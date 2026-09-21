@@ -46,8 +46,8 @@ Future<void> main() async {
   final database = AppDatabase();
   final prefs = await SharedPreferences.getInstance();
 
-  // Initialisation du stockage dédié des images et migration automatique
-  await ImageStorageService.initializeStorage(db: database);
+  // Initialisation du stockage dédié des images et migration automatique en arrière-plan
+  Future.microtask(() => ImageStorageService.initializeStorage(db: database));
 
   // Vérification de la licence (synchrone — prefs déjà en mémoire).
   // Résultat disponible avant le premier rendu pour éviter tout flash.

@@ -29,6 +29,9 @@ let SyncController = class SyncController {
             serverTime: new Date().toISOString(),
         };
     }
+    async uploadBackup(body) {
+        return this.syncService.saveCloudBackup(body);
+    }
 };
 __decorate([
     Post('push'),
@@ -54,6 +57,20 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], SyncController.prototype, "getStatus", null);
+__decorate([
+    Post('backup/upload'),
+    UseGuards(CaisseAuthGuard),
+    HttpCode(HttpStatus.OK),
+    ApiOperation({
+        summary: 'Sauvegarder l\'archive complète (.nma) de la caisse dans le Cloud',
+        description: 'Permet à l\'application Desktop de sauvegarder un instantané chiffré et sécurisé dans le Cloud.',
+    }),
+    ApiResponse({ status: 200, description: 'Sauvegarde Cloud enregistrée avec succès.' }),
+    __param(0, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], SyncController.prototype, "uploadBackup", null);
 SyncController = __decorate([
     ApiTags('Sync'),
     Controller('api/v1/sync'),

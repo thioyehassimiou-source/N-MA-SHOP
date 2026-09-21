@@ -7,13 +7,14 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 import { Module } from '@nestjs/common';
 import { SyncController } from './sync.controller.js';
 import { SyncService } from './sync.service.js';
+import { B2StorageService } from './b2-storage.service.js';
 let SyncModule = class SyncModule {
 };
 SyncModule = __decorate([
     Module({
         controllers: [SyncController],
-        providers: [SyncService],
-        exports: [SyncService],
+        providers: [SyncService, B2StorageService],
+        exports: [SyncService, B2StorageService],
     })
 ], SyncModule);
 export { SyncModule };
