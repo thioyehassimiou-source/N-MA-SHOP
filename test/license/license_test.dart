@@ -23,6 +23,7 @@ void main() {
       expect(info.type, LicenseType.annual);
       expect(info.isLicensed, isTrue);
       expect(info.isExpired, isFalse);
+      expect(info.supportsCustomThemes, isTrue);
     });
 
     test('generateMonthlyKey generates a valid 30-day key', () {
@@ -32,6 +33,7 @@ void main() {
       expect(info, isNotNull);
       expect(info!.status, LicenseStatus.licensed);
       expect(info.daysLeft, inInclusiveRange(29, 31));
+      expect(info.supportsCustomThemes, isFalse);
     });
 
     test('generateLifetimeKey generates a perpetual key', () {
@@ -45,6 +47,7 @@ void main() {
       expect(info.type, LicenseType.lifetime);
       expect(info.expiryDate, isNull);
       expect(info.daysLeft, isNull);
+      expect(info.supportsCustomThemes, isTrue);
     });
 
     test('Key expired 2 days ago enters offline grace period without lockout', () {

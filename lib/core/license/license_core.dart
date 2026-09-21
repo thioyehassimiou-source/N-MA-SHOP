@@ -80,8 +80,14 @@ class LicenseCore {
 
     final expiry = DateTime(year, month, day, 23, 59, 59);
     final isLifetime = year >= 9999;
-    final type = isLifetime ? LicenseType.lifetime : LicenseType.annual;
     final now = DateTime.now();
+    final LicenseType type;
+    if (isLifetime) {
+      type = LicenseType.lifetime;
+    } else {
+      final daysFromNow = expiry.difference(now).inDays;
+      type = daysFromNow <= 35 ? LicenseType.monthly : LicenseType.annual;
+    }
 
     if (!isLifetime && now.isAfter(expiry)) {
       // Contrôle du délai de grâce hors-ligne lié à la date d'échéance de la licence

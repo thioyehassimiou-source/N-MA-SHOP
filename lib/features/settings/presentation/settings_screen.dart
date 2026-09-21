@@ -702,7 +702,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final selected = ref.watch(paletteProvider);
     final license = ref.watch(licenseInfoProvider);
     final currentThemeMode = ref.watch(themeProvider);
-    final bool hasLicense = license.isLicensed;
+    final bool hasPremiumThemeLicense = license.supportsCustomThemes;
 
     final businessDomain = ref.watch(appSettingsProvider.select((s) => s.businessDomain));
     final domainConfig = BusinessDomainConfig.forDomain(businessDomain);
@@ -754,25 +754,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ],
                     ),
-                    if (!hasLicense)
+                    if (!hasPremiumThemeLicense)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: context.colors.surfaceContainerHighest,
+                          color: AppColors.brandOrange.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: context.colors.outlineVariant),
+                          border: Border.all(color: AppColors.brandOrange.withValues(alpha: 0.3)),
                         ),
-                        child: Row(
+                        child: const Row(
                           children: [
-                            Icon(Icons.lock_rounded, size: 14, color: context.colors.onSurfaceVariant),
-                            const SizedBox(width: 4),
+                            Icon(Icons.workspace_premium_rounded, size: 14, color: AppColors.brandOrange),
+                            SizedBox(width: 4),
                             Text(
-                              'PRO',
+                              'ANNUELLE / À VIE',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: context.colors.onSurfaceVariant,
-                                letterSpacing: 1,
+                                color: AppColors.brandOrange,
+                                letterSpacing: 0.8,
                               ),
                             ),
                           ],
@@ -835,7 +835,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                 const SizedBox(height: AppSpacing.xl),
 
-                if (!hasLicense)
+                if (!hasPremiumThemeLicense)
                   Container(
                     margin: const EdgeInsets.only(bottom: AppSpacing.lg),
                     padding: const EdgeInsets.all(AppSpacing.md),
@@ -852,24 +852,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Les templates personnalisés sont une exclusivité des abonnés licenciés.',
-                                style: TextStyle(
+                              Text(
+                                license.type == LicenseType.monthly
+                                    ? 'Les templates et thèmes personnalisés sont réservés aux abonnés Licence Annuelle et Licence À Vie.'
+                                    : 'Les templates personnalisés sont une exclusivité des abonnés Licence Annuelle et À Vie.',
+                                style: const TextStyle(
                                   color: AppColors.onWarningContainer,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
                                 ),
                               ),
-                              if (domainConfig.suggestedPaletteId != 'nmashop') ...[
-                                const SizedBox(height: 3),
-                                Text(
-                                  '⭐ Exclusivité suggérée pour votre secteur (${domainConfig.domain}) : "${recommendedPalette.label}" (${recommendedPalette.trade}). Activez votre licence pour le débloquer !',
-                                  style: const TextStyle(
-                                    color: AppColors.onWarningContainer,
-                                    fontSize: 12.5,
-                                  ),
+                              const SizedBox(height: 3),
+                              Text(
+                                domainConfig.suggestedPaletteId != 'nmashop'
+                                    ? '⭐ Exclusivité suggérée pour votre secteur (${domainConfig.domain}) : "${recommendedPalette.label}" (${recommendedPalette.trade}). Passez à la Licence Annuelle (1 500 000 GNF / an — 2 mois offerts) pour le débloquer !'
+                                    : '⭐ Passez à la Licence Annuelle (1 500 000 GNF / an — 2 mois offerts) ou À Vie pour personnaliser vos thèmes graphiques !',
+                                style: const TextStyle(
+                                  color: AppColors.onWarningContainer,
+                                  fontSize: 12.5,
                                 ),
-                              ],
+                              ),
                             ],
                           ),
                         ),
@@ -879,9 +881,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                 // Galerie de choix direct des templates visuels
                 Opacity(
-                  opacity: hasLicense ? 1.0 : 0.5,
+                  opacity: hasPremiumThemeLicense ? 1.0 : 0.5,
                   child: IgnorePointer(
-                    ignoring: !hasLicense,
+                    ignoring: !hasPremiumThemeLicense,
                     child: PalettePicker(
                       selected: selected,
                       recommendedPaletteId: domainConfig.suggestedPaletteId != 'nmashop'

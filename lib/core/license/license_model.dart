@@ -76,6 +76,11 @@ class LicenseInfo {
   bool get isLifetime => type == LicenseType.lifetime;
   bool get isTampered => status == LicenseStatus.tampered;
 
+  /// Indique si la licence permet d'activer des thèmes / templates visuels personnalisés.
+  /// (Réservé aux formules Licence Annuelle et Licence À Vie).
+  bool get supportsCustomThemes =>
+      isLicensed && (type == LicenseType.annual || type == LicenseType.lifetime);
+
   /// Durée exacte restante avant expiration ou fin du délai de grâce.
   Duration? get remainingDuration {
     if (expiryDate == null) return null;
