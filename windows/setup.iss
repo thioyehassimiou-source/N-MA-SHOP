@@ -82,18 +82,9 @@ Type: filesandordirs; Name: "{app}"
 
 [Code]
 function InitializeSetup(): Boolean;
-var
-  Answer: Integer;
 begin
   Result := True;
-  // Vérifie si l'application est déjà installée via la clé de registre de désinstallation
-  if RegKeyExists(HKEY_LOCAL_MACHINE, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{E14D254C-A23B-49E8-97F2-ABCD12345678}_is1') or
-     RegKeyExists(HKEY_CURRENT_USER, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{E14D254C-A23B-49E8-97F2-ABCD12345678}_is1') then
-  begin
-    Answer := MsgBox('N''MaShop est déjà installé sur cet ordinateur.' #13#13 'Voulez-vous continuer l''installation pour mettre à jour l''application ?', mbConfirmation, MB_YESNO);
-    if Answer = idNo then
-      Result := False;
-  end;
+  // En mode mise à jour ou silencieux, continuer directement sans poser de question au client
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

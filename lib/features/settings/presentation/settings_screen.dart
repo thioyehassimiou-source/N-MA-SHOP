@@ -547,25 +547,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
 
+      if (!info.hasUpdate) {
+        showDialog(
+          context: context,
+          builder: (dialogContext) => AppFormDialog(
+            title: 'Application à jour',
+            subtitle: '✅ Votre logiciel N\'MaShop (v${info.currentVersion}) est parfaitement à jour !',
+            icon: Icons.check_circle_outline,
+            gradientColors: const [AppColors.emeraldActive, AppColors.emeraldLight],
+            width: 460,
+            primaryLabel: 'D\'accord',
+            primaryIcon: Icons.check_circle_outline,
+            onCancel: () => Navigator.pop(dialogContext),
+            onPrimary: () => Navigator.pop(dialogContext),
+            body: const SizedBox.shrink(),
+          ),
+        );
+        return;
+      }
+
+      // Une mise à jour est disponible : afficher le dialogue épuré sans jargon technique
       showDialog(
         context: context,
         builder: (dialogContext) => AppFormDialog(
-          title: 'Mise à jour N\'MaShop',
-          subtitle: 'Version installée : v${info.currentVersion} (Build ${info.buildNumber})\n'
-              'Date de publication : ${UpdateService.releaseDate}\n\n'
-              '${info.hasUpdate ? "🎉 Une nouvelle version (v${info.latestVersion}) est disponible !" : "✅ Votre application est parfaitement à jour !"}\n\n'
-              '${info.releaseNotes}',
+          title: 'Mise à jour disponible (v${info.latestVersion})',
+          subtitle: 'Une nouvelle version de N\'MaShop est prête.\n\n'
+              'Nouveautés et améliorations :\n'
+              '${info.releaseNotes}\n\n'
+              'Cliquez sur "Mettre à jour" pour installer automatiquement l\'amélioration en conservant toutes vos données.',
           icon: Icons.system_update_rounded,
           gradientColors: const [AppColors.brandOrange, AppColors.brandOrangeLight],
-          width: 500,
-          primaryLabel: info.hasUpdate ? 'Télécharger' : 'D\'accord',
-          primaryIcon: info.hasUpdate ? Icons.download_rounded : Icons.check_circle_outline,
+          width: 480,
+          primaryLabel: 'Mettre à jour maintenant',
+          primaryIcon: Icons.download_rounded,
           onCancel: () => Navigator.pop(dialogContext),
           onPrimary: () async {
             Navigator.pop(dialogContext);
-            if (info.hasUpdate) {
-              await UrlLauncherHelper.openUrl(info.downloadUrl);
-            }
+            _startInAppDownload(info.downloadUrl);
           },
           body: const SizedBox.shrink(),
         ),
@@ -575,8 +593,75 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Vérification terminée : vous utilisez la dernière version (v${UpdateService.currentVersion}).'),
+            content: Text('Votre application est à jour (v${UpdateService.currentVersion}).'),
             backgroundColor: context.colors.primary,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Démarre le téléchargement transparent en arrière-plan avec barre de progression
+  Future<void> _startInAppDownload(String downloadUrl) async {
+    double currentProgress = 0.0;
+    StateSetter? updateProgressState;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (pContext) => StatefulBuilder(
+        builder: (ctx, setStateFn) {
+          updateProgressState = setStateFn;
+          final percent = (currentProgress * 100).toInt();
+          return AppFormDialog(
+            title: 'Téléchargement de la mise à jour',
+            subtitle: currentProgress < 1.0
+                ? 'Progression : $percent%\nL\'application va redémarrer automatiquement à la fin du téléchargement.'
+                : 'Téléchargement terminé ! Application de la mise à jour...',
+            icon: Icons.downloading_rounded,
+            gradientColors: const [AppColors.brandOrange, AppColors.brandOrangeLight],
+            width: 480,
+            primaryLabel: 'Téléchargement $percent%',
+            primaryIcon: Icons.sync,
+            onCancel: null,
+            onPrimary: null,
+            body: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LinearProgressIndicator(
+                    value: currentProgress > 0 ? currentProgress : null,
+                    backgroundColor: Colors.grey.shade200,
+                    color: AppColors.brandOrange,
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    try {
+      await UpdateService.downloadAndInstallUpdate(
+        downloadUrl,
+        onProgress: (progress) {
+          currentProgress = progress;
+          if (updateProgressState != null) {
+            updateProgressState!(() {});
+          }
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Impossible de télécharger la mise à jour. Veuillez réessayer ultérieurement.'),
+            backgroundColor: Colors.red,
           ),
         );
       }

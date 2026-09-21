@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 
 /// Provider vérifiant automatiquement la version au lancement / ouverture de session
 final appVersionCheckProvider = FutureProvider<AppVersionInfo>((ref) async {
@@ -49,7 +52,8 @@ abstract final class UpdateService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final rawTag = data['tag_name'] as String? ?? '1.0.0';
         final latestTag = rawTag.replaceAll(RegExp(r'[^0-9.]'), '');
-        final notes = data['body'] as String? ?? 'Une nouvelle version de N\'MaShop est disponible.';
+        final rawNotes = data['body'] as String? ?? 'Une nouvelle version de N\'MaShop est disponible.';
+        final cleanNotes = formatCleanNotes(rawNotes);
         final htmlUrl = data['html_url'] as String? ??
             'https://github.com/thioyehassimiou-source/N-MA-SHOP/releases';
         String downloadUrl = htmlUrl;
@@ -71,7 +75,7 @@ abstract final class UpdateService {
           buildNumber: buildNumber,
           latestVersion: latestTag,
           hasUpdate: hasUpdate,
-          releaseNotes: notes,
+          releaseNotes: cleanNotes,
           downloadUrl: downloadUrl,
         );
       }
@@ -84,14 +88,111 @@ abstract final class UpdateService {
       buildNumber: buildNumber,
       latestVersion: currentVersion,
       hasUpdate: false,
-      releaseNotes: 'N\'MaShop v1.0.0 - Version Officielle Stable\n'
-          '• POS & Caisse rapide hors-ligne\n'
-          '• Gestion des stocks, alertes & inventaire\n'
-          '• Gestion des créances clients & crédits\n'
-          '• Rapports d\'activités & sauvegarde SQLite\n'
-          '• Contrôle natif fenêtrage desktop (1024x680 min)',
+      releaseNotes: '• Améliorations générales et optimisations de performances.\n'
+          '• Fonctionnement 100% hors-ligne & Caisse POS.\n'
+          '• Gestion des stocks, créances & rapports.',
       downloadUrl: 'https://github.com/thioyehassimiou-source/N-MA-SHOP/releases',
     );
+  }
+
+  /// Nettoie les notes de version brutes de GitHub pour afficher un texte simple et lisible pour le client commercial
+  static String formatCleanNotes(String rawNotes) {
+    if (rawNotes.isEmpty) return '• Nouveautés et améliorations de performances.';
+    final lines = rawNotes.split('\n');
+    final cleanLines = <String>[];
+    for (final line in lines) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+      if (trimmed.startsWith('#') ||
+          trimmed.contains('github.com') ||
+          trimmed.contains('http') ||
+          trimmed.contains('AOT') ||
+          trimmed.contains('SQLite') ||
+          trimmed.contains('HMAC') ||
+          trimmed.contains('Installeur') ||
+          trimmed.contains('Archive') ||
+          trimmed.contains('Développeur')) {
+        continue;
+      }
+      var text = trimmed.replaceAll(RegExp(r'[\*\_\#\=\-\`]'), '').trim();
+      if (text.isNotEmpty) {
+        cleanLines.add('• $text');
+      }
+    }
+    if (cleanLines.isEmpty) {
+      return '• Améliorations de performances et corrections d\'erreurs.';
+    }
+    return cleanLines.take(4).join('\n');
+  }
+
+  /// Télécharge la mise à jour en arrière-plan avec suivi de la progression (0.0 à 1.0),
+  /// puis exécute l'installeur automatiquement sans que le client n'ait à quitter son application ni voir de pages web.
+  static Future<void> downloadAndInstallUpdate(
+    String downloadUrl, {
+    required void Function(double progress) onProgress,
+  }) async {
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', Uri.parse(downloadUrl));
+      final response = await client.send(request);
+
+      if (response.statusCode != 200) {
+        throw Exception('Impossible de télécharger le fichier de mise à jour (code HTTP ${response.statusCode})');
+      }
+
+      final contentLength = response.contentLength ?? 0;
+      final tempDir = Directory.systemTemp;
+      final isZip = downloadUrl.toLowerCase().endsWith('.zip');
+      final fileName = isZip ? 'NMaShop_Update.zip' : 'NMaShop_Setup.exe';
+      final tempFile = File(p.join(tempDir.path, fileName));
+
+      final sink = tempFile.openWrite();
+      int downloadedBytes = 0;
+
+      await for (final chunk in response.stream) {
+        downloadedBytes += chunk.length;
+        sink.add(chunk);
+        if (contentLength > 0) {
+          onProgress(downloadedBytes / contentLength);
+        }
+      }
+      await sink.close();
+
+      File targetExe = tempFile;
+
+      // Si le fichier téléchargé est une archive ZIP, décompresser l'installeur .exe
+      if (isZip) {
+        final bytes = await tempFile.readAsBytes();
+        final archive = ZipDecoder().decodeBytes(bytes);
+        for (final file in archive) {
+          if (file.isFile && (file.name.endsWith('.exe') || file.name.contains('Setup'))) {
+            final exePath = p.join(tempDir.path, 'NMaShop_Setup_Extracted.exe');
+            final extractedFile = File(exePath);
+            await extractedFile.writeAsBytes(file.content as List<int>);
+            targetExe = extractedFile;
+            break;
+          }
+        }
+      }
+
+      // Lancement automatique et silencieux de l'installeur
+      if (Platform.isWindows) {
+        // Exécuter l'installeur Windows en mode silencieux (/VERYSILENT /SUPPRESSMSGBOXES /NORESTART)
+        await Process.start(
+          targetExe.path,
+          ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
+          mode: ProcessStartMode.detached,
+        );
+        // Fermer l'application Flutter pour libérer les exécutables et permettre leur remplacement transparent
+        exit(0);
+      } else if (Platform.isLinux) {
+        await Process.start('chmod', ['+x', targetExe.path]);
+        await Process.start(targetExe.path, [], mode: ProcessStartMode.detached);
+        exit(0);
+      }
+    } finally {
+      client.close();
+    }
   }
 
   /// Compare deux chaînes de version sémantique (ex: "1.0.1" vs "1.0.0").
