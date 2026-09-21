@@ -56,7 +56,7 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
       _realtimeService?.dispose();
     });
 
-    ref.listen(authProvider, (AppUser? previous, AppUser? next) {
+    ref.listen<AppUser?>(authProvider, (previous, next) {
       if (next != null && (previous == null || previous.id != next.id || previous.fullName != next.fullName)) {
         final current = state.maybeWhen(data: (v) => v, orElse: () => null);
         if (current != null) {

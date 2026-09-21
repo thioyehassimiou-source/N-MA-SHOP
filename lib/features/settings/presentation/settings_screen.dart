@@ -554,7 +554,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: 'Application à jour',
             subtitle: '✅ Votre logiciel N\'MaShop (v${info.currentVersion}) est parfaitement à jour !',
             icon: Icons.check_circle_outline,
-            gradientColors: const [AppColors.emeraldActive, AppColors.emeraldLight],
+            gradientColors: const [AppColors.brandEmerald, AppColors.brandEmeraldLight],
             width: 460,
             primaryLabel: 'D\'accord',
             primaryIcon: Icons.check_circle_outline,

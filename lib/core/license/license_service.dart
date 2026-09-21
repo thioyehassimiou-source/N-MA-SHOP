@@ -191,7 +191,6 @@ class LicenseService {
     _cachedDbTrialAnchor = null;
 
     try {
-      final hwId = await HardwareIdService.getHardwareId();
       final anchorFile = await _getSecurityAnchorFile();
       if (anchorFile != null && await anchorFile.exists()) {
         await anchorFile.delete();
