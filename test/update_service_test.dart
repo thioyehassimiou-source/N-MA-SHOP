@@ -14,7 +14,7 @@ void main() {
     print('Download URL: ${info.downloadUrl}');
     print('Release Notes Preview:\n${info.releaseNotes.split('\n').take(5).join('\n')}');
 
-    expect(info.currentVersion, equals('1.1.6'));
+    expect(info.currentVersion, equals('1.1.7'));
     expect(info.downloadUrl, contains('github.com'));
   });
 }
