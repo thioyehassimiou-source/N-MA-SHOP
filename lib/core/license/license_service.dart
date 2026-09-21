@@ -50,17 +50,19 @@ class LicenseService {
     // ── 2. Récupération de l'ID Matériel du PC (Device Binding) ─────────────
     final hwId = await HardwareIdService.getHardwareId();
 
+    // ── 2b. Vérification de la révocation à distance par l'administrateur ──────
+    final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
+    if (wasRevokedByAdmin) {
+      return const LicenseInfo(
+        status: LicenseStatus.expired,
+        type: LicenseType.trial,
+        daysLeft: 0,
+      );
+    }
+
     // ── 3. Clé activée présente ? ────────────────────────────────────────────
     final stored = prefs.getString(_prefKey);
     if (stored != null) {
-      final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
-      if (wasRevokedByAdmin) {
-        return const LicenseInfo(
-          status: LicenseStatus.expired,
-          type: LicenseType.trial,
-          daysLeft: 0,
-        );
-      }
 
       final boundHwId = prefs.getString(_prefBoundHwId);
       if (boundHwId != null && boundHwId != hwId) {
@@ -102,7 +104,6 @@ class LicenseService {
     final firstLaunchStr = prefs.getString(_prefFirstLaunch);
     DateTime? firstLaunch = firstLaunchStr != null ? DateTime.tryParse(firstLaunchStr)?.toUtc() : null;
 
-    final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
     if (firstLaunch != null && firstLaunch.year <= 2020 && !wasRevokedByAdmin) {
       firstLaunch = null;
       await prefs.remove(_prefFirstLaunch);

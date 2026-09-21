@@ -241,9 +241,8 @@ class LicenseAdminSyncService {
                 license_key = @licenseKey,
                 activated_at = @activatedAt,
                 expires_at = @expiresAt,
-                is_active = true,
                 is_synced = false
-            WHERE hardware_id = @hwId;
+            WHERE hardware_id = @hwId AND is_active = true;
           '''),
           parameters: {
             'businessName': businessName ?? '',

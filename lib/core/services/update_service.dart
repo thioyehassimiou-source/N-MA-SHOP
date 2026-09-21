@@ -30,9 +30,9 @@ class AppVersionInfo {
 
 /// Service de gestion des mises à jour N'MaShop.
 abstract final class UpdateService {
-  static const String currentVersion = '1.0.0';
+  static const String currentVersion = '1.1.6';
   static const String buildNumber = '2026.1';
-  static const String releaseDate = 'Août 2026';
+  static const String releaseDate = 'Septembre 2026';
 
   /// GitHub Repository API pour la détection dynamique des Releases
   static const String _releasesApiUrl =
@@ -52,6 +52,17 @@ abstract final class UpdateService {
         final notes = data['body'] as String? ?? 'Une nouvelle version de N\'MaShop est disponible.';
         final htmlUrl = data['html_url'] as String? ??
             'https://github.com/thioyehassimiou-source/N-MA-SHOP/releases';
+        String downloadUrl = htmlUrl;
+        final assets = data['assets'] as List<dynamic>?;
+        if (assets != null && assets.isNotEmpty) {
+          for (final asset in assets) {
+            final assetName = (asset['name'] as String? ?? '').toLowerCase();
+            if (assetName.contains('installer') || assetName.contains('setup') || assetName.endsWith('.zip') || assetName.endsWith('.exe')) {
+              downloadUrl = asset['browser_download_url'] as String? ?? htmlUrl;
+              break;
+            }
+          }
+        }
 
         final hasUpdate = _compareVersions(latestTag, currentVersion) > 0;
 
@@ -61,7 +72,7 @@ abstract final class UpdateService {
           latestVersion: latestTag,
           hasUpdate: hasUpdate,
           releaseNotes: notes,
-          downloadUrl: htmlUrl,
+          downloadUrl: downloadUrl,
         );
       }
     } catch (_) {

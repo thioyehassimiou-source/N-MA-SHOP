@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/application/auth_providers.dart';
+import '../../features/auth/domain/app_user.dart';
 import '../providers/app_settings_provider.dart';
 import '../services/hardware_id_service.dart';
 import 'license_admin_sync_service.dart';
@@ -53,6 +54,24 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
     ref.onDispose(() {
       _remoteCheckTimer?.cancel();
       _realtimeService?.dispose();
+    });
+
+    ref.listen(authProvider, (AppUser? previous, AppUser? next) {
+      if (next != null && (previous == null || previous.id != next.id || previous.fullName != next.fullName)) {
+        final current = state.maybeWhen(data: (v) => v, orElse: () => null);
+        if (current != null) {
+          _reportTrialInstallationAsync(current);
+        }
+      }
+    });
+
+    ref.listen(appSettingsProvider, (previous, next) {
+      if (previous?.businessName != next.businessName || previous?.businessPhone != next.businessPhone) {
+        final current = state.maybeWhen(data: (v) => v, orElse: () => null);
+        if (current != null) {
+          _reportTrialInstallationAsync(current);
+        }
+      }
     });
 
     final prefs = ref.read(sharedPreferencesProvider);
