@@ -297,7 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // ── 7. VRAIE DÉMO VIDÉO : Synchronisation Intégrale Son & Voix-Off ──
+  // ── 7. VRAIE DÉMO VIDÉO : Lecture Robuste & Synchronisation Son / Voix-Off ──
   const video = document.getElementById("main-demo-video");
   const audio = document.getElementById("demo-voiceover-audio");
   const playOverlay = document.getElementById("video-play-overlay");
@@ -311,54 +311,63 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function syncAudioWithVideo() {
     if (!video || !audio) return;
-    if (Math.abs(audio.currentTime - video.currentTime) > 0.25) {
+    if (Math.abs(audio.currentTime - video.currentTime) > 0.3) {
       audio.currentTime = video.currentTime;
     }
   }
 
   function startPlaybackWithSound() {
-    if (!video || !audio) return;
+    if (!video) return;
 
-    video.muted = false;
-    audio.muted = isMuted;
-    audio.currentTime = video.currentTime;
+    if (playOverlay) playOverlay.classList.add("is-hidden");
+    video.muted = isMuted;
 
-    const p1 = video.play();
-    const p2 = audio.play();
-
-    Promise.all([p1, p2]).then(() => {
-      playOverlay?.classList.add("is-hidden");
-      audioWave?.classList.add("is-active");
-      if (soundStatusText) {
-        soundStatusText.innerHTML = "🔊 <strong>Son & Voix-off Active :</strong> Explications pas à pas en direct";
-      }
-    }).catch(() => {
-      playOverlay?.classList.remove("is-hidden");
-    });
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        if (audioWave && !isMuted) audioWave.classList.add("is-active");
+        if (soundStatusText) {
+          soundStatusText.innerHTML = "🔊 <strong>Son & Voix-off Active :</strong> Explications pas à pas en direct";
+        }
+        if (audio && !isMuted) {
+          audio.currentTime = video.currentTime;
+          audio.play().catch(() => {});
+        }
+      }).catch((err) => {
+        console.warn("Erreur de lecture vidéo:", err);
+        if (playOverlay) playOverlay.classList.remove("is-hidden");
+      });
+    }
   }
 
   if (btnMasterPlay) {
     btnMasterPlay.addEventListener("click", (e) => {
       e.stopPropagation();
+      e.preventDefault();
       startPlaybackWithSound();
     });
   }
 
   if (playOverlay) {
-    playOverlay.addEventListener("click", startPlaybackWithSound);
+    playOverlay.addEventListener("click", (e) => {
+      e.preventDefault();
+      startPlaybackWithSound();
+    });
   }
 
-  if (video && audio) {
+  if (video) {
     video.addEventListener("play", () => {
-      playOverlay?.classList.add("is-hidden");
-      audio.currentTime = video.currentTime;
-      audioWave?.classList.add("is-active");
-      if (!isMuted) audio.play().catch(() => {});
+      if (playOverlay) playOverlay.classList.add("is-hidden");
+      if (audioWave && !isMuted) audioWave.classList.add("is-active");
+      if (audio && !isMuted) {
+        audio.currentTime = video.currentTime;
+        audio.play().catch(() => {});
+      }
     });
 
     video.addEventListener("pause", () => {
-      audio.pause();
-      audioWave?.classList.remove("is-active");
+      if (audio) audio.pause();
+      if (audioWave) audioWave.classList.remove("is-active");
     });
 
     video.addEventListener("seeking", () => {
@@ -367,7 +376,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     video.addEventListener("seeked", () => {
       syncAudioWithVideo();
-      if (!video.paused && !isMuted) {
+      if (!video.paused && audio && !isMuted) {
         audio.play().catch(() => {});
       }
     });
@@ -377,10 +386,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     video.addEventListener("ended", () => {
-      audio.pause();
-      audio.currentTime = 0;
-      audioWave?.classList.remove("is-active");
-      playOverlay?.classList.remove("is-hidden");
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+      if (audioWave) audioWave.classList.remove("is-active");
+      if (playOverlay) playOverlay.classList.remove("is-hidden");
     });
   }
 
