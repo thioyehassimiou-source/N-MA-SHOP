@@ -56,7 +56,7 @@ const _pages = [
       ),
       _FeatureItem(
         icon: Icons.wifi_off_rounded,
-        title: '100% Autonome Hors-ligne',
+        title: '100% Fonctionnel Hors-ligne',
         description: 'Continuez d\'enregistrer vos ventes même sans connexion internet.',
       ),
     ],

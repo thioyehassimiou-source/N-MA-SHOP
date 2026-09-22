@@ -13,6 +13,17 @@ class StorageService {
   static const _keyCurrency = 'nmashop_currency';
   static const _keyServerUrl = 'nmashop_server_url';
   static const _keyLastSync = 'nmashop_last_sync';
+  static const _keyPin = 'nmashop_pin';
+
+  Future<void> savePin(String pin) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyPin, pin);
+  }
+
+  Future<String?> getSavedPin() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyPin);
+  }
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),

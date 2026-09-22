@@ -277,7 +277,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('État de la liaison', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      const Text('État de la connexion Cloud', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                       if (_pingResult != null)
                         Text(
                           _pingResult!,

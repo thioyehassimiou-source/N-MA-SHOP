@@ -72,7 +72,7 @@ class AuthLandingScreen extends ConsumerWidget {
                         Icon(Icons.phone_android_rounded, color: AppColors.brandNavy, size: 14),
                         SizedBox(width: 6),
                         Text(
-                          'N\'MASHOP MOBILE • APPLICATION AUTONOME',
+                          'N\'MASHOP MOBILE • GESTION COMMERCIAL & CAISSE',
                           style: TextStyle(
                             color: AppColors.brandNavy,
                             fontSize: 10,
@@ -148,18 +148,17 @@ class AuthLandingScreen extends ConsumerWidget {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 22,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.5,
                                 ),
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'Pilotez vos ventes, votre caisse, vos stocks et vos créances directement depuis votre smartphone Android.',
+                                'Gérez vos ventes, vos stocks, vos dettes et vos dépenses directement sur votre smartphone.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white70,
-                                  fontSize: 12.5,
+                                  fontSize: 13,
                                   height: 1.4,
                                 ),
                               ),
@@ -169,54 +168,41 @@ class AuthLandingScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
 
-                  // 1. BOUTON PRINCIPAL : ACCÉDER À MA BOUTIQUE (LOGIN)
-                  Container(
+                  // Groupe de Boutons d'Action (Ouvrir / Créer)
+                  SizedBox(
                     width: double.infinity,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.brandOrange.withValues(alpha: 0.35),
-                          blurRadius: 18,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
+                    height: 54,
                     child: ElevatedButton.icon(
                       onPressed: () => _navigateToLogin(context),
-                      icon: const Icon(Icons.storefront_rounded, size: 22),
+                      icon: const Icon(Icons.lock_open_rounded, color: Colors.white, size: 20),
                       label: const Text(
                         'Ouvrir ma boutique',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.brandOrange,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 4,
+                        shadowColor: AppColors.brandOrange.withValues(alpha: 0.4),
                       ),
                     ),
                   ),
                   const SizedBox(height: 14),
 
-                  // 2. BOUTON SECONDAIRE : CRÉER UNE NOUVELLE BOUTIQUE (REGISTER)
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: OutlinedButton.icon(
                       onPressed: () => _navigateToRegister(context),
-                      icon: const Icon(Icons.add_business_rounded, size: 20, color: AppColors.brandNavy),
+                      icon: const Icon(Icons.storefront_rounded, color: AppColors.brandNavy, size: 20),
                       label: const Text(
                         'Créer une nouvelle boutique',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.brandNavy),
+                        style: TextStyle(color: AppColors.brandNavy, fontSize: 15, fontWeight: FontWeight.w800),
                       ),
                       style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        side: const BorderSide(color: AppColors.border),
+                        side: const BorderSide(color: AppColors.brandNavy, width: 1.8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 0,
                       ),
@@ -231,7 +217,7 @@ class AuthLandingScreen extends ConsumerWidget {
                       Icon(Icons.shield_rounded, size: 14, color: AppColors.onSurfaceVariant),
                       SizedBox(width: 6),
                       Text(
-                        'Produit Mobile Autonome • Données sécurisées',
+                        'N\'MaShop Mobile • Données 100% Sécurisées',
                         style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w600),
                       ),
                     ],
