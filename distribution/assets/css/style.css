@@ -4473,25 +4473,31 @@ html, body {
 
 @media (max-width: 768px) {
   .container {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
     width: 100% !important;
     max-width: 100% !important;
   }
 
-  /* ── Header Mobile Compact ── */
+  /* ── Header Mobile Compact & Épuré ── */
   .site-header {
-    padding: 0.4rem 0 !important;
+    padding: 0.5rem 0 !important;
   }
 
   .header-container {
-    padding: 0 8px !important;
-    gap: 6px !important;
+    padding: 0 4px !important;
+    gap: 8px !important;
+    justify-content: space-between !important;
   }
 
   .brand-logo-img {
-    height: 26px !important;
-    max-height: 26px !important;
+    height: 28px !important;
+    max-height: 28px !important;
+  }
+
+  /* Masque le bouton de téléchargement du header sur mobile pour éviter les chevauchements */
+  .header-actions .btn-header-download {
+    display: none !important;
   }
 
   .theme-segmented-switch {
@@ -4500,126 +4506,99 @@ html, body {
   }
 
   .theme-segment-btn {
-    padding: 4px 6px !important;
-    font-size: 0.72rem !important;
+    padding: 5px 8px !important;
+    font-size: 0.75rem !important;
   }
 
   .theme-segment-btn .segment-label {
-    display: none !important; /* Masque 'Clair/Sombre' pour économiser 80px sur mobile */
+    display: none !important; /* Masque le libellé texte 'Clair/Sombre' sur smartphone */
   }
 
   .btn-hamburger {
-    padding: 5px !important;
+    padding: 6px !important;
     margin-left: 2px !important;
   }
 
-  /* ── Hero Section ── */
+  /* ── Hero Section Mobile ── */
   .hero-section {
-    padding: 1.25rem 0 2rem !important;
+    padding: 1.5rem 0 2rem !important;
+    overflow: hidden !important;
   }
 
-  .hero-badge {
-    font-size: 0.68rem !important;
-    padding: 0.3rem 0.6rem !important;
+  .hero-badge-pill {
+    font-size: 0.72rem !important;
+    padding: 0.4rem 0.75rem !important;
     max-width: 100% !important;
     text-align: center !important;
     white-space: normal !important;
-    line-height: 1.3 !important;
+    line-height: 1.35 !important;
+    display: inline-flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
   }
 
   .hero-title {
-    font-size: 1.6rem !important;
+    font-size: clamp(1.6rem, 5.5vw, 2.2rem) !important;
     line-height: 1.25 !important;
-    margin-bottom: 0.75rem !important;
+    margin-bottom: 0.85rem !important;
     word-break: break-word !important;
+    text-align: center !important;
   }
 
   .hero-subtitle {
-    font-size: 0.88rem !important;
-    line-height: 1.45 !important;
-    margin-bottom: 1.25rem !important;
+    font-size: 0.92rem !important;
+    line-height: 1.5 !important;
+    margin-bottom: 1.5rem !important;
+    text-align: center !important;
   }
 
   .hero-cta-group {
     flex-direction: column !important;
     width: 100% !important;
-    gap: 0.75rem !important;
+    gap: 0.85rem !important;
   }
 
-  .btn-hero-windows,
-  .btn-hero-secondary {
+  .btn-hero-primary,
+  .btn-hero-glass,
+  .btn-hero-windows {
     width: 100% !important;
     justify-content: center !important;
     text-align: center !important;
-    font-size: 0.9rem !important;
-    padding: 0.8rem 1rem !important;
+    font-size: 0.95rem !important;
+    padding: 0.9rem 1.2rem !important;
+    min-height: 52px !important;
   }
 
-  /* ── Impact Strip (4 statistiques) ── */
-  .hero-impact-strip {
-    grid-template-columns: repeat(2, 1fr) !important;
+  .hero-security-notes {
+    flex-direction: column !important;
+    align-items: center !important;
     gap: 8px !important;
-    padding: 12px 8px !important;
-    margin-bottom: 2rem !important;
-    border-radius: 12px !important;
+    margin-top: 1rem !important;
   }
 
-  .impact-col {
-    padding: 4px !important;
+  .hero-social-proof {
+    flex-direction: column !important;
+    width: 100% !important;
+    text-align: center !important;
+    border-radius: 16px !important;
+    padding: 12px 14px !important;
+    gap: 8px !important;
+    box-sizing: border-box !important;
   }
 
-  .impact-num {
-    font-size: 1.25rem !important;
-  }
-
-  .impact-label {
-    font-size: 0.72rem !important;
-  }
-
-  .impact-sub {
-    font-size: 0.65rem !important;
-    line-height: 1.2 !important;
-  }
-
-  /* ── Marquee / Ticker ── */
-  .hero-marquee-bar {
-    max-width: 100vw !important;
-    overflow: hidden !important;
-    margin-bottom: 2rem !important;
-  }
-
-  /* ── Elite App Showcase Window ── */
+  /* ── Showcase Central & Mockup Logiciel ── */
   .hero-showcase-wrapper,
-  .elite-app-window {
+  .elite-app-window,
+  .window-mockup {
     width: 100% !important;
     max-width: 100% !important;
     overflow-x: hidden !important;
-    border-radius: 12px !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
   }
 
-  .elite-window-titlebar {
-    padding: 6px 10px !important;
-    flex-wrap: wrap !important;
-    gap: 6px !important;
-  }
-
-  .titlebar-left {
-    gap: 6px !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
-  }
-
-  .titlebar-text {
-    font-size: 0.7rem !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: 180px !important;
-  }
-
-  .badge-status-offline {
-    font-size: 0.65rem !important;
-    padding: 2px 6px !important;
+  .floating-stat-card {
+    display: none !important; /* Empêche tout débordement horizontal sur mobile */
   }
 
   .showcase-nav-tabs {
@@ -4631,47 +4610,17 @@ html, body {
   }
 
   .showcase-tab-btn {
-    padding: 5px 8px !important;
-    font-size: 0.72rem !important;
+    padding: 6px 10px !important;
+    font-size: 0.75rem !important;
     flex-shrink: 0 !important;
     white-space: nowrap !important;
   }
 
-  /* ── Dashboard Internal Wrapper & Grid ── */
   .real-dashboard-wrap {
     padding: 10px 8px !important;
     gap: 12px !important;
   }
 
-  .dash-top-header {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 8px !important;
-  }
-
-  .dash-header-actions {
-    width: 100% !important;
-    justify-content: space-between !important;
-    flex-wrap: wrap !important;
-    gap: 6px !important;
-  }
-
-  .dash-period-chips {
-    padding: 2px !important;
-    gap: 2px !important;
-  }
-
-  .period-chip {
-    padding: 3px 8px !important;
-    font-size: 0.68rem !important;
-  }
-
-  .dash-sync-pill {
-    padding: 3px 8px !important;
-    font-size: 0.68rem !important;
-  }
-
-  /* ── KPI Grid & Cards ── */
   .real-kpi-grid {
     grid-template-columns: 1fr !important;
     gap: 10px !important;
@@ -4682,30 +4631,14 @@ html, body {
     gap: 10px !important;
     width: 100% !important;
     border-radius: 12px !important;
-  }
-
-  .kpi-icon-wrap {
-    width: 38px !important;
-    height: 38px !important;
-    border-radius: 10px !important;
-    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
   }
 
   .kpi-value {
-    font-size: 1.15rem !important;
+    font-size: 1.2rem !important;
     word-break: break-word !important;
   }
 
-  .kpi-label {
-    font-size: 0.72rem !important;
-  }
-
-  .kpi-badge {
-    font-size: 0.68rem !important;
-    padding: 2px 6px !important;
-  }
-
-  /* ── Split & Chart Cards ── */
   .real-dash-split {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
@@ -4718,121 +4651,178 @@ html, body {
     padding: 12px 10px !important;
     border-radius: 12px !important;
     width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  /* ── POS View ── */
-  .pos-showcase-grid {
-    grid-template-columns: 1fr !important;
+  /* ── Vidéo Démo Player Mobile ── */
+  .video-player-container {
+    padding: 12px !important;
+    border-radius: 16px !important;
   }
 
-  .pos-items-pane,
-  .pos-receipt-pane,
-  .stock-overview-pane,
-  .credit-overview-pane {
-    padding: 10px !important;
+  .video-audio-sync-bar {
+    flex-direction: column !important;
+    gap: 10px !important;
+    text-align: center !important;
+    align-items: center !important;
+    padding: 12px 10px !important;
   }
 
-  .pos-catalog-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
-    gap: 8px !important;
-  }
-
-  .pos-card-item {
-    padding: 8px 6px !important;
-  }
-
-  /* ── Responsive Tables ── */
-  .dash-table-wrap,
-  .table-responsive {
-    width: 100% !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  .dash-table {
-    min-width: 460px !important;
-  }
-
-  /* ── Duel Section ── */
-  .duel-section {
-    padding: 2rem 0 !important;
-  }
-
-  .duel-comparison-card {
-    padding: 1.25rem 1rem !important;
-    border-radius: 14px !important;
-  }
-
-  .duel-grid {
-    grid-template-columns: 1fr !important;
-    gap: 1.25rem !important;
-  }
-
-  .duel-side {
-    padding: 1.15rem 0.9rem !important;
-  }
-
-  /* ── Grids (Features, Pricing, Tech Specs) ── */
-  .features-grid,
-  .pricing-grid-container {
-    grid-template-columns: 1fr !important;
-    gap: 1.25rem !important;
-  }
-
-  .pricing-card {
-    padding: 1.5rem 1.15rem !important;
-  }
-
-  .tech-spec-grid,
   .video-chapters-row {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 8px !important;
   }
 
-  .tech-spec-item,
-  .chapter-card {
+  .video-chapter-btn {
+    padding: 8px 6px !important;
+    font-size: 0.75rem !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  /* ── Section Engagements & Témoignages ── */
+  .testimonials-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .testimonial-card {
+    padding: 1.35rem 1.1rem !important;
+    border-radius: 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── Grille Tarifaire Mobile (Formules 1 Colonne Parfaite) ── */
+  .pricing-grid-container {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+    width: 100% !important;
+  }
+
+  .pricing-plan-card {
+    padding: 1.6rem 1.25rem !important;
+    border-radius: 20px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .btn-plan-cta {
+    width: 100% !important;
+    min-height: 48px !important;
+    font-size: 0.98rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* ── Bandeau Paiement Local & Garantie ── */
+  .local-payment-banner {
+    flex-direction: column !important;
+    gap: 12px !important;
+    text-align: center !important;
+    padding: 1.25rem 1rem !important;
+    border-radius: 16px !important;
+  }
+
+  .payment-badges {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  .pricing-guarantee-bar {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 14px !important;
+    padding: 1.25rem 1rem !important;
+    border-radius: 16px !important;
+  }
+
+  .guarantee-features {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  /* ── Section Téléchargement & Spécifications ── */
+  .download-master-card {
+    padding: 1.75rem 1.15rem !important;
+    border-radius: 20px !important;
+  }
+
+  .tech-spec-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .spec-item {
     padding: 10px 8px !important;
+    border-radius: 10px !important;
   }
 
-  /* ── Floating Action Buttons ── */
-  .floating-assistant-label {
-    display: none !important;
-  }
-
-  .floating-whatsapp-assistant {
-    position: fixed !important;
-    bottom: 14px !important;
-    right: 14px !important;
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    padding: 0 !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
+  .btn-download-primary {
+    width: 100% !important;
+    min-height: 52px !important;
     justify-content: center !important;
-    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.45) !important;
-    z-index: 9999 !important;
+    font-size: 0.92rem !important;
+    padding: 0.9rem 1rem !important;
+    text-align: center !important;
   }
 
-  .btn-back-to-top {
-    position: fixed !important;
-    bottom: 14px !important;
-    left: 14px !important;
-    width: 42px !important;
-    height: 42px !important;
-    padding: 0 !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
+  .upcoming-platform-pills {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .platform-pill {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  /* ── Section Support & Assistance ── */
+  .support-banner-card {
+    padding: 1.75rem 1.15rem !important;
+    border-radius: 20px !important;
+    text-align: center !important;
+  }
+
+  .support-cta-actions {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+  }
+
+  .btn-whatsapp-large,
+  .btn-email-direct {
+    width: 100% !important;
     justify-content: center !important;
-    z-index: 9998 !important;
+    min-height: 50px !important;
   }
 
   /* ── Footer ── */
   .footer-grid {
     grid-template-columns: 1fr !important;
     gap: 1.75rem !important;
+    text-align: center !important;
+  }
+
+  .footer-col-brand,
+  .footer-contact-list {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  .footer-dev-card {
+    text-align: center !important;
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .footer-dev-header {
+    justify-content: center !important;
   }
 
   .footer-bottom {
@@ -4840,19 +4830,31 @@ html, body {
     text-align: center !important;
     gap: 8px !important;
   }
+
+  /* ── Modal Toast de Téléchargement ── */
+  .download-modal-backdrop {
+    z-index: 100000 !important;
+  }
+
+  .download-modal {
+    width: 92% !important;
+    max-width: 460px !important;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+    padding: 22px 16px !important;
+    border-radius: 20px !important;
+  }
 }
 
-@media (max-width: 400px) {
+@media (max-width: 480px) {
   .hero-title {
     font-size: 1.45rem !important;
   }
 
-  .hero-impact-strip {
+  .tech-spec-grid {
     grid-template-columns: 1fr !important;
-    gap: 8px !important;
   }
 
-  .tech-spec-grid,
   .video-chapters-row {
     grid-template-columns: 1fr !important;
   }
