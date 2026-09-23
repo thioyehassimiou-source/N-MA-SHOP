@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/nma_mobile_header.dart';
 
 final customExpensesProvider = StateProvider<List<Map<String, dynamic>>>((ref) => []);
 
@@ -16,35 +17,11 @@ final treasuryDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((r
     baseData = res.data as Map<String, dynamic>;
   } catch (_) {
     baseData = {
-      'theoreticalCashInHand': 3850000,
-      'momoCollectedToday': 1450000,
-      'expensesToday': 180000,
-      'recentExpenses': [
-        {
-          'id': 'exp-1',
-          'reference': 'DEP-042',
-          'description': 'Achat carburant groupe électrogène',
-          'amount': 120000,
-          'createdAt': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-        },
-        {
-          'id': 'exp-2',
-          'reference': 'DEP-041',
-          'description': 'Frais de transport livraison magasinier',
-          'amount': 60000,
-          'createdAt': DateTime.now().subtract(const Duration(hours: 6)).toIso8601String(),
-        },
-      ],
-      'recentMovements': [
-        {
-          'id': 'mvt-1',
-          'reference': 'ENT-012',
-          'typeIndex': 0,
-          'description': 'Apport fond de caisse matin',
-          'amount': 500000,
-          'createdAt': DateTime.now().subtract(const Duration(hours: 8)).toIso8601String(),
-        },
-      ],
+      'theoreticalCashInHand': 0,
+      'momoCollectedToday': 0,
+      'expensesToday': 0,
+      'recentExpenses': <Map<String, dynamic>>[],
+      'recentMovements': <Map<String, dynamic>>[],
     };
   }
 
@@ -77,26 +54,14 @@ class TreasuryScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 16,
-        shape: const Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
-        title: const Text(
-          'Suivi de Caisse & Trésorerie',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-          ),
-        ),
+      appBar: NmaMobileAppBar(
+        title: 'Suivi de Caisse & Trésorerie',
+        subtitle: 'Bilan des flux & dépenses',
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF0F172A)),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
             onPressed: () => ref.invalidate(treasuryDataProvider),
           ),
-          const SizedBox(width: 4),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

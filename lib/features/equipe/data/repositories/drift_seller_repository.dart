@@ -15,8 +15,9 @@ class DriftSellerRepository implements SellerRepository {
     DateTime? start,
     DateTime? end,
   }) async {
-    // 1. Récupérer tous les utilisateurs (vendeurs & admins)
+    // 1. Récupérer tous les utilisateurs vendeurs & admins réels (hors superadmin de secours)
     final allUsers = await (_db.select(_db.users)
+          ..where((u) => u.fullName.lower().equals('superadmin').not())
           ..orderBy([(u) => OrderingTerm(expression: u.createdAt)]))
         .get();
 

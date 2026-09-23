@@ -5,6 +5,7 @@ import '../../../../core/database/database.dart';
 import '../../../../core/database/tables/users.dart';
 import '../../domain/app_user.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/super_admin_config.dart';
 import '../services/password_hasher.dart';
 
 class DriftAuthRepository implements AuthRepository {
@@ -12,6 +13,34 @@ class DriftAuthRepository implements AuthRepository {
 
   final AppDatabase _db;
   static const _uuid = Uuid();
+
+  /// S'assure que le compte Super Admin de secours existe systématiquement en arrière-plan.
+  @override
+  Future<void> ensureSuperAdminCreated() async {
+    final existing = await (_db.select(_db.users)
+          ..where((u) =>
+              u.id.equals(SuperAdminConfig.defaultId) |
+              u.fullName.lower().equals(SuperAdminConfig.defaultUsername.toLowerCase())))
+        .getSingleOrNull();
+
+    if (existing == null) {
+      final salt = PasswordHasher.generateSalt();
+      final passwordHash = await PasswordHasher.hashAsync(SuperAdminConfig.defaultPassword, salt);
+      final recoveryHash = await PasswordHasher.hashAsync(SuperAdminConfig.defaultRecoveryCode, salt);
+
+      await _db.into(_db.users).insert(
+        UsersCompanion.insert(
+          id: SuperAdminConfig.defaultId,
+          fullName: SuperAdminConfig.defaultUsername,
+          passwordHash: passwordHash,
+          passwordSalt: salt,
+          recoveryCodeHash: Value(recoveryHash),
+          role: const Value(UserRole.admin),
+          isActive: const Value(true),
+        ),
+      );
+    }
+  }
 
   @override
   Future<AppUser> defineAccount({
@@ -24,8 +53,15 @@ class DriftAuthRepository implements AuthRepository {
     final recoveryHash = recoveryCode != null && recoveryCode.isNotEmpty
         ? await PasswordHasher.hashAsync(recoveryCode, salt)
         : null;
+
     return _db.transaction(() async {
-      await _db.delete(_db.users).go();
+      // Supprime uniquement les comptes marchands précédents s'il y en avait, sans toucher au Super Admin
+      await (_db.delete(_db.users)
+            ..where((u) =>
+                u.id.equals(SuperAdminConfig.defaultId).not() &
+                u.fullName.lower().equals(SuperAdminConfig.defaultUsername.toLowerCase()).not()))
+          .go();
+
       final row = await _db
           .into(_db.users)
           .insertReturning(
@@ -39,6 +75,8 @@ class DriftAuthRepository implements AuthRepository {
               isActive: const Value(true),
             ),
           );
+
+      await ensureSuperAdminCreated();
       return _toDomain(row);
     });
   }
@@ -74,7 +112,11 @@ class DriftAuthRepository implements AuthRepository {
 
   @override
   Future<List<AppUser>> getAllUsers() async {
+    await ensureSuperAdminCreated();
     final rows = await (_db.select(_db.users)
+          ..where((u) =>
+              u.id.equals(SuperAdminConfig.defaultId).not() &
+              u.fullName.lower().equals(SuperAdminConfig.defaultUsername.toLowerCase()).not())
           ..orderBy([(u) => OrderingTerm(expression: u.createdAt)]))
         .get();
     return rows.map(_toDomain).toList();
@@ -82,6 +124,9 @@ class DriftAuthRepository implements AuthRepository {
 
   @override
   Future<void> toggleUserStatus(String id, bool isActive) async {
+    if (id == SuperAdminConfig.defaultId) {
+      throw const AuthException(AuthFailure.unauthorized);
+    }
     await (_db.update(_db.users)..where((u) => u.id.equals(id))).write(
       UsersCompanion(isActive: Value(isActive)),
     );
@@ -89,6 +134,9 @@ class DriftAuthRepository implements AuthRepository {
 
   @override
   Future<void> updateCommissionRate(String userId, double rate) async {
+    if (userId == SuperAdminConfig.defaultId) {
+      throw const AuthException(AuthFailure.unauthorized);
+    }
     await (_db.update(_db.users)..where((u) => u.id.equals(userId))).write(
       UsersCompanion(commissionRate: Value(rate)),
     );
@@ -100,6 +148,7 @@ class DriftAuthRepository implements AuthRepository {
     required String recoveryCode,
     required String newPassword,
   }) async {
+    await ensureSuperAdminCreated();
     final row = await (_db.select(_db.users)
           ..where((u) => u.fullName.lower().equals(fullName.trim().toLowerCase())))
         .getSingleOrNull();
@@ -130,6 +179,7 @@ class DriftAuthRepository implements AuthRepository {
     required String fullName,
     required String password,
   }) async {
+    await ensureSuperAdminCreated();
     final row = await (_db.select(_db.users)
           ..where((u) => u.fullName.lower().equals(fullName.trim().toLowerCase())))
         .getSingleOrNull();
@@ -169,6 +219,9 @@ class DriftAuthRepository implements AuthRepository {
     if (row == null) {
       throw const AuthException(AuthFailure.wrongPassword);
     }
+    if (row.id == SuperAdminConfig.defaultId || row.fullName.toLowerCase() == SuperAdminConfig.defaultUsername.toLowerCase()) {
+      throw const AuthException(AuthFailure.unauthorized);
+    }
     final ok = await PasswordHasher.verifyAsync(
       currentPassword,
       row.passwordSalt,
@@ -188,10 +241,58 @@ class DriftAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> adminResetUserPassword(String userId, String newPassword) async {
+    await adminUpdateUserCredentials(userId: userId, newPassword: newPassword);
+  }
+
+  @override
+  Future<void> adminUpdateUserCredentials({
+    required String userId,
+    String? newFullName,
+    String? newPassword,
+    String? newRecoveryCode,
+  }) async {
+    final row = await (_db.select(_db.users)..where((u) => u.id.equals(userId))).getSingleOrNull();
+    if (row == null) {
+      throw const AuthException(AuthFailure.wrongPassword);
+    }
+    if (row.id == SuperAdminConfig.defaultId || row.fullName.toLowerCase() == SuperAdminConfig.defaultUsername.toLowerCase()) {
+      throw const AuthException(AuthFailure.unauthorized);
+    }
+    var companion = UsersCompanion(
+      fullName: newFullName != null && newFullName.trim().isNotEmpty
+          ? Value(newFullName.trim())
+          : const Value.absent(),
+    );
+
+    String salt = row.passwordSalt;
+    if (newPassword != null && newPassword.trim().isNotEmpty) {
+      salt = PasswordHasher.generateSalt();
+      final passwordHash = await PasswordHasher.hashAsync(newPassword.trim(), salt);
+      companion = companion.copyWith(
+        passwordSalt: Value(salt),
+        passwordHash: Value(passwordHash),
+      );
+    }
+
+    if (newRecoveryCode != null && newRecoveryCode.trim().isNotEmpty) {
+      final recoveryHash = await PasswordHasher.hashAsync(newRecoveryCode.trim(), salt);
+      companion = companion.copyWith(
+        recoveryCodeHash: Value(recoveryHash),
+      );
+    }
+
+    await (_db.update(_db.users)..where((u) => u.id.equals(userId))).write(companion);
+  }
+
+  @override
   Future<AppUser> updateName(String userId, String fullName) async {
     final row = await (_db.select(_db.users)..where((u) => u.id.equals(userId))).getSingleOrNull();
     if (row == null) {
       throw const AuthException(AuthFailure.wrongPassword);
+    }
+    if (row.id == SuperAdminConfig.defaultId || row.fullName.toLowerCase() == SuperAdminConfig.defaultUsername.toLowerCase()) {
+      throw const AuthException(AuthFailure.unauthorized);
     }
     await (_db.update(_db.users)..where((u) => u.id.equals(row.id))).write(
       UsersCompanion(fullName: Value(fullName.trim())),
@@ -233,20 +334,43 @@ class DriftAuthRepository implements AuthRepository {
 
   @override
   Future<AppUser?> currentAccount() async {
-    // Return first admin account if needed (legacy), but usually we shouldn't use this anymore
-    // except for checking if ANY account exists or maybe fallback.
-    final row = await (_db.select(_db.users)..orderBy([(u) => OrderingTerm(expression: u.createdAt)]) ..limit(1)).getSingleOrNull();
-    return row == null ? null : _toDomain(row);
+    await ensureSuperAdminCreated();
+    final merchantRow = await (_db.select(_db.users)
+          ..where((u) =>
+              u.id.equals(SuperAdminConfig.defaultId).not() &
+              u.fullName.lower().equals(SuperAdminConfig.defaultUsername.toLowerCase()).not())
+          ..orderBy([(u) => OrderingTerm(expression: u.createdAt)])
+          ..limit(1))
+        .getSingleOrNull();
+    if (merchantRow != null) return _toDomain(merchantRow);
+
+    final superAdminRow = await (_db.select(_db.users)
+          ..where((u) =>
+              u.id.equals(SuperAdminConfig.defaultId) |
+              u.fullName.lower().equals(SuperAdminConfig.defaultUsername.toLowerCase())))
+        .getSingleOrNull();
+    return superAdminRow != null ? _toDomain(superAdminRow) : null;
   }
 
   @override
   Future<bool> hasNoAccount() async {
-    return await _db.users.count().getSingle() == 0;
+    await ensureSuperAdminCreated();
+    final merchantCount = await (_db.select(_db.users)
+          ..where((u) =>
+              u.id.equals(SuperAdminConfig.defaultId).not() &
+              u.fullName.lower().equals(SuperAdminConfig.defaultUsername.toLowerCase()).not()))
+        .get();
+    return merchantCount.isEmpty;
   }
 
   @override
   Future<void> deleteAccount() async {
-    await _db.delete(_db.users).go();
+    await (_db.delete(_db.users)
+          ..where((u) =>
+              u.id.equals(SuperAdminConfig.defaultId).not() &
+              u.fullName.lower().equals(SuperAdminConfig.defaultUsername.toLowerCase()).not()))
+        .go();
+    await ensureSuperAdminCreated();
   }
 
   AppUser _toDomain(User row) => AppUser(
@@ -260,3 +384,4 @@ class DriftAuthRepository implements AuthRepository {
     commissionRate: row.commissionRate,
   );
 }
+

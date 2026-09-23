@@ -79,29 +79,32 @@ class _EquipeScreenState extends ConsumerState<EquipeScreen>
               ),
             ),
           ),
-          child: Row(
-            children: [
-              TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                labelColor: context.colors.primary,
-                unselectedLabelColor: context.colors.onSurfaceVariant,
-                indicatorColor: context.colors.primary,
-                tabs: const [
-                  Tab(
-                    icon: Icon(Icons.trending_up_rounded, size: 18),
-                    text: 'Performances Commerciales',
-                  ),
-                  Tab(
-                    icon: Icon(Icons.manage_accounts_outlined, size: 18),
-                    text: 'Comptes & Accès',
-                  ),
-                ],
-              ),
-              const Spacer(),
-              if (isPerformanceTab) _buildPeriodFilter(context, ref, range),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  labelColor: context.colors.primary,
+                  unselectedLabelColor: context.colors.onSurfaceVariant,
+                  indicatorColor: context.colors.primary,
+                  tabs: const [
+                    Tab(
+                      icon: Icon(Icons.trending_up_rounded, size: 18),
+                      text: 'Performances Commerciales',
+                    ),
+                    Tab(
+                      icon: Icon(Icons.manage_accounts_outlined, size: 18),
+                      text: 'Comptes & Accès',
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 24),
+                if (isPerformanceTab) _buildPeriodFilter(context, ref, range),
+              ],
+            ),
           ),
         ),
 
@@ -291,24 +294,30 @@ class _EquipeScreenState extends ConsumerState<EquipeScreen>
               padding: EdgeInsets.zero,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(
-                    context.colors.surfaceContainerHighest.withValues(alpha: 0.5),
-                  ),
-                  columnSpacing: 20,
-                  horizontalMargin: 20,
-                  columns: const [
-                    DataColumn(label: Text('Vendeur')),
-                    DataColumn(label: Text('Rôle')),
-                    DataColumn(label: Text('Commission')),
-                    DataColumn(label: Text('Ventes'), numeric: true),
-                    DataColumn(label: Text('Clients'), numeric: true),
-                    DataColumn(label: Text('Encaissé'), numeric: true),
-                    DataColumn(label: Text('Reste Dû'), numeric: true),
-                    DataColumn(label: Text('Chiffre d\'Affaires'), numeric: true),
-                    DataColumn(label: Text('Commission Due'), numeric: true),
-                    DataColumn(label: Text('Action')),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                        child: DataTable(
+                          headingRowColor: WidgetStateProperty.all(
+                            context.colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                          ),
+                          columnSpacing: 20,
+                          horizontalMargin: 20,
+                          columns: const [
+                      DataColumn(label: Text('Vendeur')),
+                      DataColumn(label: Text('Rôle')),
+                      DataColumn(label: Text('Commission')),
+                      DataColumn(label: Text('Ventes'), numeric: true),
+                      DataColumn(label: Text('Clients'), numeric: true),
+                      DataColumn(label: Text('Encaissé'), numeric: true),
+                      DataColumn(label: Text('Reste Dû'), numeric: true),
+                      DataColumn(label: Text('Chiffre d\'Affaires'), numeric: true),
+                      DataColumn(label: Text('Commission Due'), numeric: true),
+                      DataColumn(label: Text('Action')),
+                    ],
                   rows: performances.asMap().entries.map((entry) {
                     final index = entry.key;
                     final p = entry.value;
@@ -427,6 +436,10 @@ class _EquipeScreenState extends ConsumerState<EquipeScreen>
                       ],
                     );
                   }).toList(),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),

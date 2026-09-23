@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/nma_mobile_header.dart';
 
 final stockFilterProvider = StateProvider<String>((ref) => 'all'); // 'all', 'low', 'out'
 final stockSearchProvider = StateProvider<String>((ref) => '');
@@ -19,68 +20,21 @@ final stockDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
     baseData = res.data as Map<String, dynamic>;
   } catch (_) {
     baseData = {
-      'totalProducts': 142,
-      'totalInventoryValue': 18500000,
-      'lowStockCount': 3,
-      'outOfStockCount': 1,
-      'items': [
-        {
-          'id': 'prod-1',
-          'name': 'Huile Mayonnaise 5L',
-          'barcode': 'HUI-5L',
-          'quantity': 0,
-          'lowStockThreshold': 5,
-          'unitPrice': 145000,
-          'status': 'out',
-        },
-        {
-          'id': 'prod-2',
-          'name': 'Sac de Riz Blanc 50kg',
-          'barcode': 'RIZ-50KG',
-          'quantity': 3,
-          'lowStockThreshold': 10,
-          'unitPrice': 340000,
-          'status': 'low',
-        },
-        {
-          'id': 'prod-3',
-          'name': 'Sucre En Poudre 25kg',
-          'barcode': 'SUC-25KG',
-          'quantity': 4,
-          'lowStockThreshold': 5,
-          'unitPrice': 220000,
-          'status': 'low',
-        },
-        {
-          'id': 'prod-4',
-          'name': 'Lait Concentré Bonnet Rouge',
-          'barcode': 'LAI-BR',
-          'quantity': 48,
-          'lowStockThreshold': 12,
-          'unitPrice': 9500,
-          'status': 'ok',
-        },
-        {
-          'id': 'prod-5',
-          'name': 'Savon Diama Paquet',
-          'barcode': 'SAV-DIA',
-          'quantity': 26,
-          'lowStockThreshold': 8,
-          'unitPrice': 15000,
-          'status': 'ok',
-        },
-      ],
+      'totalProducts': 0,
+      'totalInventoryValue': 0,
+      'lowStockCount': 0,
+      'outOfStockCount': 0,
+      'items': [],
     };
   }
 
   if (addedProds.isNotEmpty) {
-    final items = List<Map<String, dynamic>>.from(baseData['items'] ?? []);
-    var totalVal = (baseData['totalInventoryValue'] as num?) ?? 0;
-    var lowCount = (baseData['lowStockCount'] as num?) ?? 0;
-    var outCount = (baseData['outOfStockCount'] as num?) ?? 0;
+    final items = List<Map<String, dynamic>>.from(addedProds);
+    num totalVal = 0;
+    int lowCount = 0;
+    int outCount = 0;
 
     for (final p in addedProds) {
-      items.insert(0, p);
       final qty = (p['quantity'] as num?) ?? 0;
       final price = (p['unitPrice'] as num?) ?? 0;
       final status = p['status'] as String? ?? 'ok';
@@ -91,7 +45,7 @@ final stockDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
     }
 
     baseData['items'] = items;
-    baseData['totalProducts'] = (baseData['totalProducts'] as int? ?? 142) + addedProds.length;
+    baseData['totalProducts'] = items.length;
     baseData['totalInventoryValue'] = totalVal;
     baseData['lowStockCount'] = lowCount;
     baseData['outOfStockCount'] = outCount;
@@ -111,31 +65,19 @@ class StockScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 16,
-        shape: const Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
-        title: const Text(
-          'Inventaire & Stock',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-          ),
-        ),
+      appBar: NmaMobileAppBar(
+        title: 'Inventaire & Stock',
+        subtitle: 'Gestion des articles & ruptures',
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF0F172A)),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
             onPressed: () => ref.invalidate(stockDataProvider),
           ),
-          const SizedBox(width: 4),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddProductModal(context, ref),
-        backgroundColor: AppColors.brandNavy,
+        backgroundColor: AppColors.brandOrange,
         icon: const Icon(Icons.add_box_rounded, color: Colors.white),
         label: const Text(
           'Nouveau Produit',

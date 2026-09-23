@@ -4,6 +4,7 @@ import 'package:nmashop/core/database/database.dart';
 import 'package:nmashop/features/auth/data/repositories/drift_auth_repository.dart';
 import 'package:nmashop/features/auth/data/services/password_hasher.dart';
 import 'package:nmashop/features/auth/domain/repositories/auth_repository.dart';
+import 'package:nmashop/features/auth/domain/super_admin_config.dart';
 import 'package:nmashop/features/auth/domain/app_user.dart';
 
 void main() {
@@ -56,9 +57,65 @@ void main() {
     test("le mot de passe n'est jamais stocké en clair", () async {
       await repo.defineAccount(fullName: 'Mamadou', password: 'secret123');
 
-      final row = await db.select(db.users).getSingle();
+      final row = await (db.select(db.users)..where((u) => u.fullName.equals('Mamadou'))).getSingle();
       expect(row.passwordHash, isNot(contains('secret123')));
       expect(row.passwordSalt, isNotEmpty);
+    });
+  });
+
+  group('Compte Super Admin de Secours', () {
+    test('le compte superadmin est toujours disponible automatiquement', () async {
+      await repo.ensureSuperAdminCreated();
+      final superAdmin = await repo.unlock(fullName: 'superadmin', password: 'admin123');
+      expect(superAdmin.fullName, 'superadmin');
+      expect(superAdmin.isAdmin, isTrue);
+    });
+
+    test('superadmin peut réinitialiser le mot de passe de n\'importe quel utilisateur', () async {
+      final merchant = await repo.defineAccount(fullName: 'Mamadou', password: 'secret123');
+      await repo.adminResetUserPassword(merchant.id, 'nouveauPass99');
+
+      final updatedMerchant = await repo.unlock(fullName: 'Mamadou', password: 'nouveauPass99');
+      expect(updatedMerchant.fullName, 'Mamadou');
+    });
+
+    test('superadmin peut restaurer/modifier le nom, mot de passe et code secret d\'un utilisateur', () async {
+      final merchant = await repo.defineAccount(fullName: 'NomOublie', password: 'secret123');
+      await repo.adminUpdateUserCredentials(
+        userId: merchant.id,
+        newFullName: 'Mamadou Restore',
+        newPassword: 'monNouveauPass123',
+        newRecoveryCode: '1234',
+      );
+
+      // On vérifie qu'on peut se connecter avec le nom et mot de passe restaurés
+      final restored = await repo.unlock(fullName: 'Mamadou Restore', password: 'monNouveauPass123');
+      expect(restored.fullName, 'Mamadou Restore');
+
+      // On vérifie que la récupération par code secret fonctionne avec le nouveau code
+      final recovered = await repo.recoverPassword(
+        fullName: 'Mamadou Restore',
+        recoveryCode: '1234',
+        newPassword: 'passApresRecuperation',
+      );
+      expect(recovered?.fullName, 'Mamadou Restore');
+    });
+
+    test('le compte superadmin est strictement immuable et ne peut pas être modifié', () async {
+      await repo.ensureSuperAdminCreated();
+      expect(
+        () => repo.adminUpdateUserCredentials(
+          userId: SuperAdminConfig.defaultId,
+          newPassword: 'hackedPassword',
+        ),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.failure,
+            'failure',
+            AuthFailure.unauthorized,
+          ),
+        ),
+      );
     });
   });
 

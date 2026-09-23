@@ -23,6 +23,7 @@ import '../../../core/widgets/app_page_header.dart';
 import '../../../core/widgets/app_chip.dart';
 import '../../../core/widgets/palette_picker.dart';
 import '../../../core/widgets/app_form_dialog.dart';
+import '../../auth/domain/super_admin_config.dart';
 import '../../../core/widgets/app_form_field.dart';
 import '../../../core/widgets/user_avatar.dart';
 import '../../../core/services/update_service.dart';
@@ -1083,6 +1084,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   /// Compte unique du boutiquier : identité
   Widget _buildUserManagement() {
     final user = ref.watch(authProvider);
+    final isSuperAdmin = user?.fullName.toLowerCase() == 'superadmin';
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: AppCard(
@@ -1096,10 +1099,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Un seul compte administre la boutique.',
+              'Gestion des comptes et réinitialisation des accès.',
               style: AppTypography.bodySm.copyWith(color: context.colors.onSurfaceVariant),
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            if (isSuperAdmin) ...[
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.brandOrange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.brandOrange.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.shield_rounded, color: AppColors.brandOrange, size: 24),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'COMPTE DE SECOURS ACTIF (SUPERADMIN)',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.brandOrange),
+                          ),
+                          Text(
+                            'Vous êtes connecté avec le compte Super Admin de secours (superadmin). Toutes les données de la boutique sont préservées.',
+                            style: TextStyle(fontSize: 12, color: context.colors.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             Row(
               children: [
                 UserAvatar(
@@ -1121,8 +1158,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       AppChip(
-                        label: user?.role == UserRole.admin ? 'ADMIN' : 'VENDEUR',
-                        status: user?.role == UserRole.admin ? AppChipStatus.success : AppChipStatus.warning,
+                        label: isSuperAdmin ? 'SUPER ADMIN' : (user?.role == UserRole.admin ? 'ADMIN' : 'VENDEUR'),
+                        status: isSuperAdmin ? AppChipStatus.error : (user?.role == UserRole.admin ? AppChipStatus.success : AppChipStatus.warning),
                       ),
                     ],
                   ),
@@ -1130,8 +1167,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    AppButton.secondary(icon: Icons.edit_rounded, label: 'Éditer Profil', onPressed: () => _editProfile(user)),
-                    const SizedBox(width: AppSpacing.md),
+                    if (user?.role == UserRole.admin) ...[
+                      AppButton.secondary(
+                        icon: Icons.manage_accounts_rounded,
+                        label: 'Restaurer / Modifier les identifiants',
+                        onPressed: _showResetUserPasswordDialog,
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                    ],
+                    if (!isSuperAdmin) ...[
+                      AppButton.secondary(icon: Icons.edit_rounded, label: 'Éditer Profil', onPressed: () => _editProfile(user)),
+                      const SizedBox(width: AppSpacing.md),
+                    ],
                     AppButton.secondary(icon: Icons.logout_rounded, label: 'Se déconnecter', onPressed: () => ref.read(authProvider.notifier).lock()),
                   ],
                 ),
@@ -1139,6 +1186,173 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _showResetUserPasswordDialog() async {
+    final allUsers = await ref.read(authRepositoryProvider).getAllUsers();
+    // Le compte superadmin est strictement protégé et ne peut jamais être modifié
+    final users = allUsers.where((u) => u.fullName.toLowerCase() != 'superadmin' && u.id != SuperAdminConfig.defaultId).toList();
+    if (!mounted) return;
+
+    if (users.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aucun compte utilisateur modifiable trouvé.'), backgroundColor: AppColors.brandOrange),
+      );
+      return;
+    }
+
+    AppUser selectedUser = users.first;
+
+    final nameController = TextEditingController(text: selectedUser.fullName);
+    final pwdController = TextEditingController();
+    final recoveryCodeController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.manage_accounts_rounded, color: AppColors.brandNavy),
+            SizedBox(width: 8),
+            Text('Restaurer / Modifier les identifiants'),
+          ],
+        ),
+        content: SizedBox(
+          width: 480,
+          child: StatefulBuilder(
+            builder: (context, setDialogState) => Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.brandNavy.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.brandNavy.withValues(alpha: 0.2)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, color: AppColors.brandNavy, size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Modifiez ou restaurez le nom d\'utilisateur, le mot de passe ou le code de secours sans perdre les données du commerçant.',
+                            style: TextStyle(fontSize: 12, color: AppColors.brandNavy),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Sélectionnez le compte à modifier :', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<AppUser>(
+                    value: selectedUser,
+                    items: users
+                        .map((u) => DropdownMenuItem(
+                              value: u,
+                              child: Text('${u.fullName} (${u.role == UserRole.admin ? "Admin" : "Vendeur"})'),
+                            ))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() {
+                          selectedUser = val;
+                          nameController.text = val.fullName;
+                        });
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nom d\'utilisateur / Nom du compte',
+                      hintText: 'Ex: Boutique N\'Ma ou superadmin',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person_rounded),
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Le nom ne peut pas être vide' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: pwdController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Nouveau mot de passe (Optionnel)',
+                      hintText: 'Laisser vide pour ne pas modifier',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.key_rounded),
+                    ),
+                    validator: (v) => (v != null && v.isNotEmpty && v.trim().length < 4) ? '4 caractères minimum' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: recoveryCodeController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Code secret de récupération (Optionnel)',
+                      hintText: 'Ex: 1234 ou 9999',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.shield_outlined),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Annuler'),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              if (formKey.currentState?.validate() != true) return;
+              try {
+                final newName = nameController.text.trim();
+                final newPwd = pwdController.text.trim();
+                final newCode = recoveryCodeController.text.trim();
+
+                await ref.read(authProvider.notifier).adminUpdateUserCredentials(
+                      userId: selectedUser.id,
+                      newFullName: newName != selectedUser.fullName ? newName : null,
+                      newPassword: newPwd.isNotEmpty ? newPwd : null,
+                      newRecoveryCode: newCode.isNotEmpty ? newCode : null,
+                    );
+
+                if (mounted && dialogCtx.mounted) {
+                  Navigator.pop(dialogCtx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('✅ Identifiants mis à jour avec succès pour "$newName" !'),
+                      backgroundColor: AppColors.brandEmerald,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erreur : $e'), backgroundColor: AppColors.brandRed),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Icons.check_circle_rounded, size: 18),
+            label: const Text('Enregistrer et restaurer'),
+          ),
+        ],
       ),
     );
   }

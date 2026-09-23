@@ -6,7 +6,7 @@ import '../data/auth_service.dart';
 import '../../shell/main_navigation_shell.dart';
 import 'login_shop_screen.dart';
 
-/// Assistant de Configuration Mobile — Reprend le workflow exact Desktop (Stepper 3 étapes).
+/// Assistant de Configuration Mobile — Workflow Stepper 3 étapes.
 class RegisterShopScreen extends ConsumerStatefulWidget {
   const RegisterShopScreen({super.key});
 
@@ -18,18 +18,14 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
   int _currentStep = 0; // 0 = Boutique, 1 = Licence, 2 = Patron (PIN)
 
   final _shopFormKey = GlobalKey<FormState>();
-  final _pinFormKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
   final _currencyController = TextEditingController(text: 'GNF');
   final _deviceNameController = TextEditingController(text: 'Smartphone Patron');
   final _licenseKeyController = TextEditingController();
-  final _pinController = TextEditingController();
-  final _confirmPinController = TextEditingController();
+  String _pin = '';
 
   bool _useTrialMode = true;
-  bool _obscurePin = true;
-  bool _obscureConfirm = true;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -39,8 +35,6 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
     _currencyController.dispose();
     _deviceNameController.dispose();
     _licenseKeyController.dispose();
-    _pinController.dispose();
-    _confirmPinController.dispose();
     super.dispose();
   }
 
@@ -59,13 +53,11 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
     } else if (_currentStep == 1) {
       setState(() => _currentStep = 2);
     } else if (_currentStep == 2) {
-      if (_pinFormKey.currentState!.validate()) {
-        if (_pinController.text.trim() != _confirmPinController.text.trim()) {
-          setState(() => _errorMessage = 'Les deux codes PIN ne sont pas identiques.');
-          return;
-        }
-        _submit();
+      if (_pin.length < 4) {
+        setState(() => _errorMessage = 'Veuillez saisir un code PIN à 4 chiffres.');
+        return;
       }
+      _submit();
     }
   }
 
@@ -87,7 +79,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
     final result = await ref.read(authServiceProvider).registerShop(
           shopName: _nameController.text.trim(),
           currency: _currencyController.text.trim().isEmpty ? 'GNF' : _currencyController.text.trim(),
-          pin: _pinController.text.trim(),
+          pin: _pin.trim(),
           deviceName: _deviceNameController.text.trim().isEmpty ? 'Smartphone Patron' : _deviceNameController.text.trim(),
         );
 
@@ -103,65 +95,97 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
     }
   }
 
+  void _onKeypadTap(String digit) {
+    if (_isLoading) return;
+    setState(() {
+      _errorMessage = null;
+      if (_pin.length < 4) {
+        _pin += digit;
+      }
+    });
+  }
+
+  void _onKeypadBackspace() {
+    if (_isLoading) return;
+    setState(() {
+      _errorMessage = null;
+      if (_pin.isNotEmpty) {
+        _pin = _pin.substring(0, _pin.length - 1);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.brandNavy,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () {
-            if (_currentStep > 0) {
-              _prevStep();
-            } else {
-              Navigator.of(context).pop();
-            }
-          },
-        ),
-        title: const BrandLogo(height: 32, onDark: true),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          // Banner de présentation Desktop Style
-          _buildTopBrandBanner(),
+      body: Container(
+        color: AppColors.brandNavy,
+        child: SafeArea(
+          bottom: false,
+          child: Container(
+            color: AppColors.background,
+            child: Column(
+              children: [
+                // Top Navy Header unifié avec la barre de statut
+                _buildTopBrandHeader(),
 
-          // En-tête Stepper d'étapes (1. Boutique -> 2. Licence -> 3. Patron)
-          _buildStepperHeader(),
+                // Header d'étapes (Stepper 1. Boutique -> 2. Licence -> 3. PIN)
+                _buildStepperHeader(),
 
-          // Contenu principal dynamique par étape
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              physics: const BouncingScrollPhysics(),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: _buildCurrentStepContent(),
-              ),
+                // Contenu scrollable principal
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    physics: const BouncingScrollPhysics(),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: _buildCurrentStepContent(),
+                    ),
+                  ),
+                ),
+
+                // Pied de page d'action (Précédent / Continuer)
+                _buildNavigationFooter(),
+              ],
             ),
           ),
-
-          // Navigation Footer (Précédent / Suivant / Créer)
-          _buildNavigationFooter(),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildTopBrandBanner() {
+  Widget _buildTopBrandHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: const BoxDecoration(
-        gradient: AppColors.heroNavyGradient,
-      ),
+      color: AppColors.brandNavy,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                onPressed: () {
+                  if (_currentStep > 0) {
+                    _prevStep();
+                  } else {
+                    Navigator.of(context).pop();
+                  }
+                },
+              ),
+              const Expanded(
+                child: Center(
+                  child: BrandLogo(height: 30, onDark: true),
+                ),
+              ),
+              const SizedBox(width: 48), // Pour centrer le logo
+            ],
+          ),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
@@ -171,7 +195,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
               'ASSISTANT DE CONFIGURATION',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 10,
+                fontSize: 9.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.0,
               ),
@@ -182,7 +206,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
             _getStepHeadingTitle(),
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: 19,
               fontWeight: FontWeight.w900,
               height: 1.2,
             ),
@@ -191,8 +215,8 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
           Text(
             _getStepHeadingSubtitle(),
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 12.5,
+              color: Colors.white.withValues(alpha: 0.8),
+              fontSize: 12,
               height: 1.35,
             ),
           ),
@@ -221,72 +245,69 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
       case 1:
         return 'Choisissez d\'activer une licence ou de démarrer votre essai gratuit.';
       case 2:
-        return 'Définissez le code PIN secret protégeant l\'accès patron.';
+        return 'Définissez le code PIN secret à 4 chiffres pour ouvrir votre boutique.';
       default:
         return '';
     }
   }
 
   Widget _buildStepperHeader() {
-    final steps = ['Boutique', 'Licence', 'Patron'];
+    final steps = ['Boutique', 'Licence', 'Code PIN'];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: List.generate(steps.length, (index) {
           final isDone = index < _currentStep;
           final isCurrent = index == _currentStep;
 
-          return Expanded(
-            child: Row(
-              children: [
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    color: isDone || isCurrent ? AppColors.brandOrange : Colors.grey[300],
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: isDone
-                        ? const Icon(Icons.check_rounded, size: 13, color: Colors.white)
-                        : Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: isCurrent ? Colors.white : Colors.grey[700],
-                            ),
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: isDone || isCurrent ? AppColors.brandOrange : Colors.grey[200],
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: isDone
+                      ? const Icon(Icons.check_rounded, size: 13, color: Colors.white)
+                      : Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isCurrent ? Colors.white : Colors.grey[700],
                           ),
-                  ),
+                        ),
                 ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    steps[index],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
-                      color: isCurrent ? AppColors.brandNavy : Colors.grey[600],
-                    ),
-                  ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                steps[index],
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.w600,
+                  color: isCurrent ? AppColors.brandNavy : Colors.grey[600],
                 ),
-                if (index < steps.length - 1)
-                  Expanded(
-                    child: Container(
-                      height: 2,
-                      margin: const EdgeInsets.symmetric(horizontal: 6),
-                      color: isDone ? AppColors.brandOrange : Colors.grey[200],
-                    ),
-                  ),
+              ),
+              if (index < steps.length - 1) ...[
+                const SizedBox(width: 8),
+                Container(
+                  width: 16,
+                  height: 2,
+                  color: isDone ? AppColors.brandOrange : Colors.grey[300],
+                ),
+                const SizedBox(width: 8),
               ],
-            ),
+            ],
           );
         }),
       ),
@@ -306,7 +327,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
     }
   }
 
-  // ÉTAPE 1 : Fiche Boutique (Nom, Devise, Appareil)
+  // ÉTAPE 1 : Fiche Boutique
   Widget _buildStep1Shop() {
     return Form(
       key: _shopFormKey,
@@ -315,10 +336,10 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.border),
               boxShadow: [
                 BoxShadow(
@@ -338,41 +359,24 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
                   decoration: _inputDeco('Ex: Boutique Diallo & Frères', Icons.storefront_rounded),
                   validator: (v) => v == null || v.trim().isEmpty ? 'Le nom de la boutique est obligatoire' : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('Devise principale'),
-                          TextFormField(
-                            controller: _currencyController,
-                            decoration: _inputDeco('GNF', Icons.payments_rounded),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('Nom de l\'appareil'),
-                          TextFormField(
-                            controller: _deviceNameController,
-                            decoration: _inputDeco('Smartphone Patron', Icons.phone_android_rounded),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                _buildLabel('Devise principale'),
+                TextFormField(
+                  controller: _currencyController,
+                  decoration: _inputDeco('GNF', Icons.payments_rounded),
+                ),
+                const SizedBox(height: 14),
+
+                _buildLabel('Nom de cet appareil'),
+                TextFormField(
+                  controller: _deviceNameController,
+                  decoration: _inputDeco('Smartphone Patron', Icons.phone_android_rounded),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           Center(
             child: TextButton.icon(
@@ -414,7 +418,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
           subtitle: 'Découvrez toutes les fonctionnalités de N\'MaShop Mobile sans engagement.',
           onTap: () => setState(() => _useTrialMode = true),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
 
         _buildOptionCard(
           selected: !_useTrialMode,
@@ -425,7 +429,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
         ),
 
         if (!_useTrialMode) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -450,94 +454,173 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
     );
   }
 
-  // ÉTAPE 3 : Compte Patron (Code PIN Secret)
+  // ÉTAPE 3 : Compte Patron (Code PIN Tactile 4 chiffres)
   Widget _buildStep3Account() {
-    return Form(
-      key: _pinFormKey,
-      child: Column(
-        key: const ValueKey('step_account'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.border),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildLabel('Code PIN secret Patron (4 à 8 chiffres) *'),
-                TextFormField(
-                  controller: _pinController,
-                  keyboardType: TextInputType.number,
-                  obscureText: _obscurePin,
-                  maxLength: 8,
-                  decoration: _inputDeco(
-                    '••••',
-                    Icons.pin_rounded,
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePin ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: Colors.grey),
-                      onPressed: () => setState(() => _obscurePin = !_obscurePin),
-                    ),
-                  ),
-                  validator: (v) => (v == null || v.trim().length < 4) ? 'Code PIN de 4 à 8 chiffres requis' : null,
-                ),
-                const SizedBox(height: 12),
+    return Column(
+      key: const ValueKey('step_account'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'Créez votre code PIN secret à 4 chiffres',
+                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppColors.brandNavy),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Ce code sécurise l\'accès à votre boutique sur ce téléphone',
+                style: TextStyle(fontSize: 11.5, color: AppColors.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
 
-                _buildLabel('Confirmer le code PIN *'),
-                TextFormField(
-                  controller: _confirmPinController,
-                  keyboardType: TextInputType.number,
-                  obscureText: _obscureConfirm,
-                  maxLength: 8,
-                  decoration: _inputDeco(
-                    '••••',
-                    Icons.lock_clock_rounded,
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: Colors.grey),
-                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+              // Indicateurs PIN Tactiles animés
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(4, (index) {
+                  final isFilled = index < _pin.length;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    width: isFilled ? 18 : 14,
+                    height: isFilled ? 18 : 14,
+                    decoration: BoxDecoration(
+                      color: isFilled ? AppColors.brandOrange : AppColors.surface,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isFilled ? AppColors.brandOrange : AppColors.border,
+                        width: 2,
+                      ),
+                      boxShadow: isFilled
+                          ? [
+                              BoxShadow(
+                                color: AppColors.brandOrange.withValues(alpha: 0.3),
+                                blurRadius: 6,
+                              ),
+                            ]
+                          : null,
                     ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        if (_errorMessage != null) ...[
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: AppColors.error, fontSize: 12.5, fontWeight: FontWeight.w600),
                   ),
-                  validator: (v) => (v == null || v.trim().length < 4) ? 'Confirmation requise' : null,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
+        ],
 
-          if (_errorMessage != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+        // Clavier Numérique Tactile
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: ['1', '2', '3'].map((d) => _buildKeypadButton(d)).toList(),
               ),
-              child: Row(
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: ['4', '5', '6'].map((d) => _buildKeypadButton(d)).toList(),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: ['7', '8', '9'].map((d) => _buildKeypadButton(d)).toList(),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w600),
+                  const SizedBox(width: 60, height: 60),
+                  _buildKeypadButton('0'),
+                  InkWell(
+                    onTap: _onKeypadBackspace,
+                    borderRadius: BorderRadius.circular(30),
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.backspace_outlined, color: AppColors.brandNavy, size: 22),
                     ),
                   ),
                 ],
               ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKeypadButton(String digit) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _onKeypadTap(digit),
+        borderRadius: BorderRadius.circular(30),
+        child: Container(
+          width: 60,
+          height: 60,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Text(
+            digit,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppColors.brandNavy,
             ),
-            const SizedBox(height: 16),
-          ],
-        ],
+          ),
+        ),
       ),
     );
   }
@@ -556,7 +639,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: selected ? AppColors.brandOrange.withValues(alpha: 0.05) : Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -568,14 +651,14 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: selected ? AppColors.brandOrange : AppColors.surfaceContainerLow,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: selected ? Colors.white : AppColors.brandNavy, size: 22),
+                child: Icon(icon, color: selected ? Colors.white : AppColors.brandNavy, size: 20),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -583,7 +666,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
                     Text(
                       title,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.bold,
                         color: selected ? AppColors.brandNavy : AppColors.onSurface,
                       ),
@@ -591,7 +674,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant, height: 1.3),
+                      style: const TextStyle(fontSize: 11.5, color: AppColors.onSurfaceVariant, height: 1.3),
                     ),
                   ],
                 ),
@@ -599,7 +682,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
               Icon(
                 selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
                 color: selected ? AppColors.brandOrange : Colors.grey[400],
-                size: 22,
+                size: 20,
               ),
             ],
           ),
@@ -612,7 +695,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
     final isLast = _currentStep == 2;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: AppColors.border)),
@@ -625,15 +708,15 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
               OutlinedButton.icon(
                 onPressed: _isLoading ? null : _prevStep,
                 icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                label: const Text('Précédent', style: TextStyle(fontWeight: FontWeight.bold)),
+                label: const Text('Précédent', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.brandNavy,
                   side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
             ],
             Expanded(
               child: ElevatedButton.icon(
@@ -647,7 +730,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
                     : Icon(isLast ? Icons.storefront_rounded : Icons.arrow_forward_rounded, size: 18),
                 label: Text(
                   isLast ? 'Créer ma boutique' : 'Continuer',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brandOrange,

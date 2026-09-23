@@ -3,12 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/nma_mobile_header.dart';
 
 final alertsDataProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
-  final res = await apiClient.get('/api/v1/mobile/alerts');
-  final map = res.data as Map<String, dynamic>;
-  return (map['alerts'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+  try {
+    final res = await apiClient.get('/api/v1/mobile/alerts');
+    final map = res.data as Map<String, dynamic>;
+    return (map['alerts'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+  } catch (_) {
+    return <Map<String, dynamic>>[];
+  }
 });
 
 class AlertsScreen extends ConsumerWidget {
@@ -26,20 +31,14 @@ class AlertsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        title: const Text(
-          'Centre de Notifications & Alertes',
-          style: TextStyle(
-            color: AppColors.onSurface,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
+      appBar: NmaMobileAppBar(
+        title: 'Notifications & Alertes',
+        subtitle: 'Ruptures, échéances & système',
+        onLeadingPressed: () => Navigator.of(context).maybePop(),
+        leadingIcon: Icons.arrow_back_rounded,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: AppColors.onSurface),
+            icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: () => ref.invalidate(alertsDataProvider),
           ),
         ],

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/nma_mobile_header.dart';
 
 final salesPeriodProvider = StateProvider<String>((ref) => 'today');
 final salesSearchProvider = StateProvider<String>((ref) => '');
@@ -21,77 +22,57 @@ final salesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
   } catch (_) {
     baseData = {
       'summary': {
-        'totalSales': 4850000,
-        'totalProfit': 1250000,
-        'salesCount': 18,
-        'averageTicket': 269444,
-        'cashCollected': 3100000,
-        'momoCollected': 1250000,
-        'creditIssued': 500000,
+        'totalSales': 0,
+        'totalProfit': 0,
+        'salesCount': 0,
+        'averageTicket': 0,
+        'cashCollected': 0,
+        'momoCollected': 0,
+        'creditIssued': 0,
       },
-      'recentSales': [
-        {
-          'id': 'sale-001',
-          'reference': 'FAC-2026-089',
-          'customerName': 'Mamadou Diallo',
-          'totalAmount': 850000,
-          'amountPaid': 850000,
-          'paymentMethodIndex': 0,
-          'createdAt': DateTime.now().subtract(const Duration(minutes: 15)).toIso8601String(),
-        },
-        {
-          'id': 'sale-002',
-          'reference': 'FAC-2026-088',
-          'customerName': 'Kadiatou Bah',
-          'totalAmount': 1250000,
-          'amountPaid': 1250000,
-          'paymentMethodIndex': 1,
-          'mobileMoneyProvider': 'Orange Money',
-          'createdAt': DateTime.now().subtract(const Duration(hours: 1, minutes: 20)).toIso8601String(),
-        },
-        {
-          'id': 'sale-003',
-          'reference': 'FAC-2026-087',
-          'customerName': 'Elhadj Ousmane Camara',
-          'totalAmount': 500000,
-          'amountPaid': 0,
-          'paymentMethodIndex': 2,
-          'createdAt': DateTime.now().subtract(const Duration(hours: 3)).toIso8601String(),
-        },
-        {
-          'id': 'sale-004',
-          'reference': 'FAC-2026-086',
-          'customerName': 'Boutique Sylla',
-          'totalAmount': 2250000,
-          'amountPaid': 2250000,
-          'paymentMethodIndex': 0,
-          'createdAt': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
-        },
-      ],
+      'recentSales': [],
     };
   }
 
   if (addedSales.isNotEmpty) {
-    final summary = Map<String, dynamic>.from(baseData['summary'] ?? {});
-    final recent = List<Map<String, dynamic>>.from(baseData['recentSales'] ?? []);
+    final summary = {
+      'totalSales': 0,
+      'totalProfit': 0,
+      'salesCount': 0,
+      'averageTicket': 0,
+      'cashCollected': 0,
+      'momoCollected': 0,
+      'creditIssued': 0,
+    };
+    final recent = List<Map<String, dynamic>>.from(addedSales);
     
+    int totalAmt = 0;
+    int cash = 0;
+    int momo = 0;
+    int credit = 0;
+
     for (final newSale in addedSales) {
-      recent.insert(0, newSale);
-      final amt = (newSale['totalAmount'] as num?) ?? 0;
-      final paid = (newSale['amountPaid'] as num?) ?? amt;
+      final amt = ((newSale['totalAmount'] as num?) ?? 0).toInt();
+      final paid = ((newSale['amountPaid'] as num?) ?? amt).toInt();
       final pIndex = newSale['paymentMethodIndex'] ?? 0;
       
-      summary['totalSales'] = ((summary['totalSales'] as num?) ?? 0) + amt;
-      summary['salesCount'] = ((summary['salesCount'] as num?) ?? 0) + 1;
+      totalAmt += amt;
       
       if (pIndex == 0) {
-        summary['cashCollected'] = ((summary['cashCollected'] as num?) ?? 0) + paid;
+        cash += paid;
       } else if (pIndex == 1) {
-        summary['momoCollected'] = ((summary['momoCollected'] as num?) ?? 0) + paid;
+        momo += paid;
       } else if (pIndex == 2) {
-        summary['creditIssued'] = ((summary['creditIssued'] as num?) ?? 0) + (amt - paid);
+        credit += (amt - paid);
       }
     }
+    
+    summary['totalSales'] = totalAmt;
+    summary['salesCount'] = addedSales.length;
+    summary['averageTicket'] = addedSales.isNotEmpty ? (totalAmt / addedSales.length).round() : 0;
+    summary['cashCollected'] = cash;
+    summary['momoCollected'] = momo;
+    summary['creditIssued'] = credit;
     
     baseData['summary'] = summary;
     baseData['recentSales'] = recent;
@@ -111,26 +92,14 @@ class SalesScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 16,
-        shape: const Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
-        title: const Text(
-          'Activité Commerciale',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-          ),
-        ),
+      appBar: NmaMobileAppBar(
+        title: 'Activité Commerciale',
+        subtitle: 'Suivi des ventes & factures',
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF0F172A)),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
             onPressed: () => ref.invalidate(salesDataProvider),
           ),
-          const SizedBox(width: 4),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

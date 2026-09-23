@@ -13,17 +13,6 @@ class StorageService {
   static const _keyCurrency = 'nmashop_currency';
   static const _keyServerUrl = 'nmashop_server_url';
   static const _keyLastSync = 'nmashop_last_sync';
-  static const _keyPin = 'nmashop_pin';
-
-  Future<void> savePin(String pin) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyPin, pin);
-  }
-
-  Future<String?> getSavedPin() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyPin);
-  }
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -125,6 +114,44 @@ class StorageService {
 
   Future<bool> isPaired() async => isLoggedIn();
 
+  static const _keyPin = 'nmashop_pin';
+
+  Future<void> saveLocalPin(String pin) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyPin, pin);
+  }
+
+  Future<String?> getLocalPin() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyPin);
+  }
+
+  Future<bool> verifyLocalPin(String pin) async {
+    final stored = await getLocalPin();
+    if (stored == null || stored.isEmpty) return true;
+    return stored == pin;
+  }
+
+  Future<void> saveLocalShop({
+    required String shopName,
+    required String currency,
+    required String pin,
+  }) async {
+    final shopId = 'mob-shop-${DateTime.now().millisecondsSinceEpoch}';
+    final accessToken = 'local-access-token-${DateTime.now().millisecondsSinceEpoch}';
+    final refreshToken = 'local-refresh-token-${DateTime.now().millisecondsSinceEpoch}';
+    final serverUrl = defaultServerUrl;
+
+    await saveLocalPin(pin);
+    await saveAuthData(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      shopId: shopId,
+      shopName: shopName,
+      currency: currency,
+      serverUrl: serverUrl,
+    );
+  }
 
   Future<DateTime?> getLastSync() async {
     final prefs = await SharedPreferences.getInstance();
@@ -147,6 +174,7 @@ class StorageService {
     await prefs.remove(_keyShopId);
     await prefs.remove(_keyShopName);
     await prefs.remove(_keyCurrency);
+    await prefs.remove(_keyPin);
     await prefs.remove(_keyLastSync);
   }
 }

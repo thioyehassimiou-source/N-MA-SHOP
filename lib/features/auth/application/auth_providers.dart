@@ -6,6 +6,7 @@ import '../../business/application/business_providers.dart';
 import '../../dashboard/application/dashboard_providers.dart';
 import '../../equipe/application/sellers_providers.dart';
 import '../../sales/application/sales_providers.dart';
+import '../../../core/database/tables/users.dart';
 import '../data/repositories/drift_auth_repository.dart';
 import '../domain/app_user.dart';
 import '../domain/repositories/auth_repository.dart';
@@ -154,6 +155,39 @@ class AuthNotifier extends Notifier<AppUser?> {
       currentPassword: currentPassword,
       newPassword: newPassword,
     );
+  }
+
+  /// Réinitialise directement le mot de passe d'un utilisateur par un Admin / Super Admin.
+  Future<void> adminResetUserPassword({
+    required String userId,
+    required String newPassword,
+  }) {
+    if (state == null || state!.role != UserRole.admin) {
+      throw const AuthException(AuthFailure.unauthorized);
+    }
+    return _repo.adminResetUserPassword(userId, newPassword);
+  }
+
+  /// Modifier/restaurer les identifiants complets d'un utilisateur (Nom, Mot de passe, Code secret).
+  Future<void> adminUpdateUserCredentials({
+    required String userId,
+    String? newFullName,
+    String? newPassword,
+    String? newRecoveryCode,
+  }) async {
+    if (state == null || state!.role != UserRole.admin) {
+      throw const AuthException(AuthFailure.unauthorized);
+    }
+    await _repo.adminUpdateUserCredentials(
+      userId: userId,
+      newFullName: newFullName,
+      newPassword: newPassword,
+      newRecoveryCode: newRecoveryCode,
+    );
+    if (state?.id == userId) {
+      final updated = await _repo.findById(userId);
+      if (updated != null) state = updated;
+    }
   }
 
   /// Met à jour le nom du boutiquier et rafraîchit la session.

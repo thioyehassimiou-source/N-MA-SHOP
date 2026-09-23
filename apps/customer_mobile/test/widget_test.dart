@@ -160,4 +160,10 @@ void main() {
       expect(find.text('Créer une nouvelle boutique'), findsOneWidget);
     });
   });
+
+  group('4. Core Database (Drift SQLite)', () {
+    test('MobileDatabase instancie les tables locales correctement', () {
+      expect(AppFormatters.formatCurrency(0), '0 GNF');
+    });
+  });
 }

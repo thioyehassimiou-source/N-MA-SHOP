@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/nma_mobile_header.dart';
 
 final customPaymentsProvider = StateProvider<List<Map<String, dynamic>>>((ref) => []);
 
@@ -17,30 +18,8 @@ final receivablesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>
     baseData = res.data as Map<String, dynamic>;
   } catch (_) {
     baseData = {
-      'totalReceivables': 2750000,
-      'debtors': [
-        {
-          'id': 'debtor-1',
-          'customerName': 'Elhadj Ousmane Camara',
-          'phone': '+224 622 14 55 88',
-          'debtAmount': 1250000,
-          'lastSaleDate': DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
-        },
-        {
-          'id': 'debtor-2',
-          'customerName': 'Thierno Souleymane',
-          'phone': '+224 664 90 21 03',
-          'debtAmount': 950000,
-          'lastSaleDate': DateTime.now().subtract(const Duration(days: 5)).toIso8601String(),
-        },
-        {
-          'id': 'debtor-3',
-          'customerName': 'Madame Mariama Cissé',
-          'phone': '+224 628 33 11 00',
-          'debtAmount': 550000,
-          'lastSaleDate': DateTime.now().subtract(const Duration(days: 7)).toIso8601String(),
-        },
-      ],
+      'totalReceivables': 0,
+      'debtors': [],
     };
   }
 
@@ -114,27 +93,21 @@ class ReceivablesScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        title: const Text(
-          'Créances & Crédits Clients',
-          style: TextStyle(
-            color: AppColors.onSurface,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
+      appBar: NmaMobileAppBar(
+        title: 'Créances & Crédits Clients',
+        subtitle: 'Suivi des impayés & réglements',
+        onLeadingPressed: () => Navigator.of(context).maybePop(),
+        leadingIcon: Icons.arrow_back_rounded,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: AppColors.onSurface),
+            icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: () => ref.invalidate(receivablesDataProvider),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddPaymentModal(context, ref),
-        backgroundColor: Colors.purple.shade800,
+        backgroundColor: AppColors.brandOrange,
         icon: const Icon(Icons.price_check_rounded, color: Colors.white),
         label: const Text(
           'Règlement Client',

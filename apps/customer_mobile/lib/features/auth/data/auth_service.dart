@@ -38,40 +38,27 @@ class AuthService {
 
     final deviceId = await _storage.getOrCreateDeviceId();
     final serverUrl = await _storage.getServerUrl();
-    final cleanShopName = shopName.trim();
-    final cleanCurrency = currency.trim().isEmpty ? 'GNF' : currency.trim();
 
-    // Toujours enregistrer le code PIN et les données de la boutique en local (0% blocage hors-ligne)
-    await _storage.savePin(pin);
-    await _storage.saveAuthData(
-      accessToken: 'local_mobile_access_token_${DateTime.now().millisecondsSinceEpoch}',
-      refreshToken: 'local_mobile_refresh_token_${DateTime.now().millisecondsSinceEpoch}',
-      shopId: 'shop_${deviceId.substring(0, 8)}',
-      shopName: cleanShopName,
-      currency: cleanCurrency,
-      serverUrl: serverUrl,
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: serverUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
     );
 
     try {
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: serverUrl,
-          connectTimeout: const Duration(seconds: 4),
-          receiveTimeout: const Duration(seconds: 5),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-        ),
-      );
-
       final response = await dio.post(
         '/api/v1/auth/register',
         data: {
-          'shopName': cleanShopName,
-          'currency': cleanCurrency,
+          'shopName': shopName.trim(),
+          'currency': currency.trim().isEmpty ? 'GNF' : currency.trim(),
           'pin': pin,
-          'deviceName': deviceName.trim().isEmpty ? 'Smartphone Patron' : deviceName.trim(),
+          'deviceName': deviceName.trim().isEmpty ? 'Smartphone' : deviceName.trim(),
           'deviceId': deviceId,
         },
       );
@@ -82,6 +69,7 @@ class AuthService {
         final refreshToken = data['refreshToken'] as String;
         final shop = data['shop'] as Map<String, dynamic>;
 
+        await _storage.saveLocalPin(pin);
         await _storage.saveAuthData(
           accessToken: accessToken,
           refreshToken: refreshToken,
@@ -90,12 +78,42 @@ class AuthService {
           currency: shop['currency'] as String,
           serverUrl: serverUrl,
         );
-      }
-    } catch (_) {
-      // Ignorer l'erreur réseau : la création locale a réussi
-    }
 
-    return AuthResult.success();
+        return AuthResult.success();
+      } else {
+        await _storage.saveLocalShop(
+          shopName: shopName.trim(),
+          currency: currency.trim().isEmpty ? 'GNF' : currency.trim(),
+          pin: pin,
+        );
+        return AuthResult.success();
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final respData = e.response?.data;
+        if (respData is Map<String, dynamic> && respData['message'] != null) {
+          final msg = respData['message'];
+          final messageStr = msg is List ? msg.join(', ') : msg.toString();
+          if (messageStr.contains('déjà enregistré') || messageStr.contains('deviceId')) {
+            return AuthResult.failure('Cet appareil possède déjà un compte N’MaShop. Essayez de vous connecter.');
+          }
+        }
+      }
+      // Mode local-first : création immédiate de la boutique sur le téléphone
+      await _storage.saveLocalShop(
+        shopName: shopName.trim(),
+        currency: currency.trim().isEmpty ? 'GNF' : currency.trim(),
+        pin: pin,
+      );
+      return AuthResult.success();
+    } catch (e) {
+      await _storage.saveLocalShop(
+        shopName: shopName.trim(),
+        currency: currency.trim().isEmpty ? 'GNF' : currency.trim(),
+        pin: pin,
+      );
+      return AuthResult.success();
+    }
   }
 
   Future<AuthResult> loginWithPin(String pin) async {
@@ -103,37 +121,22 @@ class AuthService {
       return AuthResult.failure('Le code PIN doit contenir entre 4 et 8 chiffres.');
     }
 
-    final savedPin = await _storage.getSavedPin();
-    if (savedPin != null && savedPin.isNotEmpty) {
-      if (savedPin == pin) {
-        // Validation PIN locale instantanée
-        final currentToken = await _storage.getAccessToken();
-        if (currentToken == null || currentToken.isEmpty) {
-          final deviceId = await _storage.getOrCreateDeviceId();
-          await _storage.saveAccessToken('local_mobile_access_token_${DateTime.now().millisecondsSinceEpoch}');
-        }
-        return AuthResult.success();
-      } else {
-        return AuthResult.failure('Code PIN secret incorrect.');
-      }
-    }
-
     final deviceId = await _storage.getOrCreateDeviceId();
     final serverUrl = await _storage.getServerUrl();
 
-    try {
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: serverUrl,
-          connectTimeout: const Duration(seconds: 4),
-          receiveTimeout: const Duration(seconds: 5),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-        ),
-      );
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: serverUrl,
+        connectTimeout: const Duration(seconds: 4),
+        receiveTimeout: const Duration(seconds: 4),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
 
+    try {
       final response = await dio.post(
         '/api/v1/auth/login',
         data: {
@@ -148,7 +151,7 @@ class AuthService {
         final refreshToken = data['refreshToken'] as String;
         final shop = data['shop'] as Map<String, dynamic>?;
 
-        await _storage.savePin(pin);
+        await _storage.saveLocalPin(pin);
         await _storage.saveAuthData(
           accessToken: accessToken,
           refreshToken: refreshToken,
@@ -159,15 +162,23 @@ class AuthService {
         );
 
         return AuthResult.success();
-      } else {
-        return AuthResult.failure('Identifiants incorrects.');
       }
-    } catch (_) {
-      // Fallback mode local si aucune donnée sauvegardée
-      await _storage.savePin(pin);
-      await _storage.saveAccessToken('local_mobile_access_token_${DateTime.now().millisecondsSinceEpoch}');
+    } catch (_) {}
+
+    // Fallback local-first : vérification du PIN en local
+    final isLocalValid = await _storage.verifyLocalPin(pin);
+    if (isLocalValid) {
+      final shopName = await _storage.getShopName();
+      final currency = await _storage.getCurrency();
+      await _storage.saveLocalShop(
+        shopName: shopName,
+        currency: currency,
+        pin: pin,
+      );
       return AuthResult.success();
     }
+
+    return AuthResult.failure('Code PIN incorrect.');
   }
 
   Future<void> logout() async {

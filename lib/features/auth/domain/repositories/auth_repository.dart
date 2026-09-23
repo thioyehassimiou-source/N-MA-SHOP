@@ -102,6 +102,20 @@ abstract interface class AuthRepository {
   /// configuration.
   Future<bool> hasNoAccount();
 
+  /// S'assure que le compte Super Admin de secours existe en arrière-plan.
+  Future<void> ensureSuperAdminCreated();
+
+  /// Réinitialise directement le mot de passe d'un utilisateur (accès Admin / Support).
+  Future<void> adminResetUserPassword(String userId, String newPassword);
+
+  /// Réinitialise/modifie les identifiants complets d'un utilisateur (Nom, Mot de passe, Code secret).
+  Future<void> adminUpdateUserCredentials({
+    required String userId,
+    String? newFullName,
+    String? newPassword,
+    String? newRecoveryCode,
+  });
+
   /// Supprime l'utilisateur par ID (ou tout si réinitialisation).
   Future<void> deleteAccount();
 }

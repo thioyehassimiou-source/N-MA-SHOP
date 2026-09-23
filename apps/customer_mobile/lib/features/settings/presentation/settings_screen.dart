@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/nma_mobile_header.dart';
 import '../../auth/data/auth_service.dart';
 import '../../auth/presentation/auth_landing_screen.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
@@ -81,6 +82,76 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  void _showEditShopDialog() {
+    final nameCtrl = TextEditingController(text: _shopName);
+    final currencyCtrl = TextEditingController(text: _currency);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Modifier ma Boutique'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Renseignez les coordonnées de votre boutique :',
+              style: TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameCtrl,
+              decoration: InputDecoration(
+                labelText: 'Nom de la boutique',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                prefixIcon: const Icon(Icons.storefront_rounded),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: currencyCtrl,
+              decoration: InputDecoration(
+                labelText: 'Devise principale (ex: GNF, FCFA, USD)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                prefixIcon: const Icon(Icons.payments_rounded),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newName = nameCtrl.text.trim();
+              final newCurrency = currencyCtrl.text.trim();
+              Navigator.of(ctx).pop();
+              if (newName.isNotEmpty) {
+                final storage = ref.read(storageServiceProvider);
+                final currentPin = await storage.getLocalPin() ?? '1234';
+                await storage.saveLocalShop(
+                  shopName: newName,
+                  currency: newCurrency.isEmpty ? 'GNF' : newCurrency,
+                  pin: currentPin,
+                );
+                _loadSettings();
+                ref.read(dashboardControllerProvider.notifier).refresh();
+              }
+            },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+            child: const Text('Sauvegarder'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showEditServerUrlDialog() {
     final controller = TextEditingController(text: _serverUrl);
 
@@ -88,13 +159,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Modifier l\'URL du serveur API'),
+        title: const Text('Serveur de Sauvegarde Distant (Optionnel)'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Indiquez l\'adresse du backend Cloud ou du PC caisse en réseau local :',
+              'Indiquez l\'adresse du serveur cloud de sauvegarde distant si vous souhaitez synchroniser vos données localement :',
               style: TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
             ),
             const SizedBox(height: 12),
@@ -140,9 +211,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Dissocier cette boutique ?'),
+        title: const Text('Se déconnecter de la boutique ?'),
         content: const Text(
-          'Toutes les données en cache et vos clés d\'accès locales seront effacées. Vous devrez rescanner le QR code de la caisse pour vous reconnecter.',
+          'Votre session locale sera fermée. Vous pourrez vous reconnecter à tout moment sur ce smartphone avec votre code PIN.',
         ),
         actions: [
           TextButton(
@@ -163,7 +234,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Dissocier'),
+            child: const Text('Se déconnecter'),
           ),
         ],
       ),
@@ -174,17 +245,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        title: const Text(
-          'Paramètres & Configuration',
-          style: TextStyle(
-            color: AppColors.onSurface,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
+      appBar: const NmaMobileAppBar(
+        title: 'Paramètres & Configuration',
+        subtitle: 'Boutique, imprimantes & synchronisation',
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -251,23 +314,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.edit_rounded, color: Colors.white70),
+                  onPressed: _showEditShopDialog,
+                  tooltip: 'Modifier les informations de la boutique',
+                ),
               ],
             ),
           ),
           const SizedBox(height: 24),
 
-          // Section 1 : Synchronisation & Réseau
-          _buildSectionHeader('SYNCHRONISATION & CLOUD', Icons.cloud_sync_rounded),
+          // Section 1 : Mode de Fonctionnement Local & Réseau
+          _buildSectionHeader('MODE DE FONCTIONNEMENT & DONNÉES LOCALES', Icons.sd_storage_rounded),
           _buildCard(
             children: [
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.dns_outlined, color: AppColors.primary),
-                title: const Text('Serveur API Cloud', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                subtitle: Text(_serverUrl, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+                leading: const Icon(Icons.phonelink_setup_rounded, color: AppColors.brandEmerald),
+                title: const Text('Mode de fonctionnement', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text('100% Autonome Local (SQLite Drift sur ce smartphone)', style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.successContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text('100% Autonome', style: TextStyle(color: AppColors.brandEmerald, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const Divider(color: AppColors.border),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.cloud_queue_rounded, color: AppColors.brandNavy),
+                title: const Text('Serveur de Sauvegarde Distant (Optionnel)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                subtitle: Text(_serverUrl, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 trailing: TextButton(
                   onPressed: _showEditServerUrlDialog,
-                  child: const Text('Modifier', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text('Configurer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                 ),
               ),
               const Divider(color: AppColors.border),
@@ -277,7 +360,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('État de la connexion Cloud', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      const Text('Diagnostic Serveur Distant', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                       if (_pingResult != null)
                         Text(
                           _pingResult!,
@@ -294,7 +377,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: _isTestingPing
                         ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.network_ping_rounded, size: 16),
-                    label: const Text('Tester (Ping)', style: TextStyle(fontSize: 12)),
+                    label: const Text('Tester Ping', style: TextStyle(fontSize: 12)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.surfaceVariant,
                       foregroundColor: AppColors.brandNavy,
@@ -307,8 +390,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 activeThumbColor: AppColors.primary,
-                title: const Text('Économie de données 4G', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                subtitle: const Text('Optimise les paquets de données pour les zones à débit limité', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                title: const Text('Économie de données Mobile 4G', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                subtitle: const Text('Optimise les échanges réseau en cas de synchronisation distante', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 value: _dataSaverMode,
                 onChanged: (val) => setState(() => _dataSaverMode = val),
               ),

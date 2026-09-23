@@ -148,17 +148,18 @@ class AuthLandingScreen extends ConsumerWidget {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 20,
+                                  fontSize: 22,
                                   fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.5,
                                 ),
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'Gérez vos ventes, vos stocks, vos dettes et vos dépenses directement sur votre smartphone.',
+                                'Pilotez vos ventes, votre caisse, vos stocks et vos créances directement depuis votre smartphone Android.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.white70,
-                                  fontSize: 13,
+                                  fontSize: 12.5,
                                   height: 1.4,
                                 ),
                               ),
@@ -168,41 +169,54 @@ class AuthLandingScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
-                  // Groupe de Boutons d'Action (Ouvrir / Créer)
-                  SizedBox(
+                  // 1. BOUTON PRINCIPAL : ACCÉDER À MA BOUTIQUE (LOGIN)
+                  Container(
                     width: double.infinity,
-                    height: 54,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.brandOrange.withValues(alpha: 0.35),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
                     child: ElevatedButton.icon(
                       onPressed: () => _navigateToLogin(context),
-                      icon: const Icon(Icons.lock_open_rounded, color: Colors.white, size: 20),
+                      icon: const Icon(Icons.storefront_rounded, size: 22),
                       label: const Text(
                         'Ouvrir ma boutique',
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.brandOrange,
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 4,
-                        shadowColor: AppColors.brandOrange.withValues(alpha: 0.4),
                       ),
                     ),
                   ),
                   const SizedBox(height: 14),
 
+                  // 2. BOUTON SECONDAIRE : CRÉER UNE NOUVELLE BOUTIQUE (REGISTER)
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: OutlinedButton.icon(
                       onPressed: () => _navigateToRegister(context),
-                      icon: const Icon(Icons.storefront_rounded, color: AppColors.brandNavy, size: 20),
+                      icon: const Icon(Icons.add_business_rounded, size: 20, color: AppColors.brandNavy),
                       label: const Text(
                         'Créer une nouvelle boutique',
-                        style: TextStyle(color: AppColors.brandNavy, fontSize: 15, fontWeight: FontWeight.w800),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.brandNavy),
                       ),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.brandNavy, width: 1.8),
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 0,
                       ),

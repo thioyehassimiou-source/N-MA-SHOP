@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version de l'application (ex: 1.1.7)"
+        description: "Version de l'application (ex: 1.1.9)"
         required: false
-        default: "1.1.7"
+        default: "1.1.9"
   push:
     branches:
       - main
@@ -34,7 +34,7 @@ jobs:
             VERSION="${TAG#v}"
           fi
           if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
-            VERSION="1.1.7"
+            VERSION="1.1.9"
           fi
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 

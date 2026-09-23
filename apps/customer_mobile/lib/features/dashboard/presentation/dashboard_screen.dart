@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/brand_logo.dart';
 import '../../../../core/widgets/nma_mobile_card.dart';
+import '../../../../core/widgets/nma_mobile_header.dart';
 import '../../alerts/presentation/alerts_screen.dart';
+import '../../backup/presentation/backup_restore_screen.dart';
 import '../../receivables/presentation/receivables_screen.dart';
+import '../../suppliers/presentation/suppliers_screen.dart';
 import 'dashboard_controller.dart';
 import 'widgets/kpi_card.dart';
 import 'widgets/sync_freshness_badge.dart';
@@ -14,8 +18,9 @@ String formatGnfCompact(num amount) => '${AppFormatters.formatCompactNumber(amou
 
 class DashboardScreen extends ConsumerStatefulWidget {
   final Function(int tabIndex)? onNavigateToTab;
+  final VoidCallback? onOpenDrawer;
 
-  const DashboardScreen({super.key, this.onNavigateToTab});
+  const DashboardScreen({super.key, this.onNavigateToTab, this.onOpenDrawer});
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
@@ -40,64 +45,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleSpacing: 16,
-        shape: const Border(bottom: BorderSide(color: AppColors.outline, width: 1)),
-        title: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    shopName,
-                    style: const TextStyle(
-                      color: AppColors.onSurface,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: state.isOffline ? AppColors.warning : AppColors.brandEmerald,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        state.isOffline ? 'Mode Hors-ligne' : 'Synchro en direct',
-                        style: const TextStyle(
-                          color: AppColors.onSurfaceVariant,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+      appBar: NmaMobileAppBar(
+        showBrandLogo: true,
+        title: shopName,
+        subtitle: state.isOffline ? 'Mode Local (Hors-ligne)' : 'Synchro en direct',
+        onLeadingPressed: () {
+          if (widget.onOpenDrawer != null) {
+            widget.onOpenDrawer!();
+          } else {
+            Scaffold.of(context).openDrawer();
+          }
+        },
         actions: [
           IconButton(
             onPressed: () {
@@ -108,7 +66,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.notifications_none_rounded, color: AppColors.onSurface, size: 22),
+                const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
                 if (data != null && data.unreadAlertsCount > 0)
                   Positioned(
                     right: -2,
@@ -132,9 +90,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           IconButton(
             onPressed: () => ref.read(dashboardControllerProvider.notifier).refresh(),
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.onSurface, size: 22),
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
           ),
-          const SizedBox(width: 6),
         ],
       ),
       body: RefreshIndicator(
@@ -145,17 +102,45 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             : ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // 1. Badge Fraîcheur Synchro
-                  Center(
-                    child: SyncFreshnessBadge(
-                      lastSyncTime: data?.shop.lastSyncAt,
-                      isOffline: state.isOffline,
-                      onRefresh: () => ref.read(dashboardControllerProvider.notifier).refresh(),
+                  // 1. Barre de Recherche Rapide (style poster mobile officiel)
+                  GestureDetector(
+                    onTap: () => widget.onNavigateToTab?.call(1),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.outline),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x0A000000),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.search_rounded, color: AppColors.secondary, size: 20),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Rechercher un produit, client ou référence...',
+                              style: TextStyle(
+                                color: AppColors.secondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
-                  // 2. HERO CARD NAVY (Conforme au Desktop _PageHeader)
+                  // 2. HERO CARD NAVY (Patron & Synthèse)
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -178,18 +163,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: AppColors.brandEmerald.withValues(alpha: 0.2),
+                                color: (state.isOffline ? AppColors.warning : AppColors.brandEmerald).withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: AppColors.brandEmerald.withValues(alpha: 0.5)),
+                                border: Border.all(
+                                  color: (state.isOffline ? AppColors.warning : AppColors.brandEmerald).withValues(alpha: 0.5),
+                                ),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.circle, size: 6, color: AppColors.brandEmerald),
-                                  SizedBox(width: 6),
+                                  Icon(
+                                    Icons.circle,
+                                    size: 6,
+                                    color: state.isOffline ? AppColors.warning : AppColors.brandEmerald,
+                                  ),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    'EN LIGNE',
-                                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                    state.isOffline ? 'MODE HORS-LIGNE (LOCAL)' : 'SYNCHRO EN DIRECT',
+                                    style: TextStyle(
+                                      color: state.isOffline ? AppColors.warning : Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -201,9 +196,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'Bonjour, Patron ! 👋',
-                          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                        Text(
+                          'Bonjour, ${data?.shop.name ?? "Patron"} ! 👋',
+                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         const Text(
@@ -231,6 +226,73 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               ),
                             ),
                           ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // 3. MODULES CLÉS EN BARRERETTES (Style Poster Mobile)
+                  SizedBox(
+                    height: 90,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      children: [
+                        _CategoryPillTile(
+                          label: 'Ventes',
+                          icon: Icons.add_shopping_cart_rounded,
+                          color: AppColors.brandOrange,
+                          bgColor: AppColors.primaryContainer,
+                          onTap: () => widget.onNavigateToTab?.call(1),
+                        ),
+                        _CategoryPillTile(
+                          label: 'Caisse',
+                          icon: Icons.account_balance_wallet_rounded,
+                          color: AppColors.iconGreen,
+                          bgColor: AppColors.iconGreenBg,
+                          onTap: () => widget.onNavigateToTab?.call(2),
+                        ),
+                        _CategoryPillTile(
+                          label: 'Stock',
+                          icon: Icons.inventory_2_rounded,
+                          color: AppColors.iconNavy,
+                          bgColor: AppColors.iconNavyBg,
+                          onTap: () => widget.onNavigateToTab?.call(3),
+                        ),
+                        _CategoryPillTile(
+                          label: 'Crédits',
+                          icon: Icons.credit_card_rounded,
+                          color: AppColors.iconOrange,
+                          bgColor: AppColors.iconOrangeBg,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const ReceivablesScreen()),
+                            );
+                          },
+                        ),
+                        _CategoryPillTile(
+                          label: 'Achats',
+                          icon: Icons.local_shipping_rounded,
+                          color: AppColors.iconPurple,
+                          bgColor: AppColors.iconPurpleBg,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const SuppliersScreen()),
+                            );
+                          },
+                        ),
+                        _CategoryPillTile(
+                          label: 'Sauvegarde',
+                          icon: Icons.cloud_download_rounded,
+                          color: AppColors.iconTeal,
+                          bgColor: AppColors.iconTealBg,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const BackupRestoreScreen()),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -497,3 +559,65 @@ class _PaymentMethodRow extends StatelessWidget {
     );
   }
 }
+
+class _CategoryPillTile extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+  final VoidCallback onTap;
+
+  const _CategoryPillTile({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.bgColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 76,
+      margin: const EdgeInsets.only(right: 12),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+

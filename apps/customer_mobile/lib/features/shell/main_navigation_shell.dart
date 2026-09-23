@@ -4,12 +4,14 @@ import '../../../core/theme/app_colors.dart';
 import '../alerts/presentation/alerts_screen.dart';
 import '../auth/data/auth_service.dart';
 import '../auth/presentation/auth_landing_screen.dart';
+import '../backup/presentation/backup_restore_screen.dart';
 import '../dashboard/presentation/dashboard_screen.dart';
 import '../onboarding/presentation/onboarding_screen.dart';
 import '../receivables/presentation/receivables_screen.dart';
 import '../sales/presentation/sales_screen.dart';
 import '../settings/presentation/settings_screen.dart';
 import '../stock/presentation/stock_screen.dart';
+import '../suppliers/presentation/suppliers_screen.dart';
 import '../treasury/presentation/treasury_screen.dart';
 
 class MainNavigationShell extends ConsumerStatefulWidget {
@@ -21,15 +23,23 @@ class MainNavigationShell extends ConsumerStatefulWidget {
 
 class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
   int _currentIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   void _navigateToTab(int index) {
     setState(() => _currentIndex = index);
   }
 
+  void _openDrawer() {
+    _scaffoldKey.currentState?.openDrawer();
+  }
+
   @override
   Widget build(BuildContext context) {
     final screens = [
-      DashboardScreen(onNavigateToTab: _navigateToTab),
+      DashboardScreen(
+        onNavigateToTab: _navigateToTab,
+        onOpenDrawer: _openDrawer,
+      ),
       const SalesScreen(),
       const TreasuryScreen(),
       const StockScreen(),
@@ -37,17 +47,20 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
     ];
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _currentIndex,
         children: screens,
       ),
       drawer: Drawer(
-        backgroundColor: AppColors.surfaceContainerLowest,
+        backgroundColor: Colors.white,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
+            // Header Patron & Boutique
             DrawerHeader(
+              margin: EdgeInsets.zero,
               decoration: const BoxDecoration(
                 gradient: AppColors.heroNavyGradient,
               ),
@@ -55,65 +68,160 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 26),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.brandOrange.withValues(alpha: 0.4)),
+                        ),
+                        child: const Icon(Icons.storefront_rounded, color: AppColors.brandOrange, size: 26),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'N\'MaShop Mobile',
+                              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'Écosystème Commercial Local',
+                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'N\'MaShop Mobile',
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Text(
-                    'Gestion Commerciale & Caisse POS',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.brandEmerald.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_rounded, size: 12, color: AppColors.brandEmerald),
+                        SizedBox(width: 6),
+                        Text(
+                          'MODE 100% AUTONOME LOCAL',
+                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
+
+            const SizedBox(height: 8),
+
+            // SECTION 1 : GESTION COMMERCIALE
+            _buildDrawerSectionHeader('GESTION COMMERCIALE'),
             ListTile(
-              leading: const Icon(Icons.notifications_active_outlined, color: AppColors.brandOrange),
-              title: const Text('Centre d\'alertes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              subtitle: const Text('Ruptures de stock & alertes caisse', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              leading: const Icon(Icons.receipt_long_rounded, color: AppColors.brandOrange),
+              title: const Text('Ventes & Encaissement POS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Comptoir, factures & tickets de caisse', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              onTap: () {
+                Navigator.of(context).pop();
+                _navigateToTab(1);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.inventory_2_rounded, color: AppColors.brandEmerald),
+              title: const Text('Catalogue & Stocks', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Articles, prix & mouvements d\'inventaire', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              onTap: () {
+                Navigator.of(context).pop();
+                _navigateToTab(3);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.people_alt_rounded, color: AppColors.warning),
+              title: const Text('Créances & Clients Débiteurs', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Argent dehors & relances règlements', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceivablesScreen()));
+              },
+            ),
+
+            const Divider(color: AppColors.border, height: 24),
+
+            // SECTION 2 : FINANCES & LOGISTIQUE
+            _buildDrawerSectionHeader('FINANCES & LOGISTIQUE'),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.brandNavy),
+              title: const Text('Caisse & Trésorerie', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Solde théorique & saisie des dépenses', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              onTap: () {
+                Navigator.of(context).pop();
+                _navigateToTab(2);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.local_shipping_rounded, color: Color(0xFF6366F1)),
+              title: const Text('Fournisseurs & Achats', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Approvisionnements & dettes grossistes', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SuppliersScreen()));
+              },
+            ),
+
+            const Divider(color: AppColors.border, height: 24),
+
+            // SECTION 3 : SYSTÈME & OUTILS PATRON
+            _buildDrawerSectionHeader('SYSTÈME & CONFIGURATION'),
+            ListTile(
+              leading: const Icon(Icons.notifications_active_rounded, color: AppColors.error),
+              title: const Text('Centre d\'Alertes & Ruptures', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Notifications de stock min & caisse', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
               onTap: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AlertsScreen()));
               },
             ),
             ListTile(
-              leading: const Icon(Icons.people_alt_outlined, color: AppColors.brandNavy),
-              title: const Text('Créances & Débiteurs', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              subtitle: const Text('Suivi des clients à crédit', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              leading: const Icon(Icons.backup_rounded, color: Color(0xFF0EA5E9)),
+              title: const Text('Sauvegarde & Restauration', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Exportation SQLite locale sécurisée', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
               onTap: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceivablesScreen()));
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BackupRestoreScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings_rounded, color: Color(0xFF64748B)),
+              title: const Text('Paramètres de la boutique', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Informations, devise & code PIN', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              onTap: () {
+                Navigator.of(context).pop();
+                _navigateToTab(4);
               },
             ),
             ListTile(
               leading: const Icon(Icons.help_outline_rounded, color: AppColors.brandEmerald),
-              title: const Text('Guide de bienvenue', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              subtitle: const Text('Présentation des fonctionnalités', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              title: const Text('Guide Commercial Onboarding', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Présentation des 5 piliers N\'MaShop', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
               onTap: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OnboardingScreen()));
               },
             ),
-            const Divider(color: AppColors.outline),
+
+            const Divider(color: AppColors.border, height: 24),
+
+            // Déconnexion
             ListTile(
-              leading: const Icon(Icons.settings_outlined, color: AppColors.onSurface),
-              title: const Text('Paramètres de l\'application', style: TextStyle(fontSize: 13)),
-              onTap: () {
-                Navigator.of(context).pop();
-                setState(() => _currentIndex = 4);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: AppColors.error),
-              title: const Text('Dissocier cette boutique', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 13)),
+              leading: const Icon(Icons.logout_rounded, color: AppColors.error),
+              title: const Text('Se déconnecter de la boutique', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 13)),
               onTap: () async {
                 Navigator.of(context).pop();
                 await ref.read(authServiceProvider).logout();
@@ -124,6 +232,7 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
                 );
               },
             ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -154,6 +263,21 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, top: 12, bottom: 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+          color: AppColors.onSurfaceVariant,
+          letterSpacing: 1.0,
         ),
       ),
     );

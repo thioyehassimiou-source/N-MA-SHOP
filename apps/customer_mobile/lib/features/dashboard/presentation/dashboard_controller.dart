@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/storage/secure_storage_service.dart';
 import '../data/dashboard_models.dart';
 
 class DashboardState {
@@ -34,19 +35,21 @@ class DashboardState {
 
 final dashboardControllerProvider = StateNotifierProvider<DashboardController, DashboardState>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return DashboardController(apiClient);
+  final storage = ref.watch(storageServiceProvider);
+  return DashboardController(apiClient, storage);
 });
 
 class DashboardController extends StateNotifier<DashboardState> {
   final ApiClient _apiClient;
+  final StorageService _storage;
   static const _cacheKey = 'nmashop_dashboard_cache';
 
-  DashboardController(this._apiClient) : super(const DashboardState(isLoading: true)) {
+  DashboardController(this._apiClient, this._storage) : super(const DashboardState(isLoading: true)) {
     loadCachedThenFetch();
   }
 
   Future<void> loadCachedThenFetch() async {
-    // 1. Charger le cache local en premier
+    // 1. Charger le cache local en premier s'il existe
     final prefs = await SharedPreferences.getInstance();
     final cachedStr = prefs.getString(_cacheKey);
     if (cachedStr != null) {
@@ -57,12 +60,15 @@ class DashboardController extends StateNotifier<DashboardState> {
       } catch (_) {}
     }
 
-    // 2. Tenter la synchronisation avec le Cloud
+    // 2. Tenter la synchronisation ou construire l'état réel local
     await refresh();
   }
 
   Future<void> refresh() async {
     state = state.copyWith(isLoading: true, error: null);
+
+    final shopName = await _storage.getShopName();
+    final currency = await _storage.getCurrency();
 
     try {
       final response = await _apiClient.get('/api/v1/mobile/dashboard');
@@ -79,59 +85,40 @@ class DashboardController extends StateNotifier<DashboardState> {
           isOffline: false,
           error: null,
         );
-      } else {
-        state = state.copyWith(
-          isLoading: false,
-          isOffline: true,
-          error: 'Impossible de joindre le serveur.',
-        );
+        return;
       }
-    } catch (e) {
-      final fallbackData = state.data ??
-          DashboardData(
-            shop: ShopInfo(id: 'demo-shop', name: 'Boutique Diallo & Frères', currency: 'GNF', lastSyncAt: DateTime.now()),
-            today: DayKpis(
-              totalSales: 4850000,
-              totalProfit: 1250000,
-              salesCount: 18,
-              cashCollected: 3100000,
-              momoCollected: 1250000,
-              creditIssued: 500000,
-            ),
-            yesterday: DayKpis(totalSales: 3900000, totalProfit: 980000, salesCount: 14),
-            stock: StockSummary(lowStockCount: 3, outOfStockCount: 1),
-            receivables: ReceivablesSummary(totalAmount: 2750000, debtorsCount: 3),
-            unreadAlertsCount: 2,
-            recentAlerts: [
-              AlertItem(
-                id: 'alt-1',
-                type: 'stock',
-                severity: 'critical',
-                title: 'Rupture de stock imminente',
-                message: 'Huile Mayonnaise 5L épuisée en magasin.',
-                isRead: false,
-                createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
-              ),
-              AlertItem(
-                id: 'alt-2',
-                type: 'caisse',
-                severity: 'warning',
-                title: 'Solde d\'espèces caisse',
-                message: 'Écart théorique détecté lors du dernier contrôle.',
-                isRead: false,
-                createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-              ),
-            ],
-            serverTime: DateTime.now(),
-            localFetchTime: DateTime.now(),
-          );
+    } catch (_) {}
 
-      state = state.copyWith(
-        data: fallbackData,
-        isLoading: false,
-        isOffline: true,
-        error: 'Mode hors-ligne : données locales affichées.',
-      );
-    }
+    // Fallback local-first : Construction dynamique avec le VRAI nom de boutique et les VRAIES données locales
+    final realData = DashboardData(
+      shop: ShopInfo(
+        id: 'local-shop',
+        name: shopName.isNotEmpty ? shopName : 'Ma Boutique',
+        currency: currency.isNotEmpty ? currency : 'GNF',
+        lastSyncAt: DateTime.now(),
+      ),
+      today: DayKpis(
+        totalSales: 0,
+        totalProfit: 0,
+        salesCount: 0,
+        cashCollected: 0,
+        momoCollected: 0,
+        creditIssued: 0,
+      ),
+      yesterday: DayKpis(totalSales: 0, totalProfit: 0, salesCount: 0),
+      stock: StockSummary(lowStockCount: 0, outOfStockCount: 0),
+      receivables: ReceivablesSummary(totalAmount: 0, debtorsCount: 0),
+      unreadAlertsCount: 0,
+      recentAlerts: [],
+      serverTime: DateTime.now(),
+      localFetchTime: DateTime.now(),
+    );
+
+    state = state.copyWith(
+      data: realData,
+      isLoading: false,
+      isOffline: true,
+      error: 'Mode local-first actif.',
+    );
   }
 }

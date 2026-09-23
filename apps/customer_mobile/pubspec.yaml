@@ -19,11 +19,18 @@ dependencies:
   mobile_scanner: ^6.0.4
   fl_chart: ^0.70.2
   url_launcher: ^6.3.1
+  drift: ^2.34.1
+  sqlite3: ^3.3.4
+  sqlite3_flutter_libs: ^0.6.0+eol
+  path_provider: ^2.1.6
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  drift_dev: ^2.34.0
+  build_runner: ^2.15.0
 
 flutter:
   uses-material-design: true
