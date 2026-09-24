@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/brand_logo.dart';
 import '../../../../core/widgets/nma_mobile_card.dart';
 import '../../../../core/widgets/nma_mobile_header.dart';
 import '../../alerts/presentation/alerts_screen.dart';
@@ -11,7 +10,6 @@ import '../../receivables/presentation/receivables_screen.dart';
 import '../../suppliers/presentation/suppliers_screen.dart';
 import 'dashboard_controller.dart';
 import 'widgets/kpi_card.dart';
-import 'widgets/sync_freshness_badge.dart';
 
 String formatGnf(num amount) => AppFormatters.formatCurrency(amount);
 String formatGnfCompact(num amount) => '${AppFormatters.formatCompactNumber(amount)} GNF';
@@ -57,40 +55,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           }
         },
         actions: [
-          IconButton(
+          NmaMobileHeaderAction(
+            icon: Icons.notifications_none_rounded,
+            tooltip: 'Alertes',
+            badgeCount: data?.unreadAlertsCount ?? 0,
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const AlertsScreen()),
               );
             },
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 22),
-                if (data != null && data.unreadAlertsCount > 0)
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.error,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
-                      child: Text(
-                        '${data.unreadAlertsCount}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
           ),
-          IconButton(
+          NmaMobileHeaderAction(
+            icon: Icons.refresh_rounded,
+            tooltip: 'Actualiser',
             onPressed: () => ref.read(dashboardControllerProvider.notifier).refresh(),
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
           ),
         ],
       ),
@@ -100,53 +78,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: state.isLoading && data == null
             ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
             : ListView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.zero,
                 children: [
-                  // 1. Barre de Recherche Rapide (style poster mobile officiel)
-                  GestureDetector(
-                    onTap: () => widget.onNavigateToTab?.call(1),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.outline),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x0A000000),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.search_rounded, color: AppColors.secondary, size: 20),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Rechercher un produit, client ou référence...',
-                              style: TextStyle(
-                                color: AppColors.secondary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 2. HERO CARD NAVY (Patron & Synthèse)
+                  // 1. BLOC HERO & BARRE DE RECHERCHE UNIFIÉE (FOND NAVY CONTINU)
                   Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
                       gradient: AppColors.heroNavyGradient,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(24),
+                        bottomRight: Radius.circular(24),
+                      ),
+                      boxShadow: [
                         BoxShadow(
                           color: Color(0x330F1B3D),
                           blurRadius: 16,
@@ -154,9 +97,45 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                       ],
                     ),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Barre de Recherche Rapide (Design Navy Glassmorphe Unifié)
+                        GestureDetector(
+                          onTap: () => widget.onNavigateToTab?.call(1),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.18),
+                                width: 1,
+                              ),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.search_rounded, color: Colors.white70, size: 20),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Rechercher un produit, client ou référence...',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Badge Statut & Nb Ventes
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -195,7 +174,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                         Text(
                           'Bonjour, ${data?.shop.name ?? "Patron"} ! 👋',
                           style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
@@ -205,7 +184,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           'Voici le résumé de votre commerce aujourd\'hui',
                           style: TextStyle(color: Colors.white70, fontSize: 12),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 18),
                         Row(
                           children: [
                             Expanded(
@@ -231,10 +210,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
-
-                  // 3. MODULES CLÉS EN BARRERETTES (Style Poster Mobile)
-                  SizedBox(
+                  // 2. RESTE DU CONTENU AVEC PADDING DE 16PX
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 3. MODULES CLÉS EN BARRERETTES (Style Poster Mobile)
+                        SizedBox(
                     height: 90,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
@@ -452,6 +435,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
       ),
     );
   }

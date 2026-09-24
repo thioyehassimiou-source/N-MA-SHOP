@@ -60,7 +60,7 @@ class AuthLandingScreen extends ConsumerWidget {
                   const BrandLogo(height: 44, showCard: false),
                   const SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: BoxDecoration(
                       color: AppColors.brandNavy.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(20),
@@ -69,15 +69,19 @@ class AuthLandingScreen extends ConsumerWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Icon(Icons.phone_android_rounded, color: AppColors.brandNavy, size: 14),
-                        SizedBox(width: 6),
-                        Text(
-                          'N\'MASHOP MOBILE • GESTION COMMERCIAL & CAISSE',
-                          style: TextStyle(
-                            color: AppColors.brandNavy,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.8,
+                        Icon(Icons.phone_android_rounded, color: AppColors.brandNavy, size: 13),
+                        SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            'N\'MASHOP MOBILE • GESTION COMMERCIALE & CAISSE',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.brandNavy,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
                       ],

@@ -37,8 +37,9 @@ class AlertsScreen extends ConsumerWidget {
         onLeadingPressed: () => Navigator.of(context).maybePop(),
         leadingIcon: Icons.arrow_back_rounded,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+          NmaMobileHeaderAction(
+            icon: Icons.refresh_rounded,
+            tooltip: 'Actualiser',
             onPressed: () => ref.invalidate(alertsDataProvider),
           ),
         ],

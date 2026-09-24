@@ -1,48 +1,79 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/network/api_client.dart';
+import 'package:drift/drift.dart' as drift;
+import '../../../../core/database/mobile_database.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/nma_mobile_header.dart';
 
-final customExpensesProvider = StateProvider<List<Map<String, dynamic>>>((ref) => []);
-
 final treasuryDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  final apiClient = ref.watch(apiClientProvider);
-  final addedExpenses = ref.watch(customExpensesProvider);
+  final db = ref.watch(mobileDatabaseProvider);
 
-  Map<String, dynamic> baseData;
-  try {
-    final res = await apiClient.get('/api/v1/mobile/treasury');
-    baseData = res.data as Map<String, dynamic>;
-  } catch (_) {
-    baseData = {
-      'theoreticalCashInHand': 0,
-      'momoCollectedToday': 0,
-      'expensesToday': 0,
-      'recentExpenses': <Map<String, dynamic>>[],
-      'recentMovements': <Map<String, dynamic>>[],
-    };
+  List<MobileExpense> expenses = await db.select(db.mobileExpenses).get();
+  List<MobileSale> sales = await db.select(db.mobileSales).get();
+
+  // Si aucune dépense en BDD locale au premier démarrage, insérer 2 exemples
+  if (expenses.isEmpty) {
+    final now = DateTime.now();
+    final e1 = MobileExpensesCompanion.insert(
+      id: 'exp-${now.millisecondsSinceEpoch}-1',
+      title: 'Transport Réassort Marchandises',
+      amount: const drift.Value(25000),
+      category: const drift.Value('Transport'),
+      note: const drift.Value('Taxi-bagage grand marché'),
+    );
+    final e2 = MobileExpensesCompanion.insert(
+      id: 'exp-${now.millisecondsSinceEpoch}-2',
+      title: 'Achat Sacs Emballages Plastiques',
+      amount: const drift.Value(15000),
+      category: const drift.Value('Divers'),
+      note: const drift.Value('100 sacs imprimés N\'MaShop'),
+    );
+    await db.into(db.mobileExpenses).insert(e1);
+    await db.into(db.mobileExpenses).insert(e2);
+    expenses = await db.select(db.mobileExpenses).get();
   }
 
-  if (addedExpenses.isNotEmpty) {
-    final exps = List<Map<String, dynamic>>.from(baseData['recentExpenses'] ?? []);
-    var theoretical = (baseData['theoreticalCashInHand'] as num?) ?? 0;
-    var totalExpToday = (baseData['expensesToday'] as num?) ?? 0;
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
 
-    for (final exp in addedExpenses) {
-      exps.insert(0, exp);
-      final amt = (exp['amount'] as num?) ?? 0;
-      theoretical -= amt;
-      totalExpToday += amt;
+  int cashCollectedToday = 0;
+  int momoCollectedToday = 0;
+
+  for (final s in sales) {
+    if (s.date.isAfter(todayStart) || s.date.isAtSameMomentAs(todayStart)) {
+      if (s.paymentMethod == 0) {
+        cashCollectedToday += s.amountPaid;
+      } else if (s.paymentMethod == 1 || s.paymentMethod == 2 || s.paymentMethod == 3) {
+        momoCollectedToday += s.amountPaid;
+      }
     }
-
-    baseData['recentExpenses'] = exps;
-    baseData['theoreticalCashInHand'] = theoretical;
-    baseData['expensesToday'] = totalExpToday;
   }
 
-  return baseData;
+  int totalExpensesToday = 0;
+  for (final e in expenses) {
+    if (e.createdAt.isAfter(todayStart) || e.createdAt.isAtSameMomentAs(todayStart)) {
+      totalExpensesToday += e.amount;
+    }
+  }
+
+  int theoreticalCash = (cashCollectedToday - totalExpensesToday).clamp(0, 999999999);
+
+  final recentExps = expenses.reversed.map((e) => {
+        'id': e.id,
+        'title': e.title,
+        'amount': e.amount,
+        'category': e.category,
+        'note': e.note ?? '',
+        'date': AppFormatters.formatDateTime(e.createdAt),
+      }).toList();
+
+  return {
+    'theoreticalCashInHand': theoreticalCash,
+    'momoCollectedToday': momoCollectedToday,
+    'expensesToday': totalExpensesToday,
+    'recentExpenses': recentExps,
+  };
 });
 
 class TreasuryScreen extends ConsumerWidget {
@@ -58,13 +89,15 @@ class TreasuryScreen extends ConsumerWidget {
         title: 'Suivi de Caisse & Trésorerie',
         subtitle: 'Bilan des flux & dépenses',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+          NmaMobileHeaderAction(
+            icon: Icons.refresh_rounded,
+            tooltip: 'Actualiser',
             onPressed: () => ref.invalidate(treasuryDataProvider),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_treasury',
         onPressed: () => _showAddExpenseModal(context, ref),
         backgroundColor: AppColors.error,
         icon: const Icon(Icons.receipt_rounded, color: Colors.white),
@@ -95,263 +128,175 @@ class TreasuryScreen extends ConsumerWidget {
           final momoToday = data['momoCollectedToday'] ?? 0;
           final expensesToday = data['expensesToday'] ?? 0;
           final expenses = (data['recentExpenses'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-          final movements = (data['recentMovements'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(treasuryDataProvider),
-            color: AppColors.primary,
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // Carte Solde Espèces Théorique
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.onSurface,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.account_balance_wallet_outlined, color: Colors.white70, size: 18),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'SOLDE THÉORIQUE EN ESPÈCES',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        AppFormatters.formatCurrency(theoreticalCash),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Total théorique calculé depuis les encaissements caisse, entrées et sorties déclarées.',
-                        style: TextStyle(color: Colors.white60, fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Ligne des sous-totaux MoMo et Dépenses
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Mobile Money reçu', style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
-                            const SizedBox(height: 6),
-                            Text(
-                              AppFormatters.formatCompactNumber(momoToday),
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.brandOrange),
-                            ),
-                            const SizedBox(height: 2),
-                            Text('$momoToday GNF', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Dépenses du jour', style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
-                            const SizedBox(height: 6),
-                            Text(
-                              AppFormatters.formatCompactNumber(expensesToday),
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.error),
-                            ),
-                            const SizedBox(height: 2),
-                            Text('$expensesToday GNF', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                          ],
-                        ),
-                      ),
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+            children: [
+              // Solde de caisse théorique
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: AppColors.heroNavyGradient,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.brandNavy.withValues(alpha: 0.2),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-
-                // Section Dépenses récentes
-                const Text(
-                  'Dernières dépenses déclarées',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('SOLDE THÉORIQUE CAISSE ESPÈCES', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                        Icon(Icons.account_balance_wallet_rounded, color: Colors.white70, size: 20),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      AppFormatters.formatCurrency(theoreticalCash),
+                      style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Calculé automatiquement : (Ventes Espèces - Dépenses du jour)',
+                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
+              ),
+              const SizedBox(height: 12),
 
-                if (expenses.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    alignment: Alignment.center,
-                    child: const Text('Aucune dépense enregistrée récemment.', style: TextStyle(color: AppColors.textMuted)),
-                  )
-                else
-                  ...expenses.map((exp) => _buildExpenseTile(exp)),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricBox(
+                      'Encaissé Mobile Money',
+                      AppFormatters.formatCurrency(momoToday),
+                      Icons.phone_android_rounded,
+                      const Color(0xFF2563EB),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildMetricBox(
+                      'Dépenses du Jour',
+                      AppFormatters.formatCurrency(expensesToday),
+                      Icons.trending_down_rounded,
+                      AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
 
-                const SizedBox(height: 20),
+              const Text(
+                'HISTORIQUE DES DÉPENSES',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.brandNavy, letterSpacing: 0.8),
+              ),
+              const SizedBox(height: 8),
 
-                // Section Mouvements de caisse
-                const Text(
-                  'Mouvements manuels de caisse',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+              if (expenses.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: const [
+                      Icon(Icons.receipt_long_outlined, size: 40, color: AppColors.textMuted),
+                      SizedBox(height: 8),
+                      Text('Aucune dépense enregistrée', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
+                    ],
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: expenses.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final exp = expenses[index];
+                    return _buildExpenseCard(exp);
+                  },
                 ),
-                const SizedBox(height: 12),
-
-                if (movements.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    alignment: Alignment.center,
-                    child: const Text('Aucun mouvement manuel récent.', style: TextStyle(color: AppColors.textMuted)),
-                  )
-                else
-                  ...movements.map((mvt) => _buildMovementTile(mvt)),
-              ],
-            ),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _buildExpenseTile(Map<String, dynamic> exp) {
-    final amount = exp['amount'] ?? 0;
-    final date = DateTime.tryParse(exp['createdAt'] ?? '') ?? DateTime.now();
-
+  Widget _buildMetricBox(String title, String value, IconData icon, Color color) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.outline.withValues(alpha: 0.6)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: AppColors.errorContainer, borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.arrow_upward_rounded, size: 16, color: AppColors.error),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    exp['description'] != null && (exp['description'] as String).isNotEmpty
-                        ? exp['description']
-                        : exp['reference'] ?? 'Dépense',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.onSurface),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${exp['reference']} • ${AppFormatters.formatTime(date)}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                  ),
-                ],
-              ),
+              Expanded(child: Text(title, style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Icon(icon, size: 16, color: color),
             ],
           ),
-          Text(
-            '-${AppFormatters.formatCurrency(amount)}',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.error),
-          ),
+          const SizedBox(height: 6),
+          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
         ],
       ),
     );
   }
 
-  Widget _buildMovementTile(Map<String, dynamic> mvt) {
-    final isEntry = (mvt['typeIndex'] ?? 0) == 0;
-    final amount = mvt['amount'] ?? 0;
+  Widget _buildExpenseCard(Map<String, dynamic> exp) {
+    final title = exp['title'] as String? ?? '';
+    final amount = (exp['amount'] as num?) ?? 0;
+    final cat = exp['category'] as String? ?? 'Divers';
+    final date = exp['date'] as String? ?? '';
+    final note = exp['note'] as String? ?? '';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.outline.withValues(alpha: 0.6)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isEntry ? AppColors.successContainer : AppColors.warningContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  isEntry ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
-                  size: 16,
-                  color: isEntry ? AppColors.success : AppColors.warning,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    mvt['description'] != null && (mvt['description'] as String).isNotEmpty
-                        ? mvt['description']
-                        : (isEntry ? 'Entrée de fonds' : 'Sortie de fonds'),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.onSurface),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(mvt['reference'] ?? 'MVT', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                ],
-              ),
-            ],
-          ),
-          Text(
-            '${isEntry ? '+' : '-'}${AppFormatters.formatCurrency(amount)}',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-              color: isEntry ? AppColors.success : AppColors.warning,
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: const Icon(Icons.output_rounded, color: AppColors.error, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.onSurface)),
+                const SizedBox(height: 2),
+                Text('$cat • $date ${note.isNotEmpty ? "• $note" : ""}', style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '- ${AppFormatters.formatCurrency(amount)}',
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: AppColors.error),
           ),
         ],
       ),
@@ -359,125 +304,177 @@ class TreasuryScreen extends ConsumerWidget {
   }
 
   void _showAddExpenseModal(BuildContext context, WidgetRef ref) {
-    final descCtrl = TextEditingController();
+    final titleCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
+    String selectedCategory = 'Transport';
+
+    final categories = ['Transport', 'Loyer', 'Électricité', 'Salaire', 'Approvisionnement', 'Sacs/Emballages', 'Divers'];
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.errorContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.receipt_long_rounded, color: AppColors.error, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('SORTIE DE CAISSE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.error, letterSpacing: 1.0)),
-                        Text('Déclarer une Dépense', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.brandNavy)),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                TextField(
-                  controller: descCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Motif / Libellé de la dépense',
-                    hintText: 'ex: Achat fournitures bureau',
-                    prefixIcon: const Icon(Icons.description_outlined),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                TextField(
-                  controller: amountCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Montant décaissé (GNF)',
-                    hintText: 'ex: 50000',
-                    prefixIcon: const Icon(Icons.remove_circle_outline_rounded),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                ElevatedButton(
-                  onPressed: () {
-                    final desc = descCtrl.text.trim();
-                    final amount = num.tryParse(amountCtrl.text.trim()) ?? 0;
-
-                    if (amount <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Veuillez saisir un montant valide (> 0 GNF)')),
-                      );
-                      return;
-                    }
-
-                    final refNum = 'DEP-${(DateTime.now().millisecondsSinceEpoch % 1000).toString().padLeft(3, '0')}';
-                    final newExpense = {
-                      'id': 'exp-${DateTime.now().millisecondsSinceEpoch}',
-                      'reference': refNum,
-                      'description': desc.isNotEmpty ? desc : 'Dépense de caisse',
-                      'amount': amount,
-                      'createdAt': DateTime.now().toIso8601String(),
-                    };
-
-                    ref.read(customExpensesProvider.notifier).update((state) => [newExpense, ...state]);
-                    ref.invalidate(treasuryDataProvider);
-
-                    Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Dépense de ${AppFormatters.formatCurrency(amount)} enregistrée avec succès !'),
-                        backgroundColor: AppColors.success,
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.error,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Enregistrer la dépense', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                ),
-              ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateModal) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-          ),
-        ),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              16,
+              20,
+              MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.receipt_rounded, color: AppColors.error, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('SORTIE DE CAISSE', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppColors.error, letterSpacing: 0.8)),
+                          Text('Saisir une Dépense', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.brandNavy)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: titleCtrl,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      labelText: 'Motif / Intitulé de la dépense *',
+                      hintText: 'ex: Transport réassort grossiste',
+                      prefixIcon: const Icon(Icons.edit_note_rounded),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextField(
+                          controller: amountCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Montant (GNF) *',
+                            hintText: 'ex: 25000',
+                            prefixIcon: const Icon(Icons.monetization_on_outlined),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedCategory,
+                          decoration: InputDecoration(
+                            labelText: 'Catégorie',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          ),
+                          items: categories
+                              .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 12))))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) setStateModal(() => selectedCategory = val);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: noteCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Note / Justificatif (optionnel)',
+                      hintText: 'ex: Reçu N° 4029',
+                      prefixIcon: const Icon(Icons.note_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  ElevatedButton(
+                    onPressed: () async {
+                      final title = titleCtrl.text.trim();
+                      final amount = int.tryParse(amountCtrl.text.trim()) ?? 0;
+
+                      if (title.isEmpty || amount <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Veuillez renseigner un motif et un montant valide')),
+                        );
+                        return;
+                      }
+
+                      final db = ref.read(mobileDatabaseProvider);
+
+                      final newExp = MobileExpensesCompanion.insert(
+                        id: 'exp-${DateTime.now().millisecondsSinceEpoch}',
+                        title: title,
+                        amount: drift.Value(amount),
+                        category: drift.Value(selectedCategory),
+                        note: drift.Value(noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null),
+                      );
+
+                      await db.into(db.mobileExpenses).insert(newExp);
+                      ref.invalidate(treasuryDataProvider);
+
+                      if (!ctx.mounted) return;
+                      Navigator.of(ctx).pop();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Dépense "$title" de ${AppFormatters.formatCurrency(amount)} enregistrée !'),
+                          backgroundColor: AppColors.brandEmerald,
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Valider la dépense', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 }
-

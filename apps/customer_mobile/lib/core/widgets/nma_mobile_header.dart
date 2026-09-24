@@ -14,6 +14,8 @@ class NmaMobileAppBar extends StatelessWidget implements PreferredSizeWidget {
   final IconData leadingIcon;
   final List<Widget>? actions;
   final bool showBrandLogo;
+  final bool showBottomBorder;
+  final bool showShadow;
 
   const NmaMobileAppBar({
     super.key,
@@ -24,6 +26,8 @@ class NmaMobileAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.leadingIcon = Icons.menu_rounded,
     this.actions,
     this.showBrandLogo = false,
+    this.showBottomBorder = false,
+    this.showShadow = false,
   });
 
   @override
@@ -32,23 +36,35 @@ class NmaMobileAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     return Container(
       padding: EdgeInsets.only(
-        top: topPadding + 6,
+        top: topPadding + 8,
         bottom: 12,
         left: 16,
         right: 16,
       ),
-      decoration: const BoxDecoration(
-        gradient: AppColors.heroNavyGradient,
-        border: Border(
-          bottom: BorderSide(color: Color(0xFF1E2B52), width: 1),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF0B132B),
+            Color(0xFF0F1B3D),
+            Color(0xFF172854),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
+        border: showBottomBorder
+            ? const Border(
+                bottom: BorderSide(color: Color(0xFFE85D04), width: 2.5),
+              )
+            : null,
+        boxShadow: showShadow
+            ? const [
+                BoxShadow(
+                  color: Color(0x40000000),
+                  blurRadius: 16,
+                  offset: Offset(0, 4),
+                ),
+              ]
+            : null,
       ),
       child: SafeArea(
         top: false,
@@ -65,17 +81,17 @@ class NmaMobileAppBar extends StatelessWidget implements PreferredSizeWidget {
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: Colors.white.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.15),
+                        color: Colors.white.withValues(alpha: 0.18),
                         width: 1,
                       ),
                     ),
                     child: Icon(
                       leadingIcon,
                       color: Colors.white,
-                      size: 22,
+                      size: 20,
                     ),
                   ),
                 ),
@@ -101,22 +117,41 @@ class NmaMobileAppBar extends StatelessWidget implements PreferredSizeWidget {
                                       title!,
                                       style: const TextStyle(
                                         color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.2,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    if (subtitle != null)
-                                      Text(
-                                        subtitle!,
-                                        style: const TextStyle(
-                                          color: Color(0xFF94A3B8),
-                                          fontSize: 10,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                    if (subtitle != null) ...[
+                                      const SizedBox(height: 1),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 6,
+                                            height: 6,
+                                            decoration: const BoxDecoration(
+                                              color: AppColors.brandEmerald,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              subtitle!,
+                                              style: const TextStyle(
+                                                color: Color(0xFFCBD5E1),
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
                                       ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -132,7 +167,7 @@ class NmaMobileAppBar extends StatelessWidget implements PreferredSizeWidget {
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 17,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w800,
                                 letterSpacing: -0.3,
                               ),
                               maxLines: 1,
@@ -145,6 +180,7 @@ class NmaMobileAppBar extends StatelessWidget implements PreferredSizeWidget {
                                 style: const TextStyle(
                                   color: Color(0xFF94A3B8),
                                   fontSize: 11,
+                                  fontWeight: FontWeight.w500,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -164,5 +200,81 @@ class NmaMobileAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => const Size.fromHeight(68);
+}
+
+/// Bouton d'action d'en-tête ultra-professionnel glassmorphe.
+class NmaMobileHeaderAction extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String? tooltip;
+  final int badgeCount;
+
+  const NmaMobileHeaderAction({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    this.tooltip,
+    this.badgeCount = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Tooltip(
+        message: tooltip ?? '',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  width: 1,
+                ),
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    icon,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  if (badgeCount > 0)
+                    Positioned(
+                      top: -6,
+                      right: -6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Text(
+                          badgeCount > 9 ? '9+' : '$badgeCount',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 

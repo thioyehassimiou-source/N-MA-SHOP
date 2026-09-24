@@ -276,148 +276,155 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildPageContent(_OnboardingPage page) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Panneau Image (exact Desktop onboarding_sales / stock / bilan)
-          Container(
-            height: 220,
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.asset(
-                    page.image,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: AppColors.brandNavy,
-                      child: const Center(
-                        child: Icon(Icons.storefront_rounded, size: 64, color: Colors.white24),
-                      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxHeight < 550;
+        final imageHeight = isSmallScreen ? 140.0 : (constraints.maxHeight * 0.28).clamp(140.0, 200.0);
+
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Panneau Image (exact Desktop onboarding_sales / stock / bilan)
+              Container(
+                height: imageHeight,
+                width: double.infinity,
+                margin: EdgeInsets.only(bottom: isSmallScreen ? 10 : 14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.12),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
-                  ),
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.15),
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.45),
-                          ],
-                          stops: const [0.0, 0.5, 1.0],
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        page.image,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: AppColors.brandNavy,
+                          child: const Center(
+                            child: Icon(Icons.storefront_rounded, size: 54, color: Colors.white24),
+                          ),
                         ),
                       ),
-                    ),
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.15),
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.45),
+                              ],
+                              stops: const [0.0, 0.5, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
 
-          // Tag Catégorie
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: page.accent.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              page.category,
-              style: TextStyle(
-                color: page.accent,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.0,
+              // Tag Catégorie
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: page.accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  page.category,
+                  style: TextStyle(
+                    color: page.accent,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 10),
+              const SizedBox(height: 8),
 
-          // Titre principal percutant
-          Text(
-            page.title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: AppColors.brandNavy,
-              height: 1.2,
-              letterSpacing: -0.4,
-            ),
-          ),
-          const SizedBox(height: 8),
+              // Titre principal percutant
+              Text(
+                page.title,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 18 : 20,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.brandNavy,
+                  height: 1.2,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 6),
 
-          // Description
-          Text(
-            page.description,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.onSurfaceVariant,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 16),
+              // Description
+              Text(
+                page.description,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 12 : 12.5,
+                  color: AppColors.onSurfaceVariant,
+                  height: 1.4,
+                ),
+              ),
+              SizedBox(height: isSmallScreen ? 10 : 14),
 
-          // 3 points clés avec icônes
-          ...page.features.map((feat) => _buildFeatureItem(feat, page.accent)),
-        ],
-      ),
+              // 3 points clés avec icônes
+              ...page.features.map((feat) => _buildFeatureItem(feat, page.accent, isSmallScreen)),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildFeatureItem(_FeatureItem item, Color accent) {
+  Widget _buildFeatureItem(_FeatureItem item, Color accent, bool isSmallScreen) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: isSmallScreen ? 8 : 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: isSmallScreen ? 30 : 34,
+            height: isSmallScreen ? 30 : 34,
             decoration: BoxDecoration(
               color: accent.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(item.icon, size: 18, color: accent),
+            child: Icon(item.icon, size: isSmallScreen ? 16 : 18, color: accent),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   item.title,
-                  style: const TextStyle(
-                    fontSize: 13.5,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 12.5 : 13,
                     fontWeight: FontWeight.w700,
                     color: AppColors.brandNavy,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   item.description,
-                  style: const TextStyle(
-                    fontSize: 12,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 11 : 11.5,
                     color: AppColors.onSurfaceVariant,
-                    height: 1.35,
+                    height: 1.3,
                   ),
                 ),
               ],

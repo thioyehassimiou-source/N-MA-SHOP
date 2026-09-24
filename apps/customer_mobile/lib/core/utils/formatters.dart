@@ -48,4 +48,8 @@ abstract final class AppFormatters {
   static String formatDate(DateTime date) {
     return DateFormat('dd MMMM yyyy', 'fr_FR').format(date);
   }
+
+  static String formatDateTime(DateTime date) {
+    return DateFormat('dd/MM/yyyy HH:mm', 'fr_FR').format(date);
+  }
 }

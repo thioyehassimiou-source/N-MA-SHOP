@@ -5,7 +5,7 @@
 const CONFIG = {
   APP_NAME: "N’MaShop",
   APP_SLOGAN: "Gérer · Vendre · Grandir",
-  APP_VERSION: "1.1.9",
+  APP_VERSION: "1.2.0",
   APP_SIZE: "82 Mo",
   APP_OS: "Windows 10 / 11 (64-bit)",
   APP_ARCH: "x64 (PC de bureau & Ordinateurs portables)",
@@ -13,8 +13,8 @@ const CONFIG = {
   LICENSE_TRIAL: "7 jours d'essai gratuit complet (100% hors-ligne, sans engagement)",
   
   // Liens de téléchargement du logiciel Windows & Multiplateforme
-  DOWNLOAD_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.1.9/NMaShop_Installer.zip",
-  DOWNLOAD_PORTABLE_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.1.9/NMaShop_Windows_Portable_v1.1.9.zip",
+  DOWNLOAD_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.0/NMaShop_Installer.zip",
+  DOWNLOAD_PORTABLE_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.0/NMaShop_Windows_Portable_v1.2.0.zip",
   DOWNLOAD_LINUX_URL: "downloads/nmashop_linux_release.tar.gz",
   DOWNLOAD_APK_URL: "downloads/NMaShop_Admin_Mobile_v1.1.9.apk",
   

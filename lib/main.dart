@@ -11,12 +11,25 @@ import 'core/license/license_service.dart';
 import 'core/providers/app_settings_provider.dart';
 import 'core/providers/database_provider.dart';
 import 'core/providers/startup_flags.dart';
+import 'dart:io';
+
 import 'core/services/image_storage_service.dart';
+import 'core/services/single_instance_service.dart';
+import 'core/services/temp_storage_service.dart';
 import 'core/sync/desktop_sync_worker.dart';
 import 'features/auth/application/auth_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Contrôle d'Instance Unique Desktop (Empêche l'ouverture simultanée de plusieurs instances)
+  final isPrimaryInstance = await SingleInstanceService.ensureSingleInstance();
+  if (!isPrimaryInstance) {
+    exit(0);
+  }
+
+  // Initialisation et nettoyage automatique des fichiers temporaires en arrière-plan (zéro latence au démarrage)
+  Future.microtask(() => TempStorageService.initializeAndClean());
 
   // Initialise les données de localisation FR (formats de dates/nombres).
   await initializeDateFormatting('fr', null);

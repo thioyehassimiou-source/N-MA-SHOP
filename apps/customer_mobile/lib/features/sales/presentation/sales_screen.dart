@@ -1,84 +1,112 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/network/api_client.dart';
+import 'package:drift/drift.dart' as drift;
+import '../../../../core/database/mobile_database.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/nma_mobile_header.dart';
+import '../../receivables/presentation/receivables_screen.dart';
+import '../../stock/presentation/stock_screen.dart';
+import '../../treasury/presentation/treasury_screen.dart';
 
 final salesPeriodProvider = StateProvider<String>((ref) => 'today');
 final salesSearchProvider = StateProvider<String>((ref) => '');
 
-final customSalesProvider = StateProvider<List<Map<String, dynamic>>>((ref) => []);
-
 final salesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  final apiClient = ref.watch(apiClientProvider);
+  final db = ref.watch(mobileDatabaseProvider);
   final period = ref.watch(salesPeriodProvider);
-  final addedSales = ref.watch(customSalesProvider);
-  
-  Map<String, dynamic> baseData;
-  try {
-    final res = await apiClient.get('/api/v1/mobile/sales', queryParameters: {'period': period});
-    baseData = res.data as Map<String, dynamic>;
-  } catch (_) {
-    baseData = {
-      'summary': {
-        'totalSales': 0,
-        'totalProfit': 0,
-        'salesCount': 0,
-        'averageTicket': 0,
-        'cashCollected': 0,
-        'momoCollected': 0,
-        'creditIssued': 0,
-      },
-      'recentSales': [],
-    };
+
+  List<MobileSale> sales = await db.select(db.mobileSales).get();
+
+  // Si aucune vente en BDD locale au premier démarrage, insérer 2 échantillons par défaut
+  if (sales.isEmpty) {
+    final now = DateTime.now();
+    final s1 = MobileSalesCompanion.insert(
+      id: 'sale-${now.millisecondsSinceEpoch}-1',
+      reference: 'FAC-${now.millisecondsSinceEpoch % 10000}',
+      date: drift.Value(now),
+      total: const drift.Value(40000),
+      amountPaid: const drift.Value(40000),
+      paymentMethod: const drift.Value(0), // Espèces
+      sellerName: const drift.Value('Patron'),
+    );
+    final s2 = MobileSalesCompanion.insert(
+      id: 'sale-${now.millisecondsSinceEpoch}-2',
+      reference: 'FAC-${(now.millisecondsSinceEpoch + 1) % 10000}',
+      date: drift.Value(now.subtract(const Duration(hours: 3))),
+      total: const drift.Value(210000),
+      amountPaid: const drift.Value(210000),
+      paymentMethod: const drift.Value(1), // Orange Money / Wave
+      sellerName: const drift.Value('Patron'),
+    );
+    await db.into(db.mobileSales).insert(s1);
+    await db.into(db.mobileSales).insert(s2);
+    sales = await db.select(db.mobileSales).get();
   }
 
-  if (addedSales.isNotEmpty) {
-    final summary = {
-      'totalSales': 0,
-      'totalProfit': 0,
-      'salesCount': 0,
-      'averageTicket': 0,
-      'cashCollected': 0,
-      'momoCollected': 0,
-      'creditIssued': 0,
-    };
-    final recent = List<Map<String, dynamic>>.from(addedSales);
-    
-    int totalAmt = 0;
-    int cash = 0;
-    int momo = 0;
-    int credit = 0;
+  final now = DateTime.now();
+  DateTime cutoff = DateTime(now.year, now.month, now.day);
+  if (period == '7d') {
+    cutoff = now.subtract(const Duration(days: 7));
+  } else if (period == '30d') {
+    cutoff = now.subtract(const Duration(days: 30));
+  }
 
-    for (final newSale in addedSales) {
-      final amt = ((newSale['totalAmount'] as num?) ?? 0).toInt();
-      final paid = ((newSale['amountPaid'] as num?) ?? amt).toInt();
-      final pIndex = newSale['paymentMethodIndex'] ?? 0;
-      
-      totalAmt += amt;
-      
-      if (pIndex == 0) {
-        cash += paid;
-      } else if (pIndex == 1) {
-        momo += paid;
-      } else if (pIndex == 2) {
-        credit += (amt - paid);
-      }
+  final filteredSales = sales.where((s) => s.date.isAfter(cutoff) || s.date.isAtSameMomentAs(cutoff)).toList();
+
+  int totalAmt = 0;
+  int cash = 0;
+  int momo = 0;
+  int credit = 0;
+
+  for (final s in filteredSales) {
+    final amt = s.total;
+    final paid = s.amountPaid;
+    final method = s.paymentMethod;
+
+    totalAmt += amt;
+    if (method == 0) {
+      cash += paid;
+    } else if (method == 1 || method == 2 || method == 3) {
+      momo += paid;
     }
-    
-    summary['totalSales'] = totalAmt;
-    summary['salesCount'] = addedSales.length;
-    summary['averageTicket'] = addedSales.isNotEmpty ? (totalAmt / addedSales.length).round() : 0;
-    summary['cashCollected'] = cash;
-    summary['momoCollected'] = momo;
-    summary['creditIssued'] = credit;
-    
-    baseData['summary'] = summary;
-    baseData['recentSales'] = recent;
+    if (amt > paid) {
+      credit += (amt - paid);
+    }
   }
-  
-  return baseData;
+
+  final recentList = filteredSales.reversed.map((s) {
+    String methodLabel = 'Espèces';
+    if (s.paymentMethod == 1) methodLabel = 'Orange Money';
+    if (s.paymentMethod == 2) methodLabel = 'Wave';
+    if (s.paymentMethod == 3) methodLabel = 'Moov Money';
+    if (s.paymentMethod == 4) methodLabel = 'Virement';
+    if (s.paymentMethod == 5) methodLabel = 'Crédit Client';
+
+    return {
+      'id': s.id,
+      'reference': s.reference,
+      'date': AppFormatters.formatDateTime(s.date),
+      'customerName': s.customerId ?? 'Client Comptoir',
+      'totalAmount': s.total,
+      'amountPaid': s.amountPaid,
+      'paymentMethod': methodLabel,
+      'paymentMethodIndex': s.paymentMethod,
+      'sellerName': s.sellerName ?? 'Patron',
+    };
+  }).toList();
+
+  return {
+    'summary': {
+      'totalSales': totalAmt,
+      'salesCount': filteredSales.length,
+      'averageTicket': filteredSales.isNotEmpty ? (totalAmt / filteredSales.length).round() : 0,
+      'cashCollected': cash,
+      'momoCollected': momo,
+      'creditIssued': credit,
+    },
+    'recentSales': recentList,
+  };
 });
 
 class SalesScreen extends ConsumerWidget {
@@ -96,13 +124,15 @@ class SalesScreen extends ConsumerWidget {
         title: 'Activité Commerciale',
         subtitle: 'Suivi des ventes & factures',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+          NmaMobileHeaderAction(
+            icon: Icons.refresh_rounded,
+            tooltip: 'Actualiser',
             onPressed: () => ref.invalidate(salesDataProvider),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_sales',
         onPressed: () => _showAddSaleModal(context, ref),
         backgroundColor: AppColors.brandOrange,
         icon: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white),
@@ -113,7 +143,6 @@ class SalesScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // Sélecteur de période et barre de recherche
           Container(
             color: AppColors.surface,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -153,7 +182,6 @@ class SalesScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.border),
 
           Expanded(
             child: salesAsync.when(
@@ -162,9 +190,9 @@ class SalesScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.cloud_off, size: 48, color: AppColors.textMuted),
+                    const Icon(Icons.error_outline, size: 48, color: AppColors.error),
                     const SizedBox(height: 12),
-                    Text('Données indisponibles ($err)', style: const TextStyle(color: AppColors.onSurfaceVariant)),
+                    Text('Erreur de chargement ($err)', style: const TextStyle(color: AppColors.onSurfaceVariant)),
                     const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: () => ref.invalidate(salesDataProvider),
@@ -175,145 +203,116 @@ class SalesScreen extends ConsumerWidget {
               ),
               data: (data) {
                 final summary = data['summary'] as Map<String, dynamic>? ?? {};
-                final recentSales = (data['recentSales'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+                final totalSales = summary['totalSales'] ?? 0;
+                final salesCount = summary['salesCount'] ?? 0;
+                final avgTicket = summary['averageTicket'] ?? 0;
+                final cashCollected = summary['cashCollected'] ?? 0;
+                final momoCollected = summary['momoCollected'] ?? 0;
+                final creditIssued = summary['creditIssued'] ?? 0;
 
+                final recentSales = (data['recentSales'] as List?)?.cast<Map<String, dynamic>>() ?? [];
                 final query = search.trim().toLowerCase();
                 final filteredSales = recentSales.where((s) {
                   if (query.isEmpty) return true;
-                  final refStr = (s['reference'] as String? ?? '').toLowerCase();
-                  final custStr = (s['customerName'] as String? ?? '').toLowerCase();
-                  return refStr.contains(query) || custStr.contains(query);
+                  final refCode = (s['reference'] as String? ?? '').toLowerCase();
+                  final cust = (s['customerName'] as String? ?? '').toLowerCase();
+                  return refCode.contains(query) || cust.contains(query);
                 }).toList();
 
-                return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(salesDataProvider),
-                  color: AppColors.primary,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      // Cartouche Synthèse
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                  children: [
+                    // Cartes de métriques
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMetricCard(
+                            'Chiffre d\'Affaires',
+                            AppFormatters.formatCurrency(totalSales),
+                            '$salesCount vente(s)',
+                            Icons.monetization_on_rounded,
+                            AppColors.brandNavy,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildMetricCard(
+                            'Panier Moyen',
+                            AppFormatters.formatCurrency(avgTicket),
+                            'Par reçu',
+                            Icons.shopping_bag_rounded,
+                            AppColors.brandOrange,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSmallMetric(
+                            'Caisse Espèces',
+                            AppFormatters.formatCurrency(cashCollected),
+                            Icons.payments_rounded,
+                            AppColors.brandEmerald,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildSmallMetric(
+                            'Mobile Money',
+                            AppFormatters.formatCurrency(momoCollected),
+                            Icons.phone_android_rounded,
+                            const Color(0xFF2563EB),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildSmallMetric(
+                            'Crédit accordé',
+                            AppFormatters.formatCurrency(creditIssued),
+                            Icons.account_balance_wallet_rounded,
+                            AppColors.warning,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    const Text(
+                      'RÉCENTES TRANSACTIONS',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.brandNavy, letterSpacing: 0.8),
+                    ),
+                    const SizedBox(height: 8),
+
+                    if (filteredSales.isEmpty)
                       Container(
-                        padding: const EdgeInsets.all(18),
+                        padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
                         ),
                         child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Total des ventes', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
-                                Text(
-                                  '${summary['salesCount'] ?? 0} transaction(s)',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.brandNavy),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                AppFormatters.formatCurrency(summary['totalSales'] ?? 0),
-                                style: const TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.onSurface,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            const Divider(height: 1, color: AppColors.border),
-                            const SizedBox(height: 16),
-
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildMetricColumn('Marge brute', summary['totalProfit'] ?? 0, AppColors.success),
-                                _buildMetricColumn('Panier moyen', summary['averageTicket'] ?? 0, AppColors.brandNavy),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            const Divider(height: 1, color: AppColors.border),
-                            const SizedBox(height: 14),
-
-                            const Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'RÉPARTITION DES ENCAISSEMENTS',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.onSurfaceVariant, letterSpacing: 0.8),
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            _buildPaymentRow('Espèces en caisse', summary['cashCollected'] ?? 0, Icons.payments_outlined, Colors.blue),
-                            const SizedBox(height: 10),
-                            _buildPaymentRow('Mobile Money', summary['momoCollected'] ?? 0, Icons.phone_android_rounded, AppColors.brandOrange),
-                            const SizedBox(height: 10),
-                            _buildPaymentRow('Ventes à crédit', summary['creditIssued'] ?? 0, Icons.assignment_outlined, Colors.purple),
+                          children: const [
+                            Icon(Icons.receipt_long_outlined, size: 40, color: AppColors.textMuted),
+                            SizedBox(height: 8),
+                            Text('Aucune vente enregistrée pour cette période', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
                           ],
                         ),
+                      )
+                    else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: filteredSales.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          final sale = filteredSales[index];
+                          return _buildSaleCard(sale);
+                        },
                       ),
-                      const SizedBox(height: 24),
-
-                      // Liste des transactions récentes
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Dernières ventes enregistrées',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.onSurface),
-                          ),
-                          Text(
-                            '${filteredSales.length} trouvée(s)',
-                            style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      if (filteredSales.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 40),
-                          margin: const EdgeInsets.only(top: 20),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
-                          ),
-                          alignment: Alignment.center,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.receipt_long_outlined, size: 48, color: AppColors.primary),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                query.isNotEmpty
-                                    ? 'Aucune vente ne correspond à "$search".'
-                                    : 'Aucune vente enregistrée',
-                                style: const TextStyle(color: AppColors.onSurface, fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Les ventes de la boutique apparaîtront ici\ndès la prochaine synchronisation.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        ...filteredSales.map((sale) => _buildSaleTile(context, sale)),
-                    ],
-                  ),
+                  ],
                 );
               },
             ),
@@ -323,445 +322,441 @@ class SalesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPeriodChip(WidgetRef ref, String label, String value, String current) {
-    final isSelected = value == current;
+  Widget _buildPeriodChip(WidgetRef ref, String label, String value, String currentPeriod) {
+    final isSelected = currentPeriod == value;
     return ChoiceChip(
-      label: Text(label),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.white : AppColors.onSurface,
+        ),
+      ),
       selected: isSelected,
       onSelected: (_) => ref.read(salesPeriodProvider.notifier).state = value,
-      selectedColor: AppColors.primary,
+      selectedColor: AppColors.brandNavy,
       backgroundColor: AppColors.surfaceVariant,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-        fontSize: 12,
+      showCheckmark: false,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    );
+  }
+
+  Widget _buildMetricCard(String title, String mainValue, String subValue, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outline.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      side: BorderSide.none,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    );
-  }
-
-  Widget _buildMetricColumn(String label, num amount, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 4),
-        Text(
-          AppFormatters.formatCurrency(amount),
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPaymentRow(String label, num amount, IconData icon, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, size: 16, color: color),
-        ),
-        const SizedBox(width: 10),
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 13, color: AppColors.onSurface))),
-        Text(
-          AppFormatters.formatCurrency(amount),
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.onSurface),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSaleTile(BuildContext context, Map<String, dynamic> sale) {
-    final methodIndex = sale['paymentMethodIndex'] ?? 0;
-    final methodLabel = methodIndex == 0
-        ? 'Espèces'
-        : methodIndex == 1
-            ? 'Mobile Money'
-            : methodIndex == 2
-                ? 'Crédit'
-                : 'Banque';
-
-    final total = sale['totalAmount'] ?? 0;
-    final date = DateTime.tryParse(sale['createdAt'] ?? '') ?? DateTime.now();
-
-    return InkWell(
-      onTap: () => _showSaleDetailsModal(context, sale),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: methodIndex == 0
-                        ? Colors.blue.withValues(alpha: 0.1)
-                        : methodIndex == 1
-                            ? AppColors.brandOrange.withValues(alpha: 0.1)
-                            : Colors.purple.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    methodIndex == 0
-                        ? Icons.payments_outlined
-                        : methodIndex == 1
-                            ? Icons.phone_android_rounded
-                            : Icons.assignment_outlined,
-                    size: 18,
-                    color: methodIndex == 0
-                        ? Colors.blue
-                        : methodIndex == 1
-                            ? AppColors.brandOrange
-                            : Colors.purple,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sale['reference'] ?? 'VENTE',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.onSurface),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${sale['customerName'] ?? 'Client standard'} • $methodLabel',
-                      style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  AppFormatters.formatCurrency(total),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.onSurface),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  AppFormatters.formatTime(date),
-                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showSaleDetailsModal(BuildContext context, Map<String, dynamic> sale) {
-    final methodIndex = sale['paymentMethodIndex'] ?? 0;
-    final methodLabel = methodIndex == 0
-        ? 'Espèces en tiroir'
-        : methodIndex == 1
-            ? 'Mobile Money'
-            : methodIndex == 2
-                ? 'Vente à crédit'
-                : 'Virement bancaire';
-
-    final total = sale['totalAmount'] ?? 0;
-    final paid = sale['amountPaid'] ?? total;
-    final remaining = total > paid ? total - paid : 0;
-    final date = DateTime.tryParse(sale['createdAt'] ?? '') ?? DateTime.now();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Entête du ticket
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'TICKET DE CAISSE NUMÉRIQUE',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.brandOrange,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      sale['reference'] ?? 'VENTE',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.onSurface),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.successContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text(
-                    'Encaissé',
-                    style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Divider(color: AppColors.border),
-            const SizedBox(height: 12),
-
-            // Informations de la transaction
-            _buildDetailRow('Date & Heure', '${AppFormatters.formatRelativeTime(date)} (${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')})'),
-            _buildDetailRow('Client', sale['customerName'] ?? 'Client standard'),
-            _buildDetailRow('Mode de règlement', methodLabel),
-            if (sale['mobileMoneyProvider'] != null)
-              _buildDetailRow('Opérateur', sale['mobileMoneyProvider']),
-
-            const SizedBox(height: 12),
-            const Divider(color: AppColors.border),
-            const SizedBox(height: 12),
-
-            // Montants
-            _buildDetailRow('Montant Total', AppFormatters.formatCurrency(total), isBold: true),
-            _buildDetailRow('Montant Versé', AppFormatters.formatCurrency(paid)),
-            if (remaining > 0)
-              _buildDetailRow('Reste dû (Crédit)', AppFormatters.formatCurrency(remaining), color: AppColors.error),
-
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.onSurface,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Fermer le ticket', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 12),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value, {bool isBold = false, Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 11.5, color: AppColors.onSurfaceVariant, fontWeight: FontWeight.w600)),
+              Icon(icon, size: 18, color: color),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(mainValue, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+          const SizedBox(height: 2),
+          Text(subValue, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallMetric(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.outline.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 13, color: color),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontSize: 10, color: AppColors.onSurfaceVariant, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-              color: color ?? AppColors.onSurface,
-            ),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
-  void _showAddSaleModal(BuildContext context, WidgetRef ref) {
-    final clientCtrl = TextEditingController();
-    final amountCtrl = TextEditingController();
-    int selectedMethod = 0; // 0: Espèces, 1: Mobile Money, 2: Crédit
+  Widget _buildSaleCard(Map<String, dynamic> sale) {
+    final refCode = sale['reference'] as String? ?? '';
+    final custName = sale['customerName'] as String? ?? 'Client Comptoir';
+    final date = sale['date'] as String? ?? '';
+    final total = (sale['totalAmount'] as num?) ?? 0;
+    final paid = (sale['amountPaid'] as num?) ?? total;
+    final methodLabel = sale['paymentMethod'] as String? ?? 'Espèces';
+
+    final isCredit = total > paid;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.outline.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isCredit ? AppColors.warning.withValues(alpha: 0.12) : AppColors.brandEmerald.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isCredit ? Icons.receipt_long_rounded : Icons.check_circle_rounded,
+              color: isCredit ? AppColors.warning : AppColors.brandEmerald,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(refCode, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.brandNavy)),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(methodLabel, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.brandNavy)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text('$custName • $date', style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                AppFormatters.formatCurrency(total),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+              ),
+              if (isCredit)
+                Text(
+                  'Reste: ${AppFormatters.formatCurrency(total - paid)}',
+                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppColors.error),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddSaleModal(BuildContext context, WidgetRef ref) async {
+    final db = ref.read(mobileDatabaseProvider);
+    final products = await db.select(db.mobileProducts).get();
+
+    if (!context.mounted) return;
+
+    if (products.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez d\'abord ajouter des produits dans l\'onglet Stocks !')),
+      );
+      return;
+    }
+
+    final Map<String, int> cart = {};
+    String selectedCustomerName = 'Client Comptoir';
+    int selectedPaymentMethod = 0; // 0: Espèces, 1: Orange Money, 2: Wave, 3: Moov, 4: Virement, 5: Crédit
+    final amountPaidCtrl = TextEditingController();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Container(
+        builder: (ctx, setStateModal) {
+          int subtotal = 0;
+          cart.forEach((prodId, qty) {
+            final p = products.firstWhere((element) => element.id == prodId);
+            subtotal += p.salePrice * qty;
+          });
+
+          final total = subtotal;
+          final amountPaid = int.tryParse(amountPaidCtrl.text.trim()) ?? total;
+
+          return Container(
+            height: MediaQuery.of(ctx).size.height * 0.85,
             decoration: const BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            padding: const EdgeInsets.all(20),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              16,
+              20,
+              MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.brandOrange.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.point_of_sale_rounded, color: AppColors.brandOrange, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('CAISSE POS', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppColors.brandOrange, letterSpacing: 0.8)),
+                        Text('Nouvelle Vente & Encaissement', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.brandNavy)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Sélection des articles dans le panier
+                const Text('Sélectionner les articles :', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.brandNavy)),
+                const SizedBox(height: 6),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: products.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 6),
+                    itemBuilder: (context, index) {
+                      final prod = products[index];
+                      final currentQtyInCart = cart[prod.id] ?? 0;
+                      final availableStock = prod.stockQuantity;
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         decoration: BoxDecoration(
-                          color: AppColors.brandOrange.withValues(alpha: 0.12),
+                          color: AppColors.surfaceVariant,
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: currentQtyInCart > 0 ? AppColors.brandOrange : AppColors.border),
                         ),
-                        child: const Icon(Icons.add_shopping_cart_rounded, color: AppColors.brandOrange, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('NOUVELLE VENTE POS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.brandOrange, letterSpacing: 1.0)),
-                          Text('Saisir une transaction', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.brandNavy)),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  TextField(
-                    controller: clientCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Nom du Client / Client Comptoir',
-                      hintText: 'ex: Ousmane Sow',
-                      prefixIcon: const Icon(Icons.person_outline),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  TextField(
-                    controller: amountCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Montant de la vente (GNF)',
-                      hintText: 'ex: 150000',
-                      prefixIcon: const Icon(Icons.payments_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  const Text('Mode de Règlement', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.brandNavy)),
-                  const SizedBox(height: 8),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Text('Espèces'),
-                          selected: selectedMethod == 0,
-                          onSelected: (_) => setState(() => selectedMethod = 0),
-                          selectedColor: AppColors.brandNavy,
-                          labelStyle: TextStyle(color: selectedMethod == 0 ? Colors.white : AppColors.brandNavy, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Text('Mobile Money'),
-                          selected: selectedMethod == 1,
-                          onSelected: (_) => setState(() => selectedMethod = 1),
-                          selectedColor: AppColors.brandOrange,
-                          labelStyle: TextStyle(color: selectedMethod == 1 ? Colors.white : AppColors.brandNavy, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Text('Crédit'),
-                          selected: selectedMethod == 2,
-                          onSelected: (_) => setState(() => selectedMethod = 2),
-                          selectedColor: Colors.purple,
-                          labelStyle: TextStyle(color: selectedMethod == 2 ? Colors.white : AppColors.brandNavy, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  ElevatedButton(
-                    onPressed: () {
-                      final amount = num.tryParse(amountCtrl.text.trim()) ?? 0;
-                      if (amount <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Veuillez saisir un montant valide (> 0 GNF)')),
-                        );
-                        return;
-                      }
-
-                      final clientName = clientCtrl.text.trim().isNotEmpty ? clientCtrl.text.trim() : 'Client Comptoir';
-                      final refNum = 'FAC-${DateTime.now().year}-${(DateTime.now().millisecondsSinceEpoch % 1000).toString().padLeft(3, '0')}';
-
-                      final newSale = {
-                        'id': 'sale-${DateTime.now().millisecondsSinceEpoch}',
-                        'reference': refNum,
-                        'customerName': clientName,
-                        'totalAmount': amount,
-                        'amountPaid': selectedMethod == 2 ? 0 : amount,
-                        'paymentMethodIndex': selectedMethod,
-                        'createdAt': DateTime.now().toIso8601String(),
-                      };
-
-                      ref.read(customSalesProvider.notifier).update((state) => [newSale, ...state]);
-                      ref.invalidate(salesDataProvider);
-
-                      Navigator.of(ctx).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Vente $refNum de ${AppFormatters.formatCurrency(amount)} enregistrée avec succès !'),
-                          backgroundColor: AppColors.success,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(prod.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.brandNavy)),
+                                  Text('${AppFormatters.formatCurrency(prod.salePrice)} • En stock : $availableStock ${prod.unit}', style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                                ],
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                if (currentQtyInCart > 0) ...[
+                                  IconButton(
+                                    icon: const Icon(Icons.remove_circle_outline, color: AppColors.error, size: 22),
+                                    onPressed: () {
+                                      setStateModal(() {
+                                        if (currentQtyInCart > 1) {
+                                          cart[prod.id] = currentQtyInCart - 1;
+                                        } else {
+                                          cart.remove(prod.id);
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  Text('$currentQtyInCart', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                ],
+                                IconButton(
+                                  icon: const Icon(Icons.add_circle_rounded, color: AppColors.brandEmerald, size: 24),
+                                  onPressed: () {
+                                    if (currentQtyInCart >= availableStock) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Stock insuffisant pour ${prod.name}')),
+                                      );
+                                      return;
+                                    }
+                                    setStateModal(() {
+                                      cart[prod.id] = currentQtyInCart + 1;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       );
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.brandOrange,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Enregistrer la vente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 10),
+
+                // Sélection du mode de paiement
+                const Text('Mode de paiement :', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.brandNavy)),
+                const SizedBox(height: 6),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildPaymentOption(setStateModal, 'Espèces', 0, selectedPaymentMethod),
+                      const SizedBox(width: 6),
+                      _buildPaymentOption(setStateModal, 'Orange Money', 1, selectedPaymentMethod),
+                      const SizedBox(width: 6),
+                      _buildPaymentOption(setStateModal, 'Wave', 2, selectedPaymentMethod),
+                      const SizedBox(width: 6),
+                      _buildPaymentOption(setStateModal, 'Moov Money', 3, selectedPaymentMethod),
+                      const SizedBox(width: 6),
+                      _buildPaymentOption(setStateModal, 'Crédit Client', 5, selectedPaymentMethod),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Synthèse du montant et Bouton d'encaissement
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.brandNavy.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.brandNavy.withValues(alpha: 0.15)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Total à encaisser :', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                          Text(AppFormatters.formatCurrency(total), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.brandNavy)),
+                        ],
+                      ),
+                      Text('${cart.values.fold(0, (a, b) => a + b)} article(s)', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.brandOrange)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                ElevatedButton(
+                  onPressed: cart.isEmpty
+                      ? null
+                      : () async {
+                          final now = DateTime.now();
+                          final saleId = 'sale-${now.millisecondsSinceEpoch}';
+                          final refCode = 'FAC-${now.millisecondsSinceEpoch % 10000}';
+
+                          final newSale = MobileSalesCompanion.insert(
+                            id: saleId,
+                            reference: refCode,
+                            date: drift.Value(now),
+                            total: drift.Value(total),
+                            amountPaid: drift.Value(amountPaid),
+                            paymentMethod: drift.Value(selectedPaymentMethod),
+                            customerId: drift.Value(selectedCustomerName),
+                            sellerName: const drift.Value('Patron'),
+                          );
+
+                          await db.into(db.mobileSales).insert(newSale);
+
+                          // Déduire le stock des produits vendus dans SQLite
+                          for (final entry in cart.entries) {
+                            final p = products.firstWhere((prod) => prod.id == entry.key);
+                            final newQty = (p.stockQuantity - entry.value).clamp(0, 999999);
+
+                            await (db.update(db.mobileProducts)..where((tbl) => tbl.id.equals(p.id))).write(
+                              MobileProductsCompanion(stockQuantity: drift.Value(newQty)),
+                            );
+                          }
+
+                          ref.invalidate(salesDataProvider);
+                          ref.invalidate(stockDataProvider);
+                          ref.invalidate(treasuryDataProvider);
+                          ref.invalidate(receivablesDataProvider);
+
+                          if (!ctx.mounted) return;
+                          Navigator.of(ctx).pop();
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Vente $refCode de ${AppFormatters.formatCurrency(total)} enregistrée avec succès !'),
+                              backgroundColor: AppColors.brandEmerald,
+                            ),
+                          );
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.brandOrange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Valider & Encaisser', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ],
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
-}
 
+  Widget _buildPaymentOption(StateSetter setStateModal, String label, int index, int selectedIndex) {
+    final isSelected = selectedIndex == index;
+    return ChoiceChip(
+      label: Text(label, style: TextStyle(fontSize: 11.5, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? Colors.white : AppColors.brandNavy)),
+      selected: isSelected,
+      onSelected: (_) => setStateModal(() {}),
+      selectedColor: AppColors.brandNavy,
+      backgroundColor: AppColors.surfaceVariant,
+      showCheckmark: false,
+    );
+  }
+}
