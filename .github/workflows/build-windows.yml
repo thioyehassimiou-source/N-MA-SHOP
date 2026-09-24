@@ -99,7 +99,7 @@ jobs:
 
       - name: 📦 Créer l'installeur avec Inno Setup
         run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows\setup.iss"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$env:APP_VERSION" "windows\setup.iss"
           Compress-Archive -Path "build\windows\NMaShop_Setup_*.exe" -DestinationPath "build\windows\NMaShop_Installer.zip" -Force
         shell: pwsh
 

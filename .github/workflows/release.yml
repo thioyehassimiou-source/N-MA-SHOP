@@ -91,7 +91,7 @@ jobs:
 
       - name: ⚙️ Compiler l'installeur avec Inno Setup
         run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows\setup.iss"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$env:APP_VERSION" "windows\setup.iss"
         shell: pwsh
 
       - name: 📦 Compresser l'installeur dans un ZIP d'installation
@@ -137,7 +137,7 @@ jobs:
             VERSION="${TAG#v}"
           fi
           if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
-            VERSION="1.1.7"
+            VERSION="1.2.0"
           fi
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -218,7 +218,7 @@ jobs:
             VERSION="${TAG#v}"
           fi
           if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
-            VERSION="1.1.7"
+            VERSION="1.2.0"
           fi
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -241,10 +241,10 @@ jobs:
             
             ### 📦 Fichiers téléchargeables :
             * 🪟 **Windows (Recommandé pour PC)** :
-              * **Installeur automatique** : `NMaShop_Setup_v1.0.0.exe` (avec dépendances C++ et création d'icône bureau)
-              * **Version portable** : `NMaShop_Windows_Portable_v1.0.0.zip` (décompresser et lancer directement)
+              * **Installeur automatique** : `NMaShop_Setup_v${{ env.APP_VERSION }}.exe` (avec dépendances C++ et création d'icône bureau)
+              * **Version portable** : `NMaShop_Windows_Portable_v${{ env.APP_VERSION }}.zip` (décompresser et lancer directement)
             * 🐧 **Linux (Ubuntu / Debian x64)** :
-              * **Archive binaire native** : `NMaShop_Linux_v1.0.0_x64.tar.gz`
+              * **Archive binaire native** : `NMaShop_Linux_v${{ env.APP_VERSION }}_x64.tar.gz`
             
             ### 🛡️ Sécurité & Spécifications :
             * Code compilé nativement AOT et obfusqué (Levier 1 Sécurité).
