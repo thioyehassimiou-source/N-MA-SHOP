@@ -414,8 +414,8 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
         _buildOptionCard(
           selected: _useTrialMode,
           icon: Icons.card_giftcard_rounded,
-          title: 'Période d\'essai gratuite (30 jours)',
-          subtitle: 'Découvrez toutes les fonctionnalités de N\'MaShop Mobile sans engagement.',
+          title: 'Période d\'essai gratuite (7 jours)',
+          subtitle: 'Découvrez toutes les fonctionnalités de N\'MaShop sans engagement.',
           onTap: () => setState(() => _useTrialMode = true),
         ),
         const SizedBox(height: 12),
