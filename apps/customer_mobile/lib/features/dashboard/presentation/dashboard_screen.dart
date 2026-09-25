@@ -176,7 +176,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         const SizedBox(height: 14),
                         Text(
-                          'Bonjour, ${data?.shop.name ?? "Patron"} ! 👋',
+                          (data != null && data.shop.name.isNotEmpty)
+                              ? 'Bonjour, ${data.shop.name} ! 👋'
+                              : 'Bonjour ! 👋',
                           style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),

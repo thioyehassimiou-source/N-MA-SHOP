@@ -504,7 +504,7 @@ class ReceivablesScreen extends ConsumerWidget {
                         amountPaid: drift.Value(amount),
                         paymentMethod: const drift.Value(0),
                         customerId: drift.Value(selectedCustName),
-                        sellerName: const drift.Value('Patron'),
+                        sellerName: const drift.Value('Administrateur'),
                       );
                       await db.into(db.mobileSales).insert(s);
 

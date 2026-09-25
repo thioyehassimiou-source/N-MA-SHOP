@@ -28,7 +28,7 @@ final salesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
       total: const drift.Value(40000),
       amountPaid: const drift.Value(40000),
       paymentMethod: const drift.Value(0), // Espèces
-      sellerName: const drift.Value('Patron'),
+      sellerName: const drift.Value('Administrateur'),
     );
     final s2 = MobileSalesCompanion.insert(
       id: 'sale-${now.millisecondsSinceEpoch}-2',
@@ -37,7 +37,7 @@ final salesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
       total: const drift.Value(210000),
       amountPaid: const drift.Value(210000),
       paymentMethod: const drift.Value(1), // Orange Money / Wave
-      sellerName: const drift.Value('Patron'),
+      sellerName: const drift.Value('Administrateur'),
     );
     await db.into(db.mobileSales).insert(s1);
     await db.into(db.mobileSales).insert(s2);
@@ -92,7 +92,7 @@ final salesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
       'amountPaid': s.amountPaid,
       'paymentMethod': methodLabel,
       'paymentMethodIndex': s.paymentMethod,
-      'sellerName': s.sellerName ?? 'Patron',
+      'sellerName': s.sellerName ?? 'Administrateur',
     };
   }).toList();
 
@@ -702,7 +702,7 @@ class SalesScreen extends ConsumerWidget {
                             amountPaid: drift.Value(amountPaid),
                             paymentMethod: drift.Value(selectedPaymentMethod),
                             customerId: drift.Value(selectedCustomerName),
-                            sellerName: const drift.Value('Patron'),
+                            sellerName: const drift.Value('Administrateur'),
                           );
 
                           await db.into(db.mobileSales).insert(newSale);

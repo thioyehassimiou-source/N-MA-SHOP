@@ -480,12 +480,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: const [
                 Text(
-                  'N\'MaShop Mobile — Écosystème Guinéen',
+                  'N\'MaShop — Gestion Commerciale & Caisse POS',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.onSurfaceVariant),
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Version 1.0.0 Pro Patron • Support : +224 624 19 30 69',
+                  'Version 1.2.0 • Support : +224 624 19 30 69',
                   style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
                 SizedBox(height: 20),

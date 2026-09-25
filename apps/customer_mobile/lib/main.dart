@@ -30,7 +30,7 @@ class NMaShopCustomerMobileApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      title: 'N\'MaShop Mobile — Le téléphone du patron',
+      title: 'N\'MaShop — Gestion Commerciale & Caisse POS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

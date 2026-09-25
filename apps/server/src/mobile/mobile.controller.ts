@@ -12,7 +12,7 @@ export class MobileController {
 
   @Get('dashboard')
   @ApiOperation({
-    summary: '1. Cockpit Dashboard du Patron',
+    summary: '1. Cockpit Dashboard N\'MaShop',
     description: 'Renvoie la synthèse complète : CA du jour, marge brute estimée, espèces vs Mobile Money, créances et alertes.',
   })
   @ApiResponse({ status: 200, description: 'Synthèse du dashboard calculée.' })

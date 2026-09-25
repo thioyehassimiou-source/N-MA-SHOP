@@ -58,7 +58,7 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // Header Patron & Boutique
+            // Header N'MaShop & Boutique
             DrawerHeader(
               margin: EdgeInsets.zero,
               decoration: const BoxDecoration(
@@ -85,11 +85,11 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'N\'MaShop Mobile',
+                              'N\'MaShop',
                               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             Text(
-                              'Écosystème Commercial Local',
+                              'Gestion Commerciale & Caisse POS',
                               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                             ),
                           ],
@@ -177,7 +177,7 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
 
             const Divider(color: AppColors.border, height: 24),
 
-            // SECTION 3 : SYSTÈME & OUTILS PATRON
+            // SECTION 3 : SYSTÈME & CONFIGURATION
             _buildDrawerSectionHeader('SYSTÈME & CONFIGURATION'),
             ListTile(
               leading: const Icon(Icons.notifications_active_rounded, color: AppColors.error),

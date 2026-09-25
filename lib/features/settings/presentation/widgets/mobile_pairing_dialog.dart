@@ -318,7 +318,7 @@ class _MobilePairingDialogState extends ConsumerState<MobilePairingDialog> {
                         Icon(Icons.info_outline, size: 18, color: Colors.blue.shade700),
                         const SizedBox(width: 8),
                         Text(
-                          'Instructions pour le patron :',
+                          'Instructions de connexion mobile :',
                           style: AppTypography.labelMd.copyWith(
                             fontWeight: FontWeight.bold,
                             color: Colors.blue.shade900,
@@ -330,7 +330,7 @@ class _MobilePairingDialogState extends ConsumerState<MobilePairingDialog> {
                     Text(
                       '1. Ouvrez l\'application N\'MaShop Mobile sur votre téléphone.\n'
                       '2. Cliquez sur "Lier ma boutique" puis scannez ce QR Code.\n'
-                      '3. Définissez votre code PIN secret pour accéder au pilotage.',
+                      '3. Définissez votre code PIN secret pour accéder à votre espace.',
                       style: AppTypography.bodySm.copyWith(
                         color: Colors.blue.shade900,
                         height: 1.4,

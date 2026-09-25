@@ -15,13 +15,13 @@ class RegisterShopScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
-  int _currentStep = 0; // 0 = Boutique, 1 = Licence, 2 = Patron (PIN)
+  int _currentStep = 0; // 0 = Boutique, 1 = Licence, 2 = Sécurité (PIN)
 
   final _shopFormKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
   final _currencyController = TextEditingController(text: 'GNF');
-  final _deviceNameController = TextEditingController(text: 'Smartphone Patron');
+  final _deviceNameController = TextEditingController(text: 'Terminal N\'MaShop');
   final _licenseKeyController = TextEditingController();
   String _pin = '';
 
@@ -80,7 +80,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
           shopName: _nameController.text.trim(),
           currency: _currencyController.text.trim().isEmpty ? 'GNF' : _currencyController.text.trim(),
           pin: _pin.trim(),
-          deviceName: _deviceNameController.text.trim().isEmpty ? 'Smartphone Patron' : _deviceNameController.text.trim(),
+          deviceName: _deviceNameController.text.trim().isEmpty ? 'Terminal N\'MaShop' : _deviceNameController.text.trim(),
         );
 
     if (!mounted) return;
@@ -232,7 +232,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
       case 1:
         return 'Licence & Activation';
       case 2:
-        return 'Compte Patron Sécurisé';
+        return 'Sécurité & Code PIN';
       default:
         return 'Configuration N\'MaShop';
     }
@@ -371,7 +371,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
                 _buildLabel('Nom de cet appareil'),
                 TextFormField(
                   controller: _deviceNameController,
-                  decoration: _inputDeco('Smartphone Patron', Icons.phone_android_rounded),
+                  decoration: _inputDeco('Terminal N\'MaShop', Icons.phone_android_rounded),
                 ),
               ],
             ),
@@ -454,7 +454,7 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
     );
   }
 
-  // ÉTAPE 3 : Compte Patron (Code PIN Tactile 4 chiffres)
+  // ÉTAPE 3 : Sécurité du Compte (Code PIN Tactile 4 chiffres)
   Widget _buildStep3Account() {
     return Column(
       key: const ValueKey('step_account'),

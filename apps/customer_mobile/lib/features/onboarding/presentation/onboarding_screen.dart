@@ -108,7 +108,7 @@ const _pages = [
       ),
       _FeatureItem(
         icon: Icons.shield_rounded,
-        title: 'Protection Patron Sécurisée',
+        title: 'Protection Administrateur Sécurisée',
         description: 'Confidentialité totale de vos bénéfices grâce à votre code PIN secret.',
       ),
     ],
@@ -253,7 +253,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         children: [
                           Text(
                             _currentPage == _pages.length - 1
-                                ? 'Démarrer l\'expérience patron'
+                                ? 'Commencer avec N\'MaShop'
                                 : 'Suivant',
                             style: const TextStyle(
                               fontSize: 16,

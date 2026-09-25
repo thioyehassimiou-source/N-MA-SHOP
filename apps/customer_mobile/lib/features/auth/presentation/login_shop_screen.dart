@@ -7,7 +7,7 @@ import '../data/auth_service.dart';
 import '../../shell/main_navigation_shell.dart';
 import 'register_shop_screen.dart';
 
-/// Écran de Connexion Patron Mobile — Design Tactile Premium avec Clavier PIN.
+/// Écran de Connexion N'MaShop — Design Tactile Premium avec Clavier PIN.
 class LoginShopScreen extends ConsumerStatefulWidget {
   const LoginShopScreen({super.key});
 
@@ -151,7 +151,7 @@ class _LoginShopScreenState extends ConsumerState<LoginShopScreen> {
                               ),
                               const SizedBox(height: 4),
                               const Text(
-                                'Tapez votre code PIN Patron à 4 chiffres',
+                                'Tapez votre code PIN de sécurité à 4 chiffres',
                                 style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
                               ),
                               const SizedBox(height: 16),
@@ -325,7 +325,7 @@ class _LoginShopScreenState extends ConsumerState<LoginShopScreen> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Text(
-              'ESPACE SÉCURISÉ PATRON',
+              'ACCÈS SÉCURISÉ N\'MASHOP',
               style: TextStyle(
                 color: AppColors.brandOrangeLight,
                 fontSize: 9.5,

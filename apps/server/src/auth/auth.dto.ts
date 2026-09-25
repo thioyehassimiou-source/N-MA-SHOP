@@ -44,12 +44,12 @@ export class PairClaimDto {
   @IsNotEmpty()
   deviceId: string;
 
-  @ApiProperty({ example: 'Samsung Galaxy S23 Patron', description: 'Nom de l\'appareil du commerçant' })
+  @ApiProperty({ example: 'Terminal N\'MaShop', description: 'Nom de l\'appareil de gestion' })
   @IsString()
   @IsNotEmpty()
   deviceName: string;
 
-  @ApiProperty({ example: '1234', description: 'Code PIN secret défini par le patron (4 à 8 chiffres)' })
+  @ApiProperty({ example: '1234', description: 'Code PIN secret de sécurité (4 à 8 chiffres)' })
   @IsString()
   @IsNotEmpty()
   @Length(4, 8)
@@ -99,7 +99,7 @@ export class RegisterShopDto {
   @Length(4, 8)
   pin: string;
 
-  @ApiProperty({ example: 'Smartphone Patron', description: 'Nom de l\'appareil du commerçant' })
+  @ApiProperty({ example: 'Terminal N\'MaShop', description: 'Nom de l\'appareil de gestion' })
   @IsString()
   @IsNotEmpty()
   @Length(2, 100)

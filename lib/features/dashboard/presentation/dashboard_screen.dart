@@ -645,7 +645,7 @@ class _PageHeader extends ConsumerWidget {
     final user = ref.watch(authProvider);
     final palette = ref.watch(paletteProvider);
 
-    final firstName = user?.fullName.split(' ').first ?? 'Patron';
+    final firstName = user?.fullName.split(' ').first ?? 'Administrateur';
     final greeting = _getGreeting();
 
     final boxDecoration = BoxDecoration(
