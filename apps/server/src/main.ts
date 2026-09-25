@@ -21,7 +21,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle("N'MaShop Cloud API — Documentation & Tests")
     .setDescription(
-      "API Cloud multi-tenant pour l'écosystème N'MaShop (Desktop, Web et Mobile).\n\n" +
+      "API Cloud multi-tenant pour l'écosystème N'MaShop (Desktop & Mobile).\n\n" +
         "### Workflow de test interactif dans Swagger :\n" +
         "1. **Initialiser le jumelage** (`POST /api/v1/auth/pair/init`) : enregistre un jeton éphémère (ex: `TEST-PAIR-01`).\n" +
         "2. **Réclamer le jumelage** (`POST /api/v1/auth/pair/claim`) : associe votre appareil avec un code PIN (ex: `1234`). Copiez le `accessToken` généré !\n" +
@@ -43,7 +43,7 @@ async function bootstrap() {
     )
     .addTag('Auth', 'Jumelage et authentification par code PIN secret')
     .addTag('Sync', 'Ingestion des ventes et mouvements depuis la caisse Desktop')
-    .addTag('Mobile', 'Endpoints sécurisés pour l\'application Web & Mobile')
+    .addTag('Mobile', 'Endpoints sécurisés pour l\'application Mobile')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
