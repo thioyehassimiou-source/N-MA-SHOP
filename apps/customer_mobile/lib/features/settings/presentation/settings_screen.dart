@@ -8,6 +8,7 @@ import '../../auth/data/auth_service.dart';
 import '../../auth/presentation/auth_landing_screen.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../../onboarding/presentation/onboarding_screen.dart';
+import '../../backup/presentation/backup_restore_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -447,6 +448,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 20),
 
           // Section 3 : Sécurité & Appareil
+          _buildSectionHeader('SÉCURITÉ & DONNÉES', Icons.security_rounded),
+          _buildCard(
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.backup_rounded, color: AppColors.brandEmerald),
+                title: const Text('Sauvegardes & Restauration', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                subtitle: const Text('Exports de sécurité et vérification d\'intégrité SQLite', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const BackupRestoreScreen()),
+                  );
+                },
+              ),
+              const Divider(color: AppColors.border),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.phone_android_rounded, color: AppColors.onSurfaceVariant),
@@ -473,6 +490,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 subtitle: const Text('Ferme la session locale sur ce téléphone', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 onTap: _confirmLogout,
               ),
+            ],
+          ),
           const SizedBox(height: 24),
 
           // Assistance & Version
