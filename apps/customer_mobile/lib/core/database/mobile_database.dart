@@ -1,9 +1,6 @@
-import 'dart:io';
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'connection/connection.dart';
 
 part 'mobile_database.g.dart';
 
@@ -196,18 +193,10 @@ class MobileSyncQueue extends Table {
   MobileSyncQueue,
 ])
 class MobileDatabase extends _$MobileDatabase {
-  MobileDatabase() : super(_openConnection());
+  MobileDatabase() : super(openConnection());
 
   @override
   int get schemaVersion => 1;
-}
-
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'nmashop_mobile_local.db'));
-    return NativeDatabase.createInBackground(file);
-  });
 }
 
 // ── Riverpod Provider ──
