@@ -62,6 +62,10 @@ class StorageService {
   }
 
   Future<String?> getAccessToken() async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyAccessToken);
+    }
     try {
       return await _secureStorage.read(key: _keyAccessToken);
     } catch (_) {
@@ -71,6 +75,10 @@ class StorageService {
   }
 
   Future<String?> getRefreshToken() async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyRefreshToken);
+    }
     try {
       return await _secureStorage.read(key: _keyRefreshToken);
     } catch (_) {
@@ -80,6 +88,11 @@ class StorageService {
   }
 
   Future<void> saveAccessToken(String token) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyAccessToken, token);
+      return;
+    }
     try {
       await _secureStorage.write(key: _keyAccessToken, value: token);
     } catch (_) {
