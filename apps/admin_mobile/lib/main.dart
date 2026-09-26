@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/providers/admin_providers.dart';
@@ -11,6 +12,10 @@ import 'features/dashboard/admin_dashboard_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await initializeDateFormatting('fr_FR', null);
+    await initializeDateFormatting('fr', null);
+  } catch (_) {}
   final prefs = await SharedPreferences.getInstance();
 
   // Android Status & Navigation Bar Configuration

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/network/api_client.dart';
 import 'core/theme/app_colors.dart';
 import 'features/auth/presentation/auth_landing_screen.dart';
@@ -10,6 +11,12 @@ import 'features/shell/main_navigation_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialisation des données locales françaises pour le formatage des dates et monnaies
+  try {
+    await initializeDateFormatting('fr_FR', null);
+    await initializeDateFormatting('fr', null);
+  } catch (_) {}
 
   // Barre de statut claire et élégante
   SystemChrome.setSystemUIOverlayStyle(
