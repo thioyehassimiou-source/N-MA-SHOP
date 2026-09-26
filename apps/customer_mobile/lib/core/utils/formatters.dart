@@ -46,10 +46,34 @@ abstract final class AppFormatters {
   }
 
   static String formatDate(DateTime date) {
-    return DateFormat('dd MMMM yyyy', 'fr_FR').format(date);
+    try {
+      return DateFormat('dd MMMM yyyy', 'fr_FR').format(date);
+    } catch (_) {
+      try {
+        return DateFormat('dd MMMM yyyy', 'fr').format(date);
+      } catch (_) {
+        final d = date.day.toString().padLeft(2, '0');
+        final m = date.month.toString().padLeft(2, '0');
+        final y = date.year;
+        return '$d/$m/$y';
+      }
+    }
   }
 
   static String formatDateTime(DateTime date) {
-    return DateFormat('dd/MM/yyyy HH:mm', 'fr_FR').format(date);
+    try {
+      return DateFormat('dd/MM/yyyy HH:mm', 'fr_FR').format(date);
+    } catch (_) {
+      try {
+        return DateFormat('dd/MM/yyyy HH:mm').format(date);
+      } catch (_) {
+        final d = date.day.toString().padLeft(2, '0');
+        final m = date.month.toString().padLeft(2, '0');
+        final y = date.year;
+        final h = date.hour.toString().padLeft(2, '0');
+        final min = date.minute.toString().padLeft(2, '0');
+        return '$d/$m/$y $h:$min';
+      }
+    }
   }
 }
