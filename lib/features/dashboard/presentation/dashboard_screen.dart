@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/domain/payment_method.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -116,8 +118,13 @@ class _DashboardBody extends StatelessWidget {
         const SizedBox(height: 24),
         LayoutBuilder(
           builder: (context, c) {
-            final chart = _RevenueChartCard(salesGrowth: data.salesGrowth);
-            final payments = const _PaymentMethodsCard();
+            final chart = _RevenueChartCard(
+              dailySales: data.dailySales,
+              salesGrowth: data.salesGrowth,
+            );
+            final payments = _PaymentMethodsCard(
+              paymentBreakdown: data.paymentBreakdown,
+            );
             final table = _RecentSalesCard(sales: data.recentSales);
             final alerts = _AlertsActionsCard(lowStockCount: data.lowStock.length);
 
@@ -165,20 +172,46 @@ class _DashboardBody extends StatelessWidget {
 // ─────────────────────────── Graphique Chiffre d'Affaires ───────────────────────────
 
 class _RevenueChartCard extends StatelessWidget {
-  const _RevenueChartCard({this.salesGrowth});
+  const _RevenueChartCard({
+    required this.dailySales,
+    this.salesGrowth,
+  });
 
+  final List<DailySalesPoint> dailySales;
   final double? salesGrowth;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final growthText = salesGrowth == null
-        ? '+0.0%'
-        : '${salesGrowth! >= 0 ? '+' : ''}${salesGrowth!.toStringAsFixed(1)}%';
+    final hasSales = dailySales.isNotEmpty && dailySales.any((p) => p.total > 0);
+    final total7d = dailySales.fold<int>(0, (s, p) => s + p.total);
+
+    final String badgeText;
+    final Color badgeBg;
+    final Color badgeFg;
+
+    if (!hasSales) {
+      badgeText = '0 GNF';
+      badgeBg = theme.colorScheme.surfaceContainerHighest;
+      badgeFg = theme.colorScheme.onSurfaceVariant;
+    } else if (salesGrowth == null) {
+      badgeText = formatGnf(total7d);
+      badgeBg = theme.colorScheme.secondaryContainer;
+      badgeFg = AppColors.brandEmerald;
+    } else {
+      final isPos = salesGrowth! >= 0;
+      badgeText = '${isPos ? '+' : ''}${salesGrowth!.toStringAsFixed(1)}%';
+      badgeBg = isPos
+          ? theme.colorScheme.secondaryContainer
+          : theme.colorScheme.errorContainer;
+      badgeFg = isPos
+          ? AppColors.brandEmerald
+          : theme.colorScheme.error;
+    }
 
     return _GlassCard(
       height: 360,
-      padding: EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -203,22 +236,22 @@ class _RevenueChartCard extends StatelessWidget {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          color: badgeBg,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          growthText,
+                          badgeText,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.brandEmerald,
+                            color: badgeFg,
                           ),
                         ),
                       ),
                       Text(
-                        'vs période précédente',
+                        hasSales ? 'vs période précédente' : 'aucune vente enregistrée',
                         style: TextStyle(
                           fontSize: 12,
                           color: theme.colorScheme.onSurfaceVariant,
@@ -229,7 +262,7 @@ class _RevenueChartCard extends StatelessWidget {
                 ],
               ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainer,
                   borderRadius: BorderRadius.circular(8),
@@ -259,23 +292,77 @@ class _RevenueChartCard extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Expanded(
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: _LineChartPainter(context),
-            ),
+            child: hasSales
+                ? CustomPaint(
+                    size: Size.infinite,
+                    painter: _LineChartPainter(context, dailySales),
+                  )
+                : Stack(
+                    children: [
+                      CustomPaint(
+                        size: Size.infinite,
+                        painter: _EmptyLineChartPainter(context),
+                      ),
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.show_chart_rounded,
+                              size: 32,
+                              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Aucune vente sur les 7 derniers jours',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'La courbe d\'activité s\'affichera dès vos premiers encaissements.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
           ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Lun', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-              Text('Mar', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-              Text('Mer', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-              Text('Jeu', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-              Text('Ven', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-              Text('Sam', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-              Text('Dim', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
-            ],
+            children: (dailySales.isEmpty
+                    ? List.generate(7, (i) => 'J-${6 - i}')
+                    : dailySales.map((point) {
+                        const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+                        final now = DateTime.now();
+                        final isToday = point.date.year == now.year &&
+                            point.date.month == now.month &&
+                            point.date.day == now.day;
+                        return isToday ? 'Auj.' : days[point.date.weekday - 1];
+                      }).toList())
+                .asMap()
+                .entries
+                .map((entry) {
+              final isLast = entry.key == (dailySales.isEmpty ? 6 : dailySales.length - 1);
+              return Text(
+                entry.value,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isLast ? FontWeight.bold : FontWeight.normal,
+                  color: isLast
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -283,9 +370,36 @@ class _RevenueChartCard extends StatelessWidget {
   }
 }
 
-class _LineChartPainter extends CustomPainter {
-  _LineChartPainter(this.context);
+class _EmptyLineChartPainter extends CustomPainter {
+  _EmptyLineChartPainter(this.context);
   final BuildContext context;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gridPaint = Paint()
+      ..color = Theme.of(context).colorScheme.surfaceContainerLow
+      ..strokeWidth = 1;
+
+    for (int i = 0; i <= 3; i++) {
+      final y = size.height * (i / 3);
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    final basePaint = Paint()
+      ..color = Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(Offset(0, size.height - 4), Offset(size.width, size.height - 4), basePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _LineChartPainter extends CustomPainter {
+  _LineChartPainter(this.context, this.dailySales);
+  final BuildContext context;
+  final List<DailySalesPoint> dailySales;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -299,16 +413,21 @@ class _LineChartPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
 
-    // Sample normalized data points [0..1] for 7 days
-    final points = [
-      Offset(0, size.height * 0.75),
-      Offset(size.width * 0.16, size.height * 0.60),
-      Offset(size.width * 0.33, size.height * 0.65),
-      Offset(size.width * 0.50, size.height * 0.40),
-      Offset(size.width * 0.66, size.height * 0.45),
-      Offset(size.width * 0.83, size.height * 0.20),
-      Offset(size.width, size.height * 0.10),
-    ];
+    if (dailySales.isEmpty) return;
+
+    final maxVal = math.max(
+      1,
+      dailySales.map((p) => p.total).reduce(math.max),
+    );
+
+    final points = <Offset>[];
+    final count = dailySales.length;
+    for (int i = 0; i < count; i++) {
+      final x = count == 1 ? size.width / 2 : size.width * (i / (count - 1));
+      final ratio = (dailySales[i].total / maxVal).clamp(0.0, 1.0);
+      final y = size.height * (0.90 - (ratio * 0.75));
+      points.add(Offset(x, y));
+    }
 
     final path = Path();
     path.moveTo(points[0].dx, points[0].dy);
@@ -319,9 +438,12 @@ class _LineChartPainter extends CustomPainter {
       final controlPoint1 = Offset(p1.dx + (p2.dx - p1.dx) / 2, p1.dy);
       final controlPoint2 = Offset(p1.dx + (p2.dx - p1.dx) / 2, p2.dy);
       path.cubicTo(
-        controlPoint1.dx, controlPoint1.dy,
-        controlPoint2.dx, controlPoint2.dy,
-        p2.dx, p2.dy,
+        controlPoint1.dx,
+        controlPoint1.dy,
+        controlPoint2.dx,
+        controlPoint2.dy,
+        p2.dx,
+        p2.dy,
       );
     }
 
@@ -343,7 +465,8 @@ class _LineChartPainter extends CustomPainter {
     canvas.drawPath(
       fillPath,
       Paint()
-        ..shader = fillGradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
+        ..shader = fillGradient.createShader(
+            Rect.fromLTWH(0, 0, size.width, size.height)),
     );
 
     // Draw line
@@ -354,6 +477,22 @@ class _LineChartPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     canvas.drawPath(path, linePaint);
+
+    // Draw dots for days with sales
+    for (int i = 0; i < points.length; i++) {
+      if (dailySales[i].total > 0) {
+        canvas.drawCircle(
+          points[i],
+          4,
+          Paint()..color = Theme.of(context).colorScheme.primary,
+        );
+        canvas.drawCircle(
+          points[i],
+          2,
+          Paint()..color = Colors.white,
+        );
+      }
+    }
 
     // Draw active dot at the last point
     final lastPoint = points.last;
@@ -370,60 +509,101 @@ class _LineChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _LineChartPainter oldDelegate) =>
+      oldDelegate.dailySales != dailySales;
 }
 
 // ─────────────────────────── Carte Modes de Paiement ───────────────────────────
 
 class _PaymentMethodsCard extends StatelessWidget {
-  const _PaymentMethodsCard();
+  const _PaymentMethodsCard({required this.paymentBreakdown});
+
+  final List<PaymentBreakdownItem> paymentBreakdown;
+
+  int _amountFor(PaymentMethod method) {
+    for (final item in paymentBreakdown) {
+      if (item.method == method) return item.amount;
+    }
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cashAmount = _amountFor(PaymentMethod.cash);
+    final mobileMoneyAmount = _amountFor(PaymentMethod.mobileMoney);
+    final bankAmount = _amountFor(PaymentMethod.bank);
+    final creditAmount = _amountFor(PaymentMethod.credit);
+    final total = cashAmount + mobileMoneyAmount + bankAmount + creditAmount;
+
+    int pct(int amount) => total > 0 ? ((amount / total) * 100).round() : 0;
+
     return _GlassCard(
       height: 360,
-      padding: EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Modes de paiement',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Modes de paiement',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              if (total > 0)
+                Text(
+                  formatGnf(total),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.primary,
+                  ),
+                )
+              else
+                Text(
+                  '0 GNF encaissé',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 16),
-          const _PaymentItem(
+          _PaymentItem(
             label: 'Espèces',
-            percentage: 65,
-            amount: '0 FCFA',
+            percentage: pct(cashAmount),
+            amount: formatGnf(cashAmount),
             color: AppColors.brandEmerald,
             icon: Icons.payments_outlined,
           ),
           const SizedBox(height: 12),
-          const _PaymentItem(
+          _PaymentItem(
             label: 'Mobile Money',
-            percentage: 25,
-            amount: '0 FCFA',
-            color: Color(0xFFF59E0B),
+            percentage: pct(mobileMoneyAmount),
+            amount: formatGnf(mobileMoneyAmount),
+            color: const Color(0xFFF59E0B),
             icon: Icons.phone_android_outlined,
           ),
           const SizedBox(height: 12),
           _PaymentItem(
             label: 'Carte / Virement',
-            percentage: 10,
-            amount: '0 FCFA',
-            color: Theme.of(context).colorScheme.primary,
+            percentage: pct(bankAmount),
+            amount: formatGnf(bankAmount),
+            color: theme.colorScheme.primary,
             icon: Icons.credit_card_outlined,
           ),
           const SizedBox(height: 12),
           _PaymentItem(
             label: 'Crédit client',
-            percentage: 0,
-            amount: '0 FCFA',
-            color: Theme.of(context).colorScheme.error,
+            percentage: pct(creditAmount),
+            amount: formatGnf(creditAmount),
+            color: theme.colorScheme.error,
             icon: Icons.receipt_long_outlined,
           ),
         ],
@@ -449,6 +629,7 @@ class _PaymentItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -461,16 +642,31 @@ class _PaymentItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: theme.colorScheme.onSurface,
               ),
             ),
             const Spacer(),
             Text(
-              '$percentage%',
+              amount,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '$percentage%',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
             ),
           ],
@@ -481,7 +677,7 @@ class _PaymentItem extends StatelessWidget {
           child: LinearProgressIndicator(
             value: percentage / 100,
             minHeight: 6,
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+            backgroundColor: theme.colorScheme.surfaceContainerLow,
             valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ),
