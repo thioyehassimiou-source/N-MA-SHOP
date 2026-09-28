@@ -36,7 +36,7 @@ class DriftDashboardRepository implements DashboardRepository {
       _cashAvailable(),                         // 8
     ]);
 
-    final dailySales = await _dailySales(startWeek, endToday);
+    final dailySales = await _dailySales(startToday);
     final paymentBreakdown = await _paymentBreakdown();
     final supplierDebt = await _supplierDebt();
     final avgTicket = await _avgTicket(startWeek, endToday);
@@ -218,22 +218,20 @@ class DriftDashboardRepository implements DashboardRepository {
         .toList(growable: false);
   }
 
-  /// Ventes par jour sur les 7 derniers jours, pour le graphique CA.
-  Future<List<DailySalesPoint>> _dailySales(
-      DateTime start, DateTime end) async {
+  /// Ventes par jour sur les 7 derniers jours (du J-6 à aujourd'hui inclus).
+  Future<List<DailySalesPoint>> _dailySales(DateTime today) async {
     final days = <DailySalesPoint>[];
-    var cursor = DateTime(start.year, start.month, start.day);
-    final endDay = DateTime(end.year, end.month, end.day);
-    while (!cursor.isAfter(endDay)) {
-      final next = cursor.add(const Duration(days: 1));
-      final total = await _salesSum(cursor, next);
-      days.add(DailySalesPoint(date: cursor, total: total));
-      cursor = next;
+    final startDay = today.subtract(const Duration(days: 6));
+    for (int i = 0; i < 7; i++) {
+      final current = startDay.add(Duration(days: i));
+      final next = current.add(const Duration(days: 1));
+      final total = await _salesSum(current, next);
+      days.add(DailySalesPoint(date: current, total: total));
     }
     return days;
   }
 
-  /// Répartition des ventes par mode de paiement (7 derniers jours).
+  /// Répartition des ventes par mode de paiement.
   Future<List<PaymentBreakdownItem>> _paymentBreakdown() async {
     final rows = _db.select(_db.sales)
       ..where((s) => s.isCancelled.equals(false));
@@ -242,7 +240,10 @@ class DriftDashboardRepository implements DashboardRepository {
     final totals = <PaymentMethod, int>{};
     for (final s in all) {
       final method = s.paymentMethod;
-      totals[method] = (totals[method] ?? 0) + s.amountPaid;
+      final amount = method == PaymentMethod.credit
+          ? s.totalAmount
+          : s.amountPaid;
+      totals[method] = (totals[method] ?? 0) + amount;
     }
     return totals.entries
         .map((e) => PaymentBreakdownItem(method: e.key, amount: e.value))

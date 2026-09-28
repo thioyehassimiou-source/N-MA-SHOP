@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/formatters.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -99,7 +100,7 @@ class _SuppliersBody extends StatelessWidget {
               children: [
                 _PrioritySuppliers(summaries: summaries),
                 const SizedBox(height: AppSpacing.lg),
-                const _DebtExposureChart(),
+                _DebtExposureChart(summaries: summaries),
               ],
             );
             final table = _RecentPurchases(purchases: purchases);
@@ -204,15 +205,16 @@ class _TopBentoCards extends StatelessWidget {
                 Row(
                   children: [
                     Icon(
-                      Icons.trending_down,
-                      color: context.colors.primary,
+                      totalDebt > 0 ? Icons.info_outline : Icons.check_circle_outline_rounded,
+                      color: totalDebt > 0 ? context.colors.error : AppColors.brandEmerald,
                       size: 18,
                     ),
                     const SizedBox(width: AppSpacing.xs),
                     Text(
-                      'Dette maîtrisée',
+                      totalDebt > 0 ? 'Dette en attente de règlement' : 'Aucune dette en cours',
                       style: AppTypography.bodySm.copyWith(
-                        color: context.colors.primary,
+                        color: totalDebt > 0 ? context.colors.error : AppColors.brandEmerald,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -415,142 +417,172 @@ class _SupplierItem extends StatelessWidget {
 }
 
 class _DebtExposureChart extends StatelessWidget {
-  const _DebtExposureChart();
+  const _DebtExposureChart({required this.summaries});
+
+  final List<SupplierSummary> summaries;
 
   @override
   Widget build(BuildContext context) {
+    final debtSuppliers = summaries.where((s) => s.balance > 0).toList();
+    final totalDebt = debtSuppliers.fold<int>(0, (sum, s) => sum + s.balance);
+    final hasDebt = totalDebt > 0;
+
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      child: SizedBox(
-        height: 250,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'EXPOSITION À LA DETTE',
-                      style: AppTypography.labelMd.copyWith(letterSpacing: 0.5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'EXPOSITION À LA DETTE',
+                    style: AppTypography.labelMd.copyWith(letterSpacing: 0.5),
+                  ),
+                  Text(
+                    hasDebt
+                        ? '${debtSuppliers.length} fournisseur(s) créancier(s)'
+                        : 'Engagements fournisseurs',
+                    style: AppTypography.bodySm.copyWith(
+                      color: context.colors.onSurfaceVariant,
                     ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: hasDebt
+                      ? context.colors.errorContainer
+                      : AppColors.brandEmerald.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: hasDebt
+                      ? null
+                      : Border.all(color: AppColors.brandEmerald.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      hasDebt ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
+                      size: 14,
+                      color: hasDebt
+                          ? context.colors.onErrorContainer
+                          : AppColors.brandEmerald,
+                    ),
+                    const SizedBox(width: 4),
                     Text(
-                      'Sorties prévues (30j)',
+                      hasDebt ? formatGnf(totalDebt) : '0 GNF • À jour',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: hasDebt
+                            ? context.colors.onErrorContainer
+                            : AppColors.brandEmerald,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          if (!hasDebt)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppColors.brandEmerald.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.verified_outlined,
+                          color: AppColors.brandEmerald,
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Aucune dette fournisseur',
+                      style: AppTypography.labelMd.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: context.colors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tous vos approvisionnements sont intégralement réglés.',
+                      textAlign: TextAlign.center,
                       style: AppTypography.bodySm.copyWith(
                         color: context.colors.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: context.colors.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.trending_down, size: 14, color: context.colors.onPrimaryContainer),
-                      const SizedBox(width: 4),
-                      Text(
-                        '-12%',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: context.colors.onPrimaryContainer,
+              ),
+            )
+          else ...[
+            ...debtSuppliers.take(4).map((s) {
+              final pct = ((s.balance / totalDebt) * 100).round();
+              final ratio = (s.balance / totalDebt).clamp(0.0, 1.0);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            s.supplierName,
+                            style: AppTypography.bodySm.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: context.colors.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          '${formatGnf(s.balance)} ($pct%)',
+                          style: AppTypography.bodySm.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: context.colors.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: ratio,
+                        minHeight: 6,
+                        backgroundColor: context.colors.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          pct > 50
+                              ? context.colors.error
+                              : AppColors.brandOrange,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _chartBar(context, 0.25, 'J-4'),
-                  _chartBar(context, 0.40, 'J-3'),
-                  _chartBar(context, 0.80, 'J-2', isHighlight: true),
-                  _chartBar(context, 0.50, 'Hier'),
-                  _chartBar(context, 0.66, 'Auj.'),
-                  _chartBar(context, 1.0, 'Demain', isDanger: true),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _chartBar(BuildContext context, double heightFactor, String label, {bool isHighlight = false, bool isDanger = false}) {
-    final color = isDanger 
-        ? context.colors.error 
-        : isHighlight 
-            ? context.colors.primary 
-            : context.colors.primaryContainer;
-            
-    final bgColor = isDanger 
-        ? context.colors.errorContainer.withValues(alpha: 0.3)
-        : isHighlight
-            ? context.colors.primary.withValues(alpha: 0.2)
-            : context.colors.surfaceContainer;
-
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                alignment: Alignment.bottomCenter,
-                child: FractionallySizedBox(
-                  heightFactor: heightFactor,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          color,
-                          color.withValues(alpha: 0.6),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: isHighlight || isDanger ? [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        )
-                      ] : null,
                     ),
-                  ),
+                  ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isHighlight || isDanger ? FontWeight.bold : FontWeight.normal,
-                color: isHighlight || isDanger ? color : context.colors.onSurfaceVariant,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+              );
+            }),
           ],
-        ),
+        ],
       ),
     );
   }
