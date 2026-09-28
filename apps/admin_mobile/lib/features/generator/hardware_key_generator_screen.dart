@@ -442,6 +442,18 @@ Merci pour votre confiance.
                     ),
                   ],
                 ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const Text('Durées rapides : ', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    _buildQuickMonthChip('3 mois', 3, 450000),
+                    _buildQuickMonthChip('5 mois', 5, 750000),
+                    _buildQuickMonthChip('6 mois', 6, 900000),
+                  ],
+                ),
                 const SizedBox(height: 16),
 
                 // Date Expiration & Montant
@@ -615,6 +627,41 @@ Merci pour votre confiance.
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickMonthChip(String label, int months, int amount) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () {
+        setState(() {
+          _selectedType = AdminLicenseType.days30;
+          final now = DateTime.now();
+          var year = now.year;
+          var month = now.month + months;
+          while (month > 12) {
+            year += 1;
+            month -= 12;
+          }
+          final daysInMonth = DateTime(year, month + 1, 0).day;
+          final day = now.day > daysInMonth ? daysInMonth : now.day;
+          _expiryDate = DateTime(year, month, day);
+          _amountCtrl.text = amount.toString();
+          _generateKeyPreview();
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFCBD5E1)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textDark),
         ),
       ),
     );

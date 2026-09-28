@@ -225,6 +225,18 @@ class AdminLicensesScreen extends ConsumerWidget {
     );
   }
 
+  static DateTime _addMonths(DateTime from, int months) {
+    var year = from.year;
+    var month = from.month + months;
+    while (month > 12) {
+      year += 1;
+      month -= 12;
+    }
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final day = from.day > daysInMonth ? daysInMonth : from.day;
+    return DateTime(year, month, day);
+  }
+
   void _showCreateDialog(BuildContext context, WidgetRef ref, List<AdminClient> clients) {
     if (clients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -235,6 +247,7 @@ class AdminLicensesScreen extends ConsumerWidget {
 
     AdminClient? selectedClient = clients.first;
     String selectedType = 'annual';
+    int customMonths = 5;
     DateTime validFrom = DateTime.now();
     DateTime expiresAt = DateTime.now().add(const Duration(days: 365));
     String? generatedKey;
@@ -311,9 +324,10 @@ class AdminLicensesScreen extends ConsumerWidget {
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
+                      runSpacing: 8,
                       children: [
                         ChoiceChip(
-                          label: const Text('Mensuelle'),
+                          label: const Text('1 Mois'),
                           avatar: const Icon(Icons.calendar_view_month, size: 14),
                           selected: selectedType == 'monthly',
                           selectedColor: isDark
@@ -325,7 +339,19 @@ class AdminLicensesScreen extends ConsumerWidget {
                           }),
                         ),
                         ChoiceChip(
-                          label: const Text('Annuelle'),
+                          label: const Text('Personnalisée (X Mois)'),
+                          avatar: const Icon(Icons.date_range_rounded, size: 14),
+                          selected: selectedType == 'custom_months',
+                          selectedColor: isDark
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.3)
+                              : const Color(0xFFFEF3C7),
+                          onSelected: (_) => setDialogState(() {
+                            selectedType = 'custom_months';
+                            expiresAt = _addMonths(validFrom, customMonths);
+                          }),
+                        ),
+                        ChoiceChip(
+                          label: const Text('1 An'),
                           avatar: const Icon(Icons.calendar_today, size: 14),
                           selected: selectedType == 'annual',
                           selectedColor: isDark
@@ -347,6 +373,33 @@ class AdminLicensesScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
+                    if (selectedType == 'custom_months') ...[
+                      const SizedBox(height: 10),
+                      Text('Durées rapides :', style: TextStyle(color: textSecondary, fontSize: 12)),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        children: [2, 3, 5, 6, 9].map((m) {
+                          final isCurrent = customMonths == m;
+                          return ActionChip(
+                            label: Text('$m mois'),
+                            avatar: isCurrent ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
+                            backgroundColor: isCurrent ? const Color(0xFFF59E0B) : fieldBg,
+                            labelStyle: TextStyle(
+                              color: isCurrent ? Colors.white : textPrimary,
+                              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 12,
+                            ),
+                            onPressed: () {
+                              setDialogState(() {
+                                customMonths = m;
+                                expiresAt = _addMonths(validFrom, m);
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.md),
 
                     // Réf boutique / ID client (Reçu sur WhatsApp)
@@ -412,12 +465,12 @@ class AdminLicensesScreen extends ConsumerWidget {
                       ),
                     ),
 
-                    // Date d'expiration (seulement pour annuelle, mensuelle auto-calculée)
-                    if (selectedType == 'annual')
+                    // Date d'expiration (pour annuelle ou personnalisée)
+                    if (selectedType == 'annual' || selectedType == 'custom_months')
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text('Date d\'expiration', style: TextStyle(color: textSecondary, fontSize: 13)),
-                        subtitle: Text(expiresAt.toLocal().toString().split(' ')[0], style: TextStyle(color: textPrimary)),
+                        subtitle: Text(expiresAt.toLocal().toString().split(' ')[0], style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold)),
                         trailing: IconButton(
                           icon: const Icon(Icons.edit_calendar, color: Color(0xFF94A3B8)),
                           onPressed: () async {
@@ -1034,9 +1087,10 @@ class _TypeBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (type) {
-      'lifetime' => ('À vie', const Color(0xFF8B5CF6)),
-      'monthly'  => ('Mensuelle', const Color(0xFF3B82F6)),
-      _          => ('Annuelle', const Color(0xFF10B981)),
+      'lifetime'      => ('À vie', const Color(0xFF8B5CF6)),
+      'monthly'       => ('Mensuelle', const Color(0xFF3B82F6)),
+      'custom_months' => ('Personnalisée', const Color(0xFFF59E0B)),
+      _               => ('Annuelle', const Color(0xFF10B981)),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
