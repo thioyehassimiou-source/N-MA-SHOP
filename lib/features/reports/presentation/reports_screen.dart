@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../core/format/formatters.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_date_range_picker_dialog.dart';
 import '../../../core/widgets/app_page_header.dart';
 import '../../../core/database/tables/expenses.dart';
 import '../application/reports_providers.dart';
@@ -224,6 +225,11 @@ class _PeriodSelector extends ConsumerWidget {
       );
     }
 
+    final isCustom = current.period == ReportPeriod.custom;
+    final customLabel = isCustom
+        ? 'Personnalisé (${DateFormat('dd/MM', 'fr').format(current.start)} - ${DateFormat('dd/MM', 'fr').format(current.end.subtract(const Duration(days: 1)))})'
+        : 'Personnalisé';
+
     return Row(
       children: [
         chip(ReportPeriod.today, "Aujourd'hui"),
@@ -231,25 +237,66 @@ class _PeriodSelector extends ConsumerWidget {
         chip(ReportPeriod.month, 'Mois'),
         chip(ReportPeriod.year, 'Année'),
         const SizedBox(width: 4),
-        ActionChip(
-          label: const Text('Personnalisé', style: TextStyle(fontSize: 12)),
-          backgroundColor: context.colors.surfaceContainerHighest,
-          side: BorderSide.none,
-          onPressed: () async {
-            final picked = await showDateRangePicker(
+        InkWell(
+          onTap: () async {
+            final picked = await showAppDateRangePicker(
               context: context,
-              firstDate: DateTime(2024),
+              initialRange: DateTimeRange(
+                start: current.start,
+                end: current.end.subtract(const Duration(days: 1)),
+              ),
+              firstDate: DateTime(2023),
               lastDate: DateTime.now(),
-              locale: const Locale('fr'),
+              title: 'Personnaliser la période du rapport',
+              subtitle: 'Sélectionnez une période précise pour analyser vos statistiques',
             );
             if (picked != null) {
-              ref.read(reportRangeProvider.notifier).updateRange(ReportRange.forPeriod(
-                ReportPeriod.custom,
-                customStart: picked.start,
-                customEnd: picked.end,
-              ));
+              ref.read(reportRangeProvider.notifier).updateRange(
+                ReportRange.forPeriod(
+                  ReportPeriod.custom,
+                  customStart: picked.start,
+                  customEnd: picked.end,
+                ),
+              );
             }
           },
+          borderRadius: BorderRadius.circular(20),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(
+              color: isCustom ? const Color(0xFF6366F1) : context.colors.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: isCustom
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.date_range_rounded,
+                  size: 14,
+                  color: isCustom ? Colors.white : context.colors.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  customLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isCustom ? FontWeight.bold : FontWeight.normal,
+                    color: isCustom ? Colors.white : context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );

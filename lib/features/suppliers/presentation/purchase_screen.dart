@@ -11,6 +11,7 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_form_dialog.dart';
 import '../../../core/widgets/app_form_field.dart';
+import '../../../core/widgets/product_thumbnail.dart';
 import '../../stock/application/stock_providers.dart';
 import '../../stock/domain/entities/product.dart';
 import '../application/purchase_cart_controller.dart';
@@ -159,8 +160,8 @@ class _ProductPickerState extends ConsumerState<_ProductPicker> {
 
               return GridView.builder(
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 200,
-                  mainAxisExtent: 110,
+                  maxCrossAxisExtent: 250,
+                  mainAxisExtent: 96,
                   crossAxisSpacing: AppSpacing.md,
                   mainAxisSpacing: AppSpacing.md,
                 ),
@@ -184,33 +185,87 @@ class _ProductTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cartLines = ref.watch(purchaseCartControllerProvider).lines;
+    final inCartLine = cartLines.where((l) => l.productId == product.id).firstOrNull;
+    final inCartCount = inCartLine?.quantity ?? 0;
+
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.sm),
       onTap: () =>
           ref.read(purchaseCartControllerProvider.notifier).addProduct(product),
       hoverBorder: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Expanded(
-            child: Text(
-              product.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.labelMd,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                child: ProductThumbnail(
+                  imageUrl: product.imageUrl,
+                  size: 52,
+                  borderRadius: AppRadius.md,
+                  enableZoomOnTap: false,
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.labelMd,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      formatGnf(product.purchasePrice),
+                      style: AppTypography.labelMd.copyWith(
+                        color: context.colors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Stock: ${formatQuantity(product.stockQuantity)} ${product.unit}',
+                      style: AppTypography.labelSm.copyWith(
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (inCartCount > 0)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: context.colors.primary,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: context.colors.primary.withValues(alpha: 0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  '+$inCartCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            formatGnf(product.purchasePrice),
-            style: AppTypography.labelMd.copyWith(color: context.colors.primary),
-          ),
-          Text(
-            'Stock: ${formatQuantity(product.stockQuantity)} ${product.unit}',
-            style: AppTypography.labelSm.copyWith(
-              color: context.colors.onSurfaceVariant,
-            ),
-          ),
         ],
       ),
     );
@@ -363,18 +418,13 @@ class _CartLineTile extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainer,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-            ),
-            child: Icon(
-              Icons.inventory_2_outlined,
-              size: 16,
-              color: context.colors.primary,
-            ),
+          // Vignette / photo du produit
+          ProductThumbnail(
+            imageUrl: line.imageUrl,
+            size: 36,
+            borderRadius: AppRadius.md,
+            fallbackIcon: Icons.inventory_2_outlined,
+            fallbackColor: context.colors.primary,
           ),
           const SizedBox(width: AppSpacing.base),
           Expanded(

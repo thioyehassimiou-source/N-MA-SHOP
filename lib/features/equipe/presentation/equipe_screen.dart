@@ -10,6 +10,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_chip.dart';
+import '../../../core/widgets/app_date_range_picker_dialog.dart';
 import '../../../core/widgets/app_form_dialog.dart';
 import '../../../core/widgets/app_form_field.dart';
 import '../../../core/widgets/app_page_header.dart';
@@ -162,20 +163,19 @@ class _EquipeScreenState extends ConsumerState<EquipeScreen>
         chip(ReportPeriod.today, "Aujourd'hui"),
         chip(ReportPeriod.week, 'Semaine'),
         chip(ReportPeriod.month, 'Mois'),
-        ActionChip(
-          label: const Text('Personnalisé', style: TextStyle(fontSize: 12)),
-          backgroundColor: context.colors.surfaceContainerHighest,
-          side: BorderSide.none,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-          onPressed: () async {
-            final picked = await showDateRangePicker(
+        const SizedBox(width: 4),
+        InkWell(
+          onTap: () async {
+            final picked = await showAppDateRangePicker(
               context: context,
-              firstDate: DateTime(2024),
-              lastDate: DateTime.now(),
-              initialDateRange: DateTimeRange(
+              initialRange: DateTimeRange(
                 start: currentRange.start,
                 end: currentRange.end.subtract(const Duration(days: 1)),
               ),
+              firstDate: DateTime(2023),
+              lastDate: DateTime.now(),
+              title: 'Période d\'analyse d\'équipe',
+              subtitle: 'Filtrez les performances commerciales de votre équipe',
             );
             if (picked != null) {
               ref.read(sellerRangeProvider.notifier).updateRange(
@@ -187,6 +187,41 @@ class _EquipeScreenState extends ConsumerState<EquipeScreen>
                   );
             }
           },
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: currentRange.period == ReportPeriod.custom
+                  ? AppColors.primary
+                  : context.colors.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.date_range_rounded,
+                  size: 14,
+                  color: currentRange.period == ReportPeriod.custom
+                      ? Colors.white
+                      : context.colors.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Personnalisé',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: currentRange.period == ReportPeriod.custom
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: currentRange.period == ReportPeriod.custom
+                        ? Colors.white
+                        : context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
