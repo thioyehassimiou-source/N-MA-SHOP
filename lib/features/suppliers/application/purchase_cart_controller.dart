@@ -15,6 +15,7 @@ class PurchaseCartLine {
     required this.quantity,
     required this.currentStock,
     required this.currentCmp,
+    this.imageUrl,
   });
 
   final String productId;
@@ -24,6 +25,7 @@ class PurchaseCartLine {
   final int quantity;
   final int currentStock;
   final int currentCmp;
+  final String? imageUrl;
 
   int get lineTotal => unitPrice * quantity;
 
@@ -35,7 +37,7 @@ class PurchaseCartLine {
     return (totalValue / newStock).round();
   }
 
-  PurchaseCartLine copyWith({int? unitPrice, int? quantity}) =>
+  PurchaseCartLine copyWith({int? unitPrice, int? quantity, String? imageUrl}) =>
       PurchaseCartLine(
         productId: productId,
         name: name,
@@ -44,6 +46,7 @@ class PurchaseCartLine {
         quantity: quantity ?? this.quantity,
         currentStock: currentStock,
         currentCmp: currentCmp,
+        imageUrl: imageUrl ?? this.imageUrl,
       );
 }
 
@@ -98,6 +101,7 @@ class PurchaseCartController extends Notifier<PurchaseCartState> {
           productId: product.id,
           name: product.name,
           unit: product.unit,
+          imageUrl: product.imageUrl,
           unitPrice: product
               .purchasePrice, // Par défaut, on propose le dernier prix d'achat
           quantity: 1,
