@@ -104,7 +104,7 @@ class LicenseService {
         if (isMatch) {
           // Migration automatique transparente de l'ancienne empreinte vers la nouvelle empreinte stable
           await prefs.setString(_prefBoundHwId, hwId);
-          await _writeDatabaseLicenseKey(stored, hwId);
+          await writeDatabaseLicense(stored, hwId);
         } else {
           // La licence / fichier de config a été copié sur une autre machine !
           return LicenseInfo(
@@ -129,7 +129,7 @@ class LicenseService {
       if (info != null) {
         if (boundHwId != hwId) {
           await prefs.setString(_prefBoundHwId, hwId);
-          await _writeDatabaseLicenseKey(stored, hwId);
+          await writeDatabaseLicense(stored, hwId);
         }
         return info;
       }
@@ -375,7 +375,7 @@ class LicenseService {
     await prefs.setString(_prefKey, rawKey.trim().toUpperCase());
     await prefs.setString(_prefBoundHwId, hwId);
     await prefs.remove('lic_was_revoked_by_admin');
-    await _writeDatabaseLicenseKey(rawKey.trim().toUpperCase(), hwId);
+    await writeDatabaseLicense(rawKey.trim().toUpperCase(), hwId);
     return (result: LicenseActivationResult.success, info: info);
   }
 
@@ -820,7 +820,7 @@ class LicenseService {
     }
   }
 
-  static Future<void> _writeDatabaseLicenseKey(String key, String boundHwId) async {
+  static Future<void> writeDatabaseLicense(String key, String boundHwId) async {
     try {
       final appDir = await _getAppDir();
       var dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));

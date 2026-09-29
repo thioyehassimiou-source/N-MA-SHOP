@@ -10,6 +10,7 @@ import '../../../core/license/license_admin_sync_service.dart';
 import '../../../core/license/license_core.dart';
 import '../../../core/license/license_model.dart';
 import '../../../core/license/license_provider.dart';
+import '../../../core/license/license_service.dart';
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/providers/database_provider.dart';
 import '../../../core/services/hardware_id_service.dart';
@@ -119,7 +120,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     }
   }
 
-  void _nextStep() {
+  Future<void> _nextStep() async {
     if (_currentStep == 0) {
       if (_shopFormKey.currentState!.validate()) {
         setState(() => _currentStep = 1);
@@ -129,13 +130,18 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
         setState(() => _currentStep = 2);
       } else {
         if (!_licenseActivated) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: context.colors.error,
-              content: const Text('Veuillez activer une clé de licence valide ou sélectionner la période d\'essai pour continuer.'),
-            ),
-          );
-          return;
+          if (_licenseKeyController.text.trim().isNotEmpty) {
+            await _activateLicenseKey();
+            if (!_licenseActivated) return;
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: context.colors.error,
+                content: const Text('Veuillez activer une clé de licence valide ou sélectionner la période d\'essai pour continuer.'),
+              ),
+            );
+            return;
+          }
         }
         setState(() => _currentStep = 2);
       }
@@ -236,10 +242,16 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
       // Si l'utilisateur a activé une clé de licence, resynchroniser les infos du propriétaire et de la boutique
       if (!_useTrialMode && _licenseActivated) {
+        final hwId = await HardwareIdService.getHardwareId();
+        final rawKey = _licenseKeyController.text.trim().toUpperCase();
+        final prefs = ref.read(sharedPreferencesProvider);
+        await prefs.setString('lic_key', rawKey);
+        await prefs.setString('lic_bound_hw_id', hwId);
+        await prefs.remove('lic_was_revoked_by_admin');
+        await LicenseService.writeDatabaseLicense(rawKey, hwId);
+
         try {
-          final hwId = await HardwareIdService.getHardwareId();
           final currentLicense = ref.read(licenseInfoProvider);
-          final rawKey = _licenseKeyController.text.trim().toUpperCase();
 
           final payload = LicenseSyncPayload(
             businessName: _nameController.text.trim(),
