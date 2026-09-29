@@ -35,8 +35,11 @@ abstract final class HardwareIdService {
     if (Platform.isWindows) {
       // Priorité 1 : MachineGuid depuis le Registre Windows (Immuable, unique par installation)
       try {
+        final regExe = Platform.environment['SystemRoot'] != null
+            ? '${Platform.environment['SystemRoot']}\\System32\\reg.exe'
+            : 'reg';
         final regResult = await Process.run(
-          'reg',
+          regExe,
           ['query', r'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography', '/v', 'MachineGuid'],
           runInShell: true,
         );
@@ -102,12 +105,10 @@ abstract final class HardwareIdService {
     final os = Platform.operatingSystem;
     final processors = Platform.numberOfProcessors;
     final procIdentifier = Platform.environment['PROCESSOR_IDENTIFIER'] ?? '';
-    final userEnv = Platform.environment['USERNAME'] ??
-        Platform.environment['USER'] ??
-        Platform.environment['HOME'] ??
-        'nmashop_client';
 
-    final rawSeed = 'NMA_HW_BINDING_V1#$machineUniqueToken#$hostname#$os#$processors#$procIdentifier#$userEnv';
+    // L'empreinte matérielle identifie la machine PHYSIQUE (Hardware + OS), indépendamment
+    // du nom d'utilisateur Windows ou du niveau d'élévation (Admin vs Standard).
+    final rawSeed = 'NMA_HW_BINDING_V1#$machineUniqueToken#$hostname#$os#$processors#$procIdentifier';
     final bytes = utf8.encode(rawSeed);
     final digest = sha256.convert(bytes).toString().toUpperCase();
 

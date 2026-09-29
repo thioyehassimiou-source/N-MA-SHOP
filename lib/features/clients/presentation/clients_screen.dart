@@ -8,6 +8,9 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_page_header.dart';
 import '../application/clients_providers.dart';
 import 'new_client_dialog.dart';
+import '../../../core/database/database.dart';
+import '../../../core/providers/database_provider.dart';
+import '../../auth/application/auth_providers.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
 
@@ -17,6 +20,8 @@ class ClientsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncClients = ref.watch(clientsStreamProvider);
+    final currentUser = ref.watch(authProvider);
+    final isAdmin = currentUser?.isAdmin ?? false;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,6 +131,12 @@ class ClientsScreen extends ConsumerWidget {
                             icon: Icon(Icons.edit_outlined, color: context.colors.onSurfaceVariant),
                             onPressed: () => NewClientDialog.show(context, client: c),
                           ),
+                          if (isAdmin)
+                            IconButton(
+                              tooltip: 'Supprimer',
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              onPressed: () => _confirmDeleteClient(context, ref, c),
+                            ),
                         ],
                       ),
                     ),
@@ -137,5 +148,61 @@ class ClientsScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _confirmDeleteClient(BuildContext context, WidgetRef ref, Customer c) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+            SizedBox(width: 8),
+            Text('Supprimer le client ?'),
+          ],
+        ),
+        content: Text(
+          'Voulez-vous vraiment supprimer le client "${c.name}" ?\n\nCette action est irréversible.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final db = ref.read(databaseProvider);
+      try {
+        await (db.delete(db.customers)..where((tbl) => tbl.id.equals(c.id))).go();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Client "${c.name}" supprimé.'),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+        }
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Impossible de supprimer ce client car des ventes ou créances lui sont rattachées.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    }
   }
 }

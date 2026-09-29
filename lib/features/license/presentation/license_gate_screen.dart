@@ -105,7 +105,7 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
         // Panneau droit — formulaire
         Expanded(
           flex: 5,
-          child: _buildForm(),
+          child: _buildForm(license),
         ),
       ],
     );
@@ -116,13 +116,35 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
       child: Column(
         children: [
           SizedBox(height: 220, child: _BrandPanel(license: license)),
-          _buildForm(),
+          _buildForm(license),
         ],
       ),
     );
   }
 
-  Widget _buildForm() {
+  Widget _buildForm(LicenseInfo license) {
+    final String title;
+    final String subtitle;
+    final String ctaLabel;
+
+    if (license.status == LicenseStatus.tampered) {
+      title = 'Horloge système modifiée';
+      subtitle = 'Une incohérence sur la date de votre ordinateur a été détectée. Veuillez rétablir l\'heure exacte pour déverrouiller votre boutique.';
+      ctaLabel = 'Assistance technique sur WhatsApp';
+    } else if (license.status == LicenseStatus.deviceMismatch) {
+      title = 'Appareil non reconnu';
+      subtitle = 'Cette clé d\'activation est déjà associée à un autre ordinateur. Veuillez activer une clé dédiée à cette machine.';
+      ctaLabel = 'Contacter le support sur WhatsApp';
+    } else if (license.type == LicenseType.trial) {
+      title = 'Période d\'essai terminée';
+      subtitle = 'Pour continuer à utiliser N\'MaShop et enregistrer vos ventes, activez votre licence.';
+      ctaLabel = 'Acheter ma licence sur WhatsApp';
+    } else {
+      title = 'Abonnement arrivé à échéance';
+      subtitle = 'Votre abonnement N\'MaShop est arrivé à expiration. Veuillez renouveler votre clé pour continuer à utiliser votre boutique.';
+      ctaLabel = 'Renouveler ma licence sur WhatsApp';
+    }
+
     return Container(
       color: Colors.white,
       child: Center(
@@ -137,9 +159,9 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Titre chaleureux et clair
-                  const Text(
-                    'Période d\'essai terminée',
-                    style: TextStyle(
+                  Text(
+                    title,
+                    style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF0F172A),
@@ -147,9 +169,9 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Pour continuer à utiliser N\'MaShop et enregistrer vos ventes, activez votre licence.',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF64748B), height: 1.5),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 14, color: Color(0xFF64748B), height: 1.5),
                   ),
                   const SizedBox(height: 24),
 
@@ -163,9 +185,9 @@ class _LicenseGateScreenState extends ConsumerState<LicenseGateScreen>
                         await UrlLauncherHelper.openUrl(url);
                       },
                       icon: const Icon(Icons.chat_rounded, size: 20, color: Colors.white),
-                      label: const Text(
-                        'Acheter ma licence sur WhatsApp',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      label: Text(
+                        ctaLabel,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF10B981),
@@ -464,9 +486,9 @@ class _BrandPanel extends StatelessWidget {
                         ? 'Horloge système modifiée\nou tentative d\'altération.'
                         : license.status == LicenseStatus.deviceMismatch
                             ? 'Licence dédiée à une autre machine.'
-                            : license.isTrial
+                            : license.type == LicenseType.trial
                                 ? 'Votre période d\'essai\nde 7 jours est terminée.'
-                                : 'Votre licence et son délai de grâce\nsont arrivés à échéance.',
+                                : 'Votre abonnement N\'MaShop\nest arrivé à échéance.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,

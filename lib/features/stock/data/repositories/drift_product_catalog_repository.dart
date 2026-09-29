@@ -81,4 +81,15 @@ class DriftProductCatalogRepository implements ProductCatalogRepository {
       ),
     );
   }
+
+  @override
+  Future<void> delete(String id) async {
+    await _db.transaction(() async {
+      await (_db.delete(_db.stockMovements)..where((t) => t.productId.equals(id))).go();
+      await (_db.delete(_db.orderItems)..where((t) => t.productId.equals(id))).go();
+      await (_db.delete(_db.purchaseItems)..where((t) => t.productId.equals(id))).go();
+      await (_db.delete(_db.saleItems)..where((t) => t.productId.equals(id))).go();
+      await (_db.delete(_db.products)..where((t) => t.id.equals(id))).go();
+    });
+  }
 }

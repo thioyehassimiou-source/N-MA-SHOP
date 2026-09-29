@@ -428,5 +428,32 @@ void main() {
       );
       expect(info3.trialCountdownLabel, 'Essai expiré');
     });
+
+    test('Client key activation and persistent reboot retains licensed state and duration', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      // Clé réelle générée pour le client expirant le 28/02/2027
+      const clientKey = 'NMAS-20270228-71C6DF24';
+      final res = await service.activateAsync(clientKey, prefs);
+
+      expect(res.result, LicenseActivationResult.success);
+      expect(res.info, isNotNull);
+      expect(res.info!.isLicensed, isTrue);
+      expect(res.info!.daysLeft, greaterThan(140));
+      expect(res.info!.type, LicenseType.annual);
+
+      // Simulation du redémarrage de l'application (nouvelle instance du service)
+      final rebootedService = LicenseService();
+      final afterReboot = await rebootedService.checkAsync(prefs);
+
+      expect(afterReboot.status, LicenseStatus.licensed);
+      expect(afterReboot.isLicensed, isTrue);
+      expect(afterReboot.isTrial, isFalse);
+      expect(afterReboot.isExpired, isFalse);
+      expect(afterReboot.daysLeft, greaterThan(140));
+      expect(afterReboot.key, clientKey);
+      expect(afterReboot.type, LicenseType.annual);
+    });
   });
 }

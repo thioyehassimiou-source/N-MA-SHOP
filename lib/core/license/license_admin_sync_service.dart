@@ -340,18 +340,20 @@ class LicenseAdminSyncService {
       final cleanHwId = hardwareId.trim().toUpperCase();
 
       final Result result;
-      if (key.isNotEmpty) {
-        // 1. Poste sous licence : vérifier l'état le plus récent de cette clé ou machine
+      final isPaidKey = key.isNotEmpty && !key.startsWith('TRIAL-') && key != 'ESSAI-GRATUIT';
+
+      if (isPaidKey) {
+        // 1. Poste sous licence payante : interroger STRICTEMENT cette clé précise.
+        // Ne jamais court-circuiter avec un ancien enregistrement d'essai lié au hardwareId.
         result = await connection.execute(
           Sql.named('''
             SELECT is_active, license_key, expires_at, activated_at, (NOW() AT TIME ZONE 'UTC') as server_time 
             FROM nmashop_activations 
-            WHERE (license_key = @key AND @key != '') OR (hardware_id = @hwId AND @hwId != '')
-            ORDER BY is_active ASC, id DESC LIMIT 1
+            WHERE license_key = @key
+            ORDER BY id DESC LIMIT 1
           '''),
           parameters: {
             'key': key,
-            'hwId': cleanHwId,
           },
         );
       } else if (cleanHwId.isNotEmpty) {
@@ -361,7 +363,7 @@ class LicenseAdminSyncService {
             SELECT is_active, license_key, expires_at, activated_at, (NOW() AT TIME ZONE 'UTC') as server_time 
             FROM nmashop_activations 
             WHERE hardware_id = @hwId AND license_key != ''
-            ORDER BY is_active ASC, id DESC LIMIT 1
+            ORDER BY id DESC LIMIT 1
           '''),
           parameters: {'hwId': cleanHwId},
         );

@@ -52,18 +52,23 @@ class LicenseService {
 
     // ── 2b. Vérification de la révocation à distance par l'administrateur ──────
     final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
+    final stored = prefs.getString(_prefKey);
+
     if (wasRevokedByAdmin) {
-      return const LicenseInfo(
+      LicenseType revType = LicenseType.trial;
+      if (stored != null) {
+        final parsed = LicenseCore.validateKey(stored, deviceHwId: hwId) ?? LicenseCore.validateKey(stored);
+        if (parsed != null) revType = parsed.type;
+      }
+      return LicenseInfo(
         status: LicenseStatus.expired,
-        type: LicenseType.trial,
+        type: revType,
         daysLeft: 0,
       );
     }
 
     // ── 3. Clé activée présente ? ────────────────────────────────────────────
-    final stored = prefs.getString(_prefKey);
     if (stored != null) {
-
       final boundHwId = prefs.getString(_prefBoundHwId);
       if (boundHwId != null && boundHwId != hwId) {
         // La licence / fichier de config a été copié sur une autre machine !
@@ -75,7 +80,12 @@ class LicenseService {
       }
 
       final info = LicenseCore.validateKey(stored, deviceHwId: hwId);
-      if (info != null) return info;
+      if (info != null) {
+        if (boundHwId == null) {
+          await prefs.setString(_prefBoundHwId, hwId);
+        }
+        return info;
+      }
 
       // Vérifier si la clé enregistrée est authentique mais dédiée à un autre appareil
       final parts = stored.trim().toUpperCase().split('-');
@@ -220,14 +230,14 @@ class LicenseService {
     final stored = prefs.getString(_prefKey);
     if (stored != null) {
       final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
+      final info = LicenseCore.validateKey(stored);
       if (wasRevokedByAdmin) {
-        return const LicenseInfo(
+        return LicenseInfo(
           status: LicenseStatus.expired,
-          type: LicenseType.trial,
+          type: info?.type ?? LicenseType.monthly,
           daysLeft: 0,
         );
       }
-      final info = LicenseCore.validateKey(stored);
       if (info != null) return info;
     }
 

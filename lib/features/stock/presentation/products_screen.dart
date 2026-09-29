@@ -818,6 +818,15 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                                     tooltip: 'Modifier',
                                     onPressed: () => _openDialog(p),
                                   ),
+                                  const SizedBox(width: 4),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                    visualDensity: VisualDensity.compact,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                    tooltip: 'Supprimer',
+                                    onPressed: () => _confirmDeleteProduct(p),
+                                  ),
                                 ],
                               ),
                             ),
@@ -862,6 +871,47 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDeleteProduct(Product p) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AppFormDialog(
+        title: 'Supprimer le produit ?',
+        subtitle: 'Voulez-vous vraiment supprimer définitivement le produit "${p.name}" du catalogue ?\n\nCette action est irréversible.',
+        icon: Icons.delete_forever_rounded,
+        gradientColors: const [Color(0xFFDC2626), Color(0xFFEF4444)],
+        width: 440,
+        primaryLabel: 'Oui, supprimer',
+        primaryIcon: Icons.delete_outline,
+        onPrimary: () => Navigator.pop(dialogCtx, true),
+        onCancel: () => Navigator.pop(dialogCtx, false),
+        body: const SizedBox.shrink(),
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref.read(productCatalogRepositoryProvider).delete(p.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Produit "${p.name}" supprimé avec succès.'),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur lors de la suppression : $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildInsights(List<Product> products, bool isAdmin) {

@@ -121,4 +121,13 @@ class DriftOrderRepository {
       ),
     );
   }
+
+  /// Supprime définitivement une commande et ses éléments associés
+  Future<void> deleteOrder(String orderId) async {
+    await _db.transaction(() async {
+      await (_db.delete(_db.deliveries)..where((d) => d.orderId.equals(orderId))).go();
+      await (_db.delete(_db.orderItems)..where((oi) => oi.orderId.equals(orderId))).go();
+      await (_db.delete(_db.orders)..where((o) => o.id.equals(orderId))).go();
+    });
+  }
 }
