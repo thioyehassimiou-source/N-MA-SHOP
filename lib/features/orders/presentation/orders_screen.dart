@@ -12,6 +12,7 @@ import '../data/repositories/drift_order_repository.dart';
 import 'new_order_dialog.dart';
 import '../../../../core/widgets/app_form_dialog.dart';
 import '../../deliveries/presentation/assign_delivery_dialog.dart';
+import '../../auth/application/auth_providers.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
 
@@ -265,6 +266,8 @@ class _OrderCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentUser = ref.watch(authProvider);
+    final isAdmin = currentUser?.isAdmin ?? false;
     final color = _statusColor(order.status);
     final isTerminal = order.status == OrderStatus.delivered ||
         order.status == OrderStatus.cancelled;
@@ -420,6 +423,53 @@ class _OrderCard extends ConsumerWidget {
                           ),
                         ),
                         const Spacer(),
+                        if (isAdmin) ...[
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                            tooltip: 'Supprimer définitivement la commande',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (_) => AppFormDialog(
+                                  title: 'Supprimer la commande ?',
+                                  subtitle: 'Voulez-vous vraiment supprimer définitivement la commande ${order.reference} ?\n\nCette action est irréversible.',
+                                  icon: Icons.delete_forever_rounded,
+                                  gradientColors: const [Color(0xFFDC2626), Color(0xFFEF4444)],
+                                  width: 420,
+                                  primaryLabel: 'Oui, supprimer',
+                                  primaryIcon: Icons.delete_outline,
+                                  onPrimary: () => Navigator.pop(context, true),
+                                  onCancel: () => Navigator.pop(context, false),
+                                  body: const SizedBox.shrink(),
+                                ),
+                              );
+                              if (confirm == true && context.mounted) {
+                                try {
+                                  await ref.read(orderRepositoryProvider).deleteOrder(order.id);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Commande ${order.reference} supprimée avec succès.'),
+                                        backgroundColor: const Color(0xFF10B981),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Erreur lors de la suppression : $e'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                        ],
                         if (!isTerminal) ...[
                           // Annuler
                           TextButton.icon(

@@ -7,6 +7,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_page_header.dart';
 import '../application/deliveries_providers.dart';
 import 'new_courier_dialog.dart';
+import '../../../core/database/database.dart';
 import '../../../core/database/tables/deliveries.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
@@ -152,6 +153,12 @@ class CouriersScreen extends ConsumerWidget {
                             icon: Icon(Icons.edit_outlined, color: context.colors.onSurfaceVariant),
                             onPressed: () => NewCourierDialog.show(context, courier: c),
                           ),
+                          if (isAdmin)
+                            IconButton(
+                              tooltip: 'Supprimer',
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              onPressed: () => _confirmDelete(context, ref, c),
+                            ),
                         ],
                       ),
                     ),
@@ -163,5 +170,60 @@ class CouriersScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Courier c) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+            SizedBox(width: 8),
+            Text('Supprimer le livreur ?'),
+          ],
+        ),
+        content: Text(
+          'Voulez-vous vraiment supprimer définitivement le livreur "${c.name}" ?\n\nSes assignations éventuelles seront également nettoyées.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await ref.read(deliveriesServiceProvider).deleteCourier(c.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Livreur "${c.name}" supprimé avec succès.'),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur lors de la suppression : $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 }

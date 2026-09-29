@@ -116,6 +116,14 @@ class DeliveriesService {
       ),
     );
   }
+
+  /// Supprime définitivement un livreur et nettoie ses assignations de livraison associées
+  Future<void> deleteCourier(String courierId) async {
+    await db.transaction(() async {
+      await (db.delete(db.deliveries)..where((d) => d.courierId.equals(courierId))).go();
+      await (db.delete(db.couriers)..where((c) => c.id.equals(courierId))).go();
+    });
+  }
 }
 
 final deliveriesServiceProvider = Provider<DeliveriesService>((ref) {

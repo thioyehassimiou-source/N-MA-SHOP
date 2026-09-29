@@ -16,4 +16,7 @@ abstract interface class ProductCatalogRepository {
   /// Met à jour la fiche du produit [id]. N'altère pas le coût moyen pondéré
   /// ni le statut d'activation.
   Future<void> update(String id, ProductDraft draft);
+
+  /// Supprime définitivement un produit et ses mouvements associés du catalogue.
+  Future<void> delete(String id);
 }

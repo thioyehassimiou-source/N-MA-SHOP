@@ -291,13 +291,17 @@ class _PrioritySuppliers extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'FOURNISSEURS PRIORITAIRES',
-                style: AppTypography.labelMd.copyWith(
-                  letterSpacing: 0.5,
-                  color: context.colors.onSurface,
+              Expanded(
+                child: Text(
+                  'FOURNISSEURS PRIORITAIRES',
+                  style: AppTypography.labelMd.copyWith(
+                    letterSpacing: 0.5,
+                    color: context.colors.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 'Voir tout',
                 style: AppTypography.labelSm.copyWith(color: context.colors.primary),
@@ -435,23 +439,28 @@ class _DebtExposureChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'EXPOSITION À LA DETTE',
-                    style: AppTypography.labelMd.copyWith(letterSpacing: 0.5),
-                  ),
-                  Text(
-                    hasDebt
-                        ? '${debtSuppliers.length} fournisseur(s) créancier(s)'
-                        : 'Engagements fournisseurs',
-                    style: AppTypography.bodySm.copyWith(
-                      color: context.colors.onSurfaceVariant,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'EXPOSITION À LA DETTE',
+                      style: AppTypography.labelMd.copyWith(letterSpacing: 0.5),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                    Text(
+                      hasDebt
+                          ? '${debtSuppliers.length} fournisseur(s) créancier(s)'
+                          : 'Engagements fournisseurs',
+                      style: AppTypography.bodySm.copyWith(
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(

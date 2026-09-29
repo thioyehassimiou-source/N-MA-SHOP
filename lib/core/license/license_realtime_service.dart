@@ -143,7 +143,19 @@ class LicenseRealtimeService {
     final matchesKey = eventKey.isNotEmpty && myKey.isNotEmpty && eventKey == myKey;
     final matchesHw = eventHwId.isNotEmpty && myHwId.isNotEmpty && eventHwId == myHwId;
 
-    if (matchesKey || matchesHw) {
+    final isPaidMachine = myKey.isNotEmpty && !myKey.startsWith('TRIAL-') && myKey != 'ESSAI-GRATUIT';
+    final bool isTargeted;
+    if (isPaidMachine) {
+      if (eventKey.isNotEmpty) {
+        isTargeted = (eventKey == myKey);
+      } else {
+        isTargeted = matchesHw;
+      }
+    } else {
+      isTargeted = matchesKey || matchesHw;
+    }
+
+    if (isTargeted) {
       debugPrint('[$source] Événement licence reçu instantanément : isActive = $isActive');
       if (!isActive) {
         onRevoked();

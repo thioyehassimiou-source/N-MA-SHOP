@@ -107,11 +107,13 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
         final prefs = ref.read(sharedPreferencesProvider);
         await _svc.revokeLicense(prefs);
         await ref.read(authProvider.notifier).lock();
-        state = const AsyncData(LicenseInfo(
+        final current = state.maybeWhen(data: (v) => v, orElse: () => null);
+        state = AsyncData(LicenseInfo(
           status: LicenseStatus.expired,
-          type: LicenseType.trial,
-          expiryDate: null,
+          type: current?.type ?? LicenseType.trial,
+          expiryDate: current?.expiryDate,
           daysLeft: 0,
+          key: current?.key,
         ));
       },
       onActivated: (key) async {
@@ -294,11 +296,12 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
         if (!current.isExpired) {
           await ref.read(authProvider.notifier).lock();
         }
-        state = const AsyncData(LicenseInfo(
+        state = AsyncData(LicenseInfo(
           status: LicenseStatus.expired,
-          type: LicenseType.trial,
-          expiryDate: null,
+          type: current.type,
+          expiryDate: current.expiryDate,
           daysLeft: 0,
+          key: current.key,
         ));
       } else if (remoteInfo.isActive) {
         // Si la machine avait été marquée révoquée localement mais est réactivée sur le cloud :
