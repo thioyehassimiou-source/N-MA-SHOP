@@ -23,6 +23,19 @@ class LicenseService {
   static const String _prefKey = 'lic_key';
   static const String _prefBoundHwId = 'lic_bound_hw_id';
   static const String _prefLastKnownTime = 'lic_last_known_time';
+  static Directory? _overrideAppDirForTesting;
+
+  /// Permet d'isoler le stockage système pour les tests unitaires
+  static void setAppDirForTesting(Directory? dir) => _overrideAppDirForTesting = dir;
+
+  static Future<Directory> _getAppDir() async {
+    if (_overrideAppDirForTesting != null) return _overrideAppDirForTesting!;
+    try {
+      return await getApplicationSupportDirectory();
+    } catch (_) {
+      return Directory.systemTemp;
+    }
+  }
 
   // ── Vérification au démarrage & contrôle anti-triche ──────────────────────
 
@@ -50,10 +63,26 @@ class LicenseService {
     // ── 2. Récupération de l'ID Matériel du PC (Device Binding) ─────────────
     final hwId = await HardwareIdService.getHardwareId();
 
-    // ── 2b. Vérification de la révocation à distance par l'administrateur ──────
-    final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
-    final stored = prefs.getString(_prefKey);
+    // ── 2b. Restauration de sécurité depuis SQLite si SharedPreferences a été réinitialisé ──
+    var stored = prefs.getString(_prefKey);
+    var boundHwId = prefs.getString(_prefBoundHwId);
+    if (stored == null || stored.isEmpty) {
+      final dbKey = await _readDatabaseLicenseKey();
+      if (dbKey != null && dbKey.isNotEmpty) {
+        stored = dbKey;
+        await prefs.setString(_prefKey, stored);
+      }
+    }
+    if (boundHwId == null || boundHwId.isEmpty) {
+      final dbBoundHwId = await _readDatabaseBoundHwId();
+      if (dbBoundHwId != null && dbBoundHwId.isNotEmpty) {
+        boundHwId = dbBoundHwId;
+        await prefs.setString(_prefBoundHwId, boundHwId);
+      }
+    }
 
+    // ── 2c. Vérification de la révocation à distance par l'administrateur ──────
+    final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
     if (wasRevokedByAdmin) {
       LicenseType revType = LicenseType.trial;
       if (stored != null) {
@@ -64,41 +93,48 @@ class LicenseService {
         status: LicenseStatus.expired,
         type: revType,
         daysLeft: 0,
+        key: stored,
       );
     }
 
     // ── 3. Clé activée présente ? ────────────────────────────────────────────
     if (stored != null) {
-      final boundHwId = prefs.getString(_prefBoundHwId);
       if (boundHwId != null && boundHwId != hwId) {
         final isMatch = await HardwareIdService.isMatchingHardwareId(boundHwId);
         if (isMatch) {
           // Migration automatique transparente de l'ancienne empreinte vers la nouvelle empreinte stable
           await prefs.setString(_prefBoundHwId, hwId);
+          await _writeDatabaseLicenseKey(stored, hwId);
         } else {
           // La licence / fichier de config a été copié sur une autre machine !
-          return const LicenseInfo(
+          return LicenseInfo(
             status: LicenseStatus.deviceMismatch,
             type: LicenseType.trial,
             daysLeft: 0,
+            key: stored,
           );
         }
       }
 
       final legacyCandidates = await HardwareIdService.getLegacyHardwareIds();
+      if (boundHwId != null && !legacyCandidates.contains(boundHwId)) {
+        legacyCandidates.add(boundHwId);
+      }
       final info = LicenseCore.validateKey(
         stored,
         deviceHwId: hwId,
         candidateHwIds: legacyCandidates,
       );
+
       if (info != null) {
         if (boundHwId != hwId) {
           await prefs.setString(_prefBoundHwId, hwId);
+          await _writeDatabaseLicenseKey(stored, hwId);
         }
         return info;
       }
 
-      // Vérifier si la clé enregistrée est authentique mais dédiée à un autre appareil
+      // Si le code arrive ici, la clé enregistrée n'est pas reconnue pour ce matériel
       final parts = stored.trim().toUpperCase().split('-');
       if (parts.length == 4 && parts[0] == 'NMAS') {
         final keyHwHash = parts[1];
@@ -106,17 +142,23 @@ class LicenseService {
         final hmac = parts[3];
         final expectedHmac = LicenseCore.generateHmac('NMAS-$keyHwHash-$expiryStr');
         if (hmac == expectedHmac) {
-          return const LicenseInfo(
+          return LicenseInfo(
             status: LicenseStatus.deviceMismatch,
             type: LicenseType.trial,
             daysLeft: 0,
+            key: stored,
           );
         }
       }
 
-      // Clé invalide ou falsifiée → suppression
-      await prefs.remove(_prefKey);
-      await prefs.remove(_prefBoundHwId);
+      // Clé invalide pour cet appareil : ne JAMAIS supprimer la clé de façon destructive !
+      // On retourne un statut explicite tout en préservant le fichier de licence
+      return LicenseInfo(
+        status: LicenseStatus.deviceMismatch,
+        type: LicenseType.trial,
+        daysLeft: 0,
+        key: stored,
+      );
     }
 
     // ── 4. Période d'Essai (7 Jours) ─────────────────────────────────────────
@@ -228,7 +270,7 @@ class LicenseService {
       if (await dbFile.exists()) {
         final db = sqlite3.sqlite3.open(dbFile.path);
         try {
-          db.execute("DELETE FROM _system_meta WHERE key = 'trial_start';");
+          db.execute("DELETE FROM _system_meta WHERE key IN ('trial_start', 'lic_key', 'lic_bound_hw_id');");
         } catch (_) {} finally {
           db.close();
         }
@@ -239,9 +281,16 @@ class LicenseService {
   /// Version synchrone de démarrage rapide (fallback).
   LicenseInfo check(SharedPreferences prefs) {
     final stored = prefs.getString(_prefKey);
+    final boundHwId = prefs.getString(_prefBoundHwId);
     if (stored != null) {
       final wasRevokedByAdmin = prefs.getBool('lic_was_revoked_by_admin') ?? false;
-      final info = LicenseCore.validateKey(stored);
+      final info = LicenseCore.validateKey(stored, deviceHwId: boundHwId) ?? LicenseCore.validateKey(stored);
+      if (info != null && !info.isExpired) {
+        if (wasRevokedByAdmin) {
+          prefs.remove('lic_was_revoked_by_admin');
+        }
+        return info;
+      }
       if (wasRevokedByAdmin) {
         return LicenseInfo(
           status: LicenseStatus.expired,
@@ -326,6 +375,7 @@ class LicenseService {
     await prefs.setString(_prefKey, rawKey.trim().toUpperCase());
     await prefs.setString(_prefBoundHwId, hwId);
     await prefs.remove('lic_was_revoked_by_admin');
+    await _writeDatabaseLicenseKey(rawKey.trim().toUpperCase(), hwId);
     return (result: LicenseActivationResult.success, info: info);
   }
 
@@ -367,6 +417,7 @@ class LicenseService {
     await prefs.remove(_prefLastKnownTime);
     await prefs.remove('lic_was_revoked_by_admin');
     _cachedDbTrialAnchor = null;
+    await _clearDatabaseLicense();
 
     try {
       final file = await _getSecurityAnchorFile();
@@ -644,7 +695,7 @@ class LicenseService {
     }
 
     try {
-      final appDir = await getApplicationSupportDirectory();
+      final appDir = await _getAppDir();
       var dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));
       if (!await dbFile.exists()) {
         final legacy = File(p.join(appDir.path, 'gescompta.sqlite'));
@@ -683,7 +734,7 @@ class LicenseService {
   static Future<void> _writeDatabaseTrialAnchor(String dateStr) async {
     _cachedDbTrialAnchor = DateTime.tryParse(dateStr);
     try {
-      final appDir = await getApplicationSupportDirectory();
+      final appDir = await _getAppDir();
       var dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));
       if (!await dbFile.exists()) return;
 
@@ -700,6 +751,115 @@ class LicenseService {
           [dateStr],
         );
       } finally {
+        db.close();
+      }
+    } catch (_) {}
+  }
+
+  // ── Persistance de Secours de la Clé Payante dans SQLite ───────────────────
+
+  static Future<String?> _readDatabaseLicenseKey() async {
+    try {
+      final appDir = await _getAppDir();
+      var dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));
+      if (!await dbFile.exists()) {
+        final legacy = File(p.join(appDir.path, 'gescompta.sqlite'));
+        if (await legacy.exists()) {
+          dbFile = legacy;
+        } else {
+          return null;
+        }
+      }
+
+      final db = sqlite3.sqlite3.open(dbFile.path);
+      try {
+        final res = db.select("SELECT name FROM sqlite_master WHERE type='table' AND name='_system_meta'");
+        if (res.isNotEmpty) {
+          final valRes = db.select("SELECT value FROM _system_meta WHERE key = 'lic_key'");
+          if (valRes.isNotEmpty && valRes.first['value'] != null) {
+            return valRes.first['value'].toString().trim().toUpperCase();
+          }
+        }
+        return null;
+      } finally {
+        db.close();
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<String?> _readDatabaseBoundHwId() async {
+    try {
+      final appDir = await _getAppDir();
+      var dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));
+      if (!await dbFile.exists()) {
+        final legacy = File(p.join(appDir.path, 'gescompta.sqlite'));
+        if (await legacy.exists()) {
+          dbFile = legacy;
+        } else {
+          return null;
+        }
+      }
+
+      final db = sqlite3.sqlite3.open(dbFile.path);
+      try {
+        final res = db.select("SELECT name FROM sqlite_master WHERE type='table' AND name='_system_meta'");
+        if (res.isNotEmpty) {
+          final valRes = db.select("SELECT value FROM _system_meta WHERE key = 'lic_bound_hw_id'");
+          if (valRes.isNotEmpty && valRes.first['value'] != null) {
+            return valRes.first['value'].toString().trim().toUpperCase();
+          }
+        }
+        return null;
+      } finally {
+        db.close();
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> _writeDatabaseLicenseKey(String key, String boundHwId) async {
+    try {
+      final appDir = await _getAppDir();
+      var dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));
+      if (!await dbFile.parent.exists()) {
+        await dbFile.parent.create(recursive: true);
+      }
+
+      final db = sqlite3.sqlite3.open(dbFile.path);
+      try {
+        db.execute('''
+          CREATE TABLE IF NOT EXISTS _system_meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+          );
+        ''');
+        db.execute(
+          "INSERT OR REPLACE INTO _system_meta (key, value) VALUES ('lic_key', ?)",
+          [key.trim().toUpperCase()],
+        );
+        db.execute(
+          "INSERT OR REPLACE INTO _system_meta (key, value) VALUES ('lic_bound_hw_id', ?)",
+          [boundHwId.trim().toUpperCase()],
+        );
+      } finally {
+        db.close();
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> _clearDatabaseLicense() async {
+    try {
+      final appDir = await _getAppDir();
+      var dbFile = File(p.join(appDir.path, 'nmashop.sqlite'));
+      if (!await dbFile.exists()) return;
+
+      final db = sqlite3.sqlite3.open(dbFile.path);
+      try {
+        db.execute("DELETE FROM _system_meta WHERE key IN ('lic_key', 'lic_bound_hw_id');");
+      } catch (_) {} finally {
         db.close();
       }
     } catch (_) {}

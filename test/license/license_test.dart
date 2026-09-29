@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nmashop/core/license/license_core.dart';
@@ -168,8 +169,11 @@ void main() {
   group('LicenseService - Full Lifecycle & Security', () {
     late LicenseService service;
     const testHwId = 'NMAS-TEST-MACHINE-01';
+    late Directory tempDir;
 
     setUp(() async {
+      tempDir = Directory.systemTemp.createTempSync('nmashop_lic_test_');
+      LicenseService.setAppDirForTesting(tempDir);
       service = LicenseService();
       HardwareIdService.resetCacheForTesting(testHwId);
       SharedPreferences.setMockInitialValues({});
@@ -181,6 +185,12 @@ void main() {
       HardwareIdService.resetCacheForTesting(null);
       final prefs = await SharedPreferences.getInstance();
       await service.resetLicense(prefs);
+      LicenseService.setAppDirForTesting(null);
+      try {
+        if (tempDir.existsSync()) {
+          tempDir.deleteSync(recursive: true);
+        }
+      } catch (_) {}
     });
 
     test('First launch initializes 7-day trial', () async {
@@ -477,5 +487,47 @@ void main() {
       // L'ID lié doit avoir été migré vers l'identifiant actuel
       expect(prefs.getString('lic_bound_hw_id'), testHwId);
     });
+
+    test('9-month client license persists across app restart and never re-prompts for license', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      // Clé 9 mois (270 jours)
+      final client9MonthKey = LicenseCore.generateHardwareBoundKey(
+        hardwareId: testHwId,
+        expiryDate: DateTime.now().add(const Duration(days: 270)),
+      );
+
+      final res = await service.activateAsync(client9MonthKey, prefs);
+      expect(res.result, LicenseActivationResult.success);
+      expect(res.info!.isLicensed, isTrue);
+      expect(res.info!.daysLeft, greaterThan(260));
+
+      // 1. Redémarrage direct de l'application
+      final rebootService1 = LicenseService();
+      final checkReboot1 = await rebootService1.checkAsync(prefs);
+      expect(checkReboot1.status, LicenseStatus.licensed);
+      expect(checkReboot1.isLicensed, isTrue);
+      expect(checkReboot1.isExpired, isFalse);
+      expect(checkReboot1.key, client9MonthKey);
+
+      // 2. Vérification synchrone au boot (check())
+      final fastCheck = rebootService1.check(prefs);
+      expect(fastCheck.status, LicenseStatus.licensed);
+      expect(fastCheck.isLicensed, isTrue);
+
+      // 3. Robustesse : si SharedPreferences est désynchronisé ou vidé de sa clé,
+      // la clé doit être restaurée depuis la table SQLite interne _system_meta
+      await prefs.remove('lic_key');
+      expect(prefs.getString('lic_key'), isNull);
+
+      final rebootService2 = LicenseService();
+      final recoveredCheck = await rebootService2.checkAsync(prefs);
+      expect(recoveredCheck.status, LicenseStatus.licensed);
+      expect(recoveredCheck.isLicensed, isTrue);
+      expect(recoveredCheck.key, client9MonthKey);
+      expect(prefs.getString('lic_key'), client9MonthKey);
+    });
   });
 }
+
