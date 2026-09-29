@@ -20,18 +20,10 @@ abstract final class HardwareIdService {
     _cachedHardwareId = mockId;
   }
 
-  /// Renvoie l'identifiant matériel unique du poste (ex: NMA-8F3A-92B1-4C07).
-  static Future<String> getHardwareId() async {
-    if (_cachedHardwareId != null) return _cachedHardwareId!;
-
-    if (kIsWeb) {
-      _cachedHardwareId = 'NMA-WEB-8F3A-92B1';
-      return _cachedHardwareId!;
-    }
-
+  /// Collecte les composants matériels et système immuables du poste.
+  static Future<({String machineUniqueToken, String hostname, String os, int processors, String procIdentifier})> _collectMachineTokens() async {
     String machineUniqueToken = '';
 
-    // ── 1. Cible principale : Windows ──────────────────────────────────────────
     if (Platform.isWindows) {
       // Priorité 1 : MachineGuid depuis le Registre Windows (Immuable, unique par installation)
       try {
@@ -106,9 +98,29 @@ abstract final class HardwareIdService {
     final processors = Platform.numberOfProcessors;
     final procIdentifier = Platform.environment['PROCESSOR_IDENTIFIER'] ?? '';
 
+    return (
+      machineUniqueToken: machineUniqueToken,
+      hostname: hostname,
+      os: os,
+      processors: processors,
+      procIdentifier: procIdentifier,
+    );
+  }
+
+  /// Renvoie l'identifiant matériel unique du poste (ex: NMA-8F3A-92B1-4C07).
+  static Future<String> getHardwareId() async {
+    if (_cachedHardwareId != null) return _cachedHardwareId!;
+
+    if (kIsWeb) {
+      _cachedHardwareId = 'NMA-WEB-8F3A-92B1';
+      return _cachedHardwareId!;
+    }
+
+    final tokens = await _collectMachineTokens();
+
     // L'empreinte matérielle identifie la machine PHYSIQUE (Hardware + OS), indépendamment
     // du nom d'utilisateur Windows ou du niveau d'élévation (Admin vs Standard).
-    final rawSeed = 'NMA_HW_BINDING_V1#$machineUniqueToken#$hostname#$os#$processors#$procIdentifier';
+    final rawSeed = 'NMA_HW_BINDING_V1#${tokens.machineUniqueToken}#${tokens.hostname}#${tokens.os}#${tokens.processors}#${tokens.procIdentifier}';
     final bytes = utf8.encode(rawSeed);
     final digest = sha256.convert(bytes).toString().toUpperCase();
 
@@ -116,6 +128,41 @@ abstract final class HardwareIdService {
         'NMA-${digest.substring(0, 4)}-${digest.substring(4, 8)}-${digest.substring(8, 12)}';
     _cachedHardwareId = formatted;
     return formatted;
+  }
+
+  /// Retourne la liste des identifiants matériels historiques de cette même machine
+  /// (générés avec les versions précédentes intégrant USERNAME ou le compte d'élévation).
+  static Future<List<String>> getLegacyHardwareIds() async {
+    if (kIsWeb) return const [];
+    final tokens = await _collectMachineTokens();
+    final List<String> results = [];
+
+    final userCandidates = <String>{
+      if (Platform.environment['USERNAME'] != null) Platform.environment['USERNAME']!,
+      if (Platform.environment['USER'] != null) Platform.environment['USER']!,
+      if (Platform.environment['HOME'] != null) Platform.environment['HOME']!,
+      'Administrator',
+      'Administrateur',
+      'nmashop_client',
+    };
+
+    for (final u in userCandidates) {
+      final seed = 'NMA_HW_BINDING_V1#${tokens.machineUniqueToken}#${tokens.hostname}#${tokens.os}#${tokens.processors}#${tokens.procIdentifier}#$u';
+      final digest = sha256.convert(utf8.encode(seed)).toString().toUpperCase();
+      results.add('NMA-${digest.substring(0, 4)}-${digest.substring(4, 8)}-${digest.substring(8, 12)}');
+    }
+
+    return results;
+  }
+
+  /// Vérifie si un identifiant matériel (actuel ou hérité d'une version précédente) appartient physiquement à cette machine.
+  static Future<bool> isMatchingHardwareId(String candidateHwId) async {
+    final clean = candidateHwId.trim().toUpperCase();
+    final current = await getHardwareId();
+    if (clean == current) return true;
+
+    final legacyList = await getLegacyHardwareIds();
+    return legacyList.contains(clean);
   }
 
   /// Vérifie si une clé de licence enregistrée correspond au Hardware ID courant.

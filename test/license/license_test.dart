@@ -455,5 +455,27 @@ void main() {
       expect(afterReboot.key, clientKey);
       expect(afterReboot.type, LicenseType.annual);
     });
+
+    test('Legacy boundHwId from previous app version is recognized and auto-migrated without lockout', () async {
+      final validKey = LicenseCore.generateAnnualKey(DateTime.now().add(const Duration(days: 100)));
+      // Récupérer l'un des identifiants matériels hérités possibles de la machine
+      final legacyIds = await HardwareIdService.getLegacyHardwareIds();
+      final legacyId = legacyIds.isNotEmpty ? legacyIds.first : 'NMA-LEGACY-01';
+
+      SharedPreferences.setMockInitialValues({
+        'lic_key': validKey,
+        'lic_bound_hw_id': legacyId,
+        'lic_last_known_time': DateTime.now().toIso8601String(),
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      final info = await service.checkAsync(prefs);
+
+      // Ne doit PAS renvoyer deviceMismatch car l'ID hérité appartient à cette machine
+      expect(info.status, LicenseStatus.licensed);
+      expect(info.isLicensed, isTrue);
+      // L'ID lié doit avoir été migré vers l'identifiant actuel
+      expect(prefs.getString('lic_bound_hw_id'), testHwId);
+    });
   });
 }

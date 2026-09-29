@@ -32,7 +32,11 @@ class LicenseCore {
   /// - Si [now] > [expiry], un délai de grâce de 5 jours s'enclenche ([LicenseStatus.gracePeriod]),
   ///   permettant les ventes avec avertissement de renouvellement.
   /// - Si [now] dépasse la fin du délai de grâce, la révocation hors-ligne s'applique ([LicenseStatus.expired]).
-  static LicenseInfo? validateKey(String raw, {String? deviceHwId}) {
+  static LicenseInfo? validateKey(
+    String raw, {
+    String? deviceHwId,
+    List<String>? candidateHwIds,
+  }) {
     final key = raw.trim().toUpperCase();
     final parts = key.split('-');
     
@@ -59,11 +63,12 @@ class LicenseCore {
 
     // Vérification stricte du Device Binding si la clé contient un Hardware ID Hash
     if (keyHwIdHash != null) {
-      if (deviceHwId == null) {
+      if (deviceHwId == null && (candidateHwIds == null || candidateHwIds.isEmpty)) {
         return null; // Clé liée à un appareil spécifique : ID matériel requis
       }
-      final expectedHwHash = generateHwHash(deviceHwId);
-      if (keyHwIdHash != expectedHwHash) {
+      final bool matches = (deviceHwId != null && keyHwIdHash == generateHwHash(deviceHwId)) ||
+          (candidateHwIds != null && candidateHwIds.any((id) => generateHwHash(id) == keyHwIdHash));
+      if (!matches) {
         return null; // La licence appartient à une autre machine !
       }
     }

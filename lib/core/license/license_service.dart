@@ -71,17 +71,28 @@ class LicenseService {
     if (stored != null) {
       final boundHwId = prefs.getString(_prefBoundHwId);
       if (boundHwId != null && boundHwId != hwId) {
-        // La licence / fichier de config a été copié sur une autre machine !
-        return const LicenseInfo(
-          status: LicenseStatus.deviceMismatch,
-          type: LicenseType.trial,
-          daysLeft: 0,
-        );
+        final isMatch = await HardwareIdService.isMatchingHardwareId(boundHwId);
+        if (isMatch) {
+          // Migration automatique transparente de l'ancienne empreinte vers la nouvelle empreinte stable
+          await prefs.setString(_prefBoundHwId, hwId);
+        } else {
+          // La licence / fichier de config a été copié sur une autre machine !
+          return const LicenseInfo(
+            status: LicenseStatus.deviceMismatch,
+            type: LicenseType.trial,
+            daysLeft: 0,
+          );
+        }
       }
 
-      final info = LicenseCore.validateKey(stored, deviceHwId: hwId);
+      final legacyCandidates = await HardwareIdService.getLegacyHardwareIds();
+      final info = LicenseCore.validateKey(
+        stored,
+        deviceHwId: hwId,
+        candidateHwIds: legacyCandidates,
+      );
       if (info != null) {
-        if (boundHwId == null) {
+        if (boundHwId != hwId) {
           await prefs.setString(_prefBoundHwId, hwId);
         }
         return info;
@@ -286,7 +297,12 @@ class LicenseService {
     SharedPreferences prefs,
   ) async {
     final hwId = await HardwareIdService.getHardwareId();
-    final info = LicenseCore.validateKey(rawKey, deviceHwId: hwId);
+    final legacyCandidates = await HardwareIdService.getLegacyHardwareIds();
+    final info = LicenseCore.validateKey(
+      rawKey,
+      deviceHwId: hwId,
+      candidateHwIds: legacyCandidates,
+    );
 
     if (info == null) {
       // Vérifier si la clé est authentique mais générée pour un autre ordinateur
