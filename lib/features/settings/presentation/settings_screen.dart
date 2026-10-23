@@ -55,6 +55,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late final TextEditingController _emailController;
   late final TextEditingController _addressController;
   late final TextEditingController _phoneController;
+  late final TextEditingController _receiptNoticeController;
+  String _defaultPrintFormat = 'ask';
   String? _selectedDomain;
   String? _logoPath;
 
@@ -69,6 +71,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _emailController = TextEditingController(text: settings.businessEmail);
     _addressController = TextEditingController(text: settings.businessAddress);
     _phoneController = TextEditingController(text: settings.businessPhone);
+    _receiptNoticeController = TextEditingController(text: settings.customReceiptNotice ?? '');
+    _defaultPrintFormat = settings.defaultPrintFormat;
     _selectedDomain = kDomaines.contains(settings.businessDomain)
         ? settings.businessDomain
         : null;
@@ -82,6 +86,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _emailController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
+    _receiptNoticeController.dispose();
     super.dispose();
   }
 
@@ -119,6 +124,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             currency: kDeviseCode,
             logoPath: _logoPath,
             businessDomain: _selectedDomain,
+            defaultPrintFormat: _defaultPrintFormat,
+            customReceiptNotice: _receiptNoticeController.text.trim(),
           );
 
       if (mounted) {
@@ -1383,7 +1390,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const Text('Sélectionnez le compte à modifier :', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<AppUser>(
-                    value: selectedUser,
+                    initialValue: selectedUser,
                     items: users
                         .map((u) => DropdownMenuItem(
                               value: u,
@@ -1489,7 +1496,108 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildBusinessProfileTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      child: _buildBusinessProfile(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildBusinessProfile(),
+          const SizedBox(height: AppSpacing.lg),
+          _buildPrintingSettingsCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrintingSettingsCard() {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Impression & Reçus de Caisse',
+                    style: AppTypography.labelMd.copyWith(
+                      color: context.colors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Configurez le format de sortie par défaut et la notice de bas de ticket.',
+                    style: AppTypography.bodySm.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              AppButton(
+                label: _isSaving ? 'Enregistrement...' : 'Enregistrer',
+                onPressed: _isSaving ? null : _saveProfile,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Format d\'impression par défaut à l\'encaissement',
+            style: AppTypography.labelSm.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.base),
+          DropdownButtonFormField<String>(
+            initialValue: _defaultPrintFormat,
+            isExpanded: true,
+            decoration: InputDecoration(
+              isDense: true,
+              filled: true,
+              fillColor: context.colors.surfaceContainerHighest.withValues(alpha: 0.3),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: 'ask',
+                child: Text('Toujours demander (Ticket 80mm ou Facture A4)'),
+              ),
+              DropdownMenuItem(
+                value: 'thermal_80',
+                child: Text('Ticket Thermique 80mm automatique (Recommandé commerce au comptoir)'),
+              ),
+              DropdownMenuItem(
+                value: 'invoice_a4',
+                child: Text('Facture A4 standard automatique (Recommandé grossistes / B2B)'),
+              ),
+            ],
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => _defaultPrintFormat = val);
+              }
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildTextField(
+            'Notice personnalisée de bas de ticket (Conditions de vente, garantie, remerciements)',
+            _receiptNoticeController,
+            maxLines: 2,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Laissez vide pour utiliser la mention légale par défaut de votre secteur d\'activité.',
+            style: AppTypography.bodySm.copyWith(
+              fontSize: 11,
+              color: context.colors.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

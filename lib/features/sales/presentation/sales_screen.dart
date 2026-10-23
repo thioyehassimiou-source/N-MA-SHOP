@@ -926,10 +926,67 @@ class _SubmitButton extends ConsumerWidget {
           creditAmount: sale.creditAmount,
           paymentMethodLabel: paymentLabel,
           customerName: customerName.isNotEmpty ? customerName : null,
-          receiptNotice: domainConfig.receiptNotice,
+          receiptNotice: (appSettings.customReceiptNotice != null &&
+                  appSettings.customReceiptNotice!.trim().isNotEmpty)
+              ? appSettings.customReceiptNotice!.trim()
+              : domainConfig.receiptNotice,
         );
 
-        _showReceiptDialog(context, receiptData);
+        if (appSettings.defaultPrintFormat == 'thermal_80') {
+          AppPrintService.printDocument(
+            context: context,
+            documentName: 'Ticket_${receiptData.reference}',
+            format: PdfPageFormat.roll80,
+            onLayout: (_) => PdfReceiptService.generateThermalReceiptPdf(receiptData),
+          );
+          messenger.showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.brandEmerald,
+              behavior: SnackBarBehavior.floating,
+              content: Text('Ticket ${receiptData.reference} imprimé (80mm)'),
+              action: SnackBarAction(
+                label: 'Facture A4',
+                textColor: Colors.white,
+                onPressed: () {
+                  AppPrintService.printDocument(
+                    context: context,
+                    documentName: 'Facture_${receiptData.reference}',
+                    format: PdfPageFormat.a4,
+                    onLayout: (_) => PdfReceiptService.generateInvoiceA4Pdf(receiptData),
+                  );
+                },
+              ),
+            ),
+          );
+        } else if (appSettings.defaultPrintFormat == 'invoice_a4') {
+          AppPrintService.printDocument(
+            context: context,
+            documentName: 'Facture_${receiptData.reference}',
+            format: PdfPageFormat.a4,
+            onLayout: (_) => PdfReceiptService.generateInvoiceA4Pdf(receiptData),
+          );
+          messenger.showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.brandNavy,
+              behavior: SnackBarBehavior.floating,
+              content: Text('Facture A4 ${receiptData.reference} imprimée'),
+              action: SnackBarAction(
+                label: 'Ticket 80mm',
+                textColor: Colors.white,
+                onPressed: () {
+                  AppPrintService.printDocument(
+                    context: context,
+                    documentName: 'Ticket_${receiptData.reference}',
+                    format: PdfPageFormat.roll80,
+                    onLayout: (_) => PdfReceiptService.generateThermalReceiptPdf(receiptData),
+                  );
+                },
+              ),
+            ),
+          );
+        } else {
+          _showReceiptDialog(context, receiptData);
+        }
 
       case RecordSaleFailure(:final error):
         messenger.showSnackBar(

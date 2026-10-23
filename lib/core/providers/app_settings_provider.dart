@@ -22,6 +22,8 @@ class AppSettings {
     required this.businessPhone,
     required this.paletteId,
     required this.useCustomTheme,
+    this.defaultPrintFormat = 'ask',
+    this.customReceiptNotice,
   });
 
   /// Indique si l'assistant de tout premier démarrage (First-Run Setup Wizard) a été complété.
@@ -46,6 +48,12 @@ class AppSettings {
   /// Réservé aux utilisateurs avec licence active.
   final bool useCustomTheme;
 
+  /// Format d'impression par défaut ('ask', 'thermal_80', 'invoice_a4')
+  final String defaultPrintFormat;
+
+  /// Notice personnalisée de bas de ticket
+  final String? customReceiptNotice;
+
   AppSettings copyWith({
     bool? isFirstRunCompleted,
     bool? isSetupCompleted,
@@ -59,6 +67,8 @@ class AppSettings {
     String? businessPhone,
     String? paletteId,
     bool? useCustomTheme,
+    String? defaultPrintFormat,
+    String? customReceiptNotice,
   }) {
     return AppSettings(
       isFirstRunCompleted: isFirstRunCompleted ?? this.isFirstRunCompleted,
@@ -73,6 +83,8 @@ class AppSettings {
       businessPhone: businessPhone ?? this.businessPhone,
       paletteId: paletteId ?? this.paletteId,
       useCustomTheme: useCustomTheme ?? this.useCustomTheme,
+      defaultPrintFormat: defaultPrintFormat ?? this.defaultPrintFormat,
+      customReceiptNotice: customReceiptNotice ?? this.customReceiptNotice,
     );
   }
 }
@@ -95,6 +107,8 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   static const _kBusinessPhone = 'business_phone';
   static const _kPaletteId = 'business_palette';
   static const _kUseCustomTheme = 'use_custom_theme';
+  static const _kDefaultPrintFormat = 'default_print_format';
+  static const _kCustomReceiptNotice = 'custom_receipt_notice';
 
   @override
   AppSettings build() {
@@ -112,6 +126,8 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       businessPhone: prefs.getString(_kBusinessPhone) ?? '',
       paletteId: prefs.getString(_kPaletteId) ?? AppPalette.fallback.id,
       useCustomTheme: prefs.getBool(_kUseCustomTheme) ?? false,
+      defaultPrintFormat: prefs.getString(_kDefaultPrintFormat) ?? 'ask',
+      customReceiptNotice: prefs.getString(_kCustomReceiptNotice),
     );
   }
 
@@ -127,6 +143,8 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     String? businessDomain,
     String? businessPhone,
     String? paletteId,
+    String? defaultPrintFormat,
+    String? customReceiptNotice,
   }) async {
     if (businessName != null) {
       await _prefs.setString(_kBusinessName, businessName);
@@ -157,6 +175,12 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       final useCustom = paletteId != AppPalette.nmashop.id;
       await _prefs.setBool(_kUseCustomTheme, useCustom);
     }
+    if (defaultPrintFormat != null) {
+      await _prefs.setString(_kDefaultPrintFormat, defaultPrintFormat);
+    }
+    if (customReceiptNotice != null) {
+      await _prefs.setString(_kCustomReceiptNotice, customReceiptNotice);
+    }
 
     state = state.copyWith(
       businessName: businessName,
@@ -169,6 +193,8 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       businessPhone: businessPhone,
       paletteId: paletteId,
       useCustomTheme: paletteId != null ? (paletteId != AppPalette.nmashop.id) : null,
+      defaultPrintFormat: defaultPrintFormat,
+      customReceiptNotice: customReceiptNotice,
     );
   }
 

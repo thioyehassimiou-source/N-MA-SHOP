@@ -232,6 +232,25 @@ class PdfReceiptService {
               ],
 
               pw.SizedBox(height: 8),
+              // ── QR Code d'Authenticité & Anti-Fraude ──
+              pw.SizedBox(height: 4),
+              pw.Center(
+                child: pw.BarcodeWidget(
+                  barcode: pw.Barcode.qrCode(),
+                  data: 'NMASHOP-REC|REF:${data.reference}|DATE:${data.date.toIso8601String()}|TOT:${data.total}|BOUTIQUE:${data.businessName}|TEL:${data.businessPhone}',
+                  width: 55,
+                  height: 55,
+                ),
+              ),
+              pw.SizedBox(height: 2),
+              pw.Center(
+                child: pw.Text(
+                  'Scannez pour vérifier l\'authenticité',
+                  style: pw.TextStyle(font: font, fontSize: 6.5, color: PdfColors.grey700),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+              pw.SizedBox(height: 6),
               pw.Divider(thickness: 0.8, borderStyle: pw.BorderStyle.dashed),
               pw.SizedBox(height: 6),
 
@@ -471,7 +490,20 @@ class PdfReceiptService {
                   children: [
                     pw.Text('Signature du Client :', style: pw.TextStyle(font: fontBold, fontSize: 9, color: navyColor)),
                     pw.SizedBox(height: 30),
-                    pw.Container(width: 150, height: 0.5, color: PdfColors.grey400),
+                    pw.Container(width: 140, height: 0.5, color: PdfColors.grey400),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.BarcodeWidget(
+                      barcode: pw.Barcode.qrCode(),
+                      data: 'NMASHOP-REC|REF:${data.reference}|DATE:${data.date.toIso8601String()}|TOT:${data.total}|BOUTIQUE:${data.businessName}|TEL:${data.businessPhone}',
+                      width: 50,
+                      height: 50,
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text('Authenticité certifiée', style: pw.TextStyle(font: font, fontSize: 6.5, color: PdfColors.grey700)),
                   ],
                 ),
                 pw.Column(
@@ -479,7 +511,7 @@ class PdfReceiptService {
                   children: [
                     pw.Text('Cachet & Signature Boutique :', style: pw.TextStyle(font: fontBold, fontSize: 9, color: navyColor)),
                     pw.SizedBox(height: 30),
-                    pw.Container(width: 150, height: 0.5, color: PdfColors.grey400),
+                    pw.Container(width: 140, height: 0.5, color: PdfColors.grey400),
                   ],
                 ),
               ],
