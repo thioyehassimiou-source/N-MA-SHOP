@@ -73,13 +73,13 @@ __decorate([
     __metadata("design:type", String)
 ], PairClaimDto.prototype, "deviceId", void 0);
 __decorate([
-    ApiProperty({ example: 'Samsung Galaxy S23 Patron', description: 'Nom de l\'appareil du commerçant' }),
+    ApiProperty({ example: 'Terminal N\'MaShop', description: 'Nom de l\'appareil de gestion' }),
     IsString(),
     IsNotEmpty(),
     __metadata("design:type", String)
 ], PairClaimDto.prototype, "deviceName", void 0);
 __decorate([
-    ApiProperty({ example: '1234', description: 'Code PIN secret défini par le patron (4 à 8 chiffres)' }),
+    ApiProperty({ example: '1234', description: 'Code PIN secret de sécurité (4 à 8 chiffres)' }),
     IsString(),
     IsNotEmpty(),
     Length(4, 8),
@@ -145,7 +145,7 @@ __decorate([
     __metadata("design:type", String)
 ], RegisterShopDto.prototype, "pin", void 0);
 __decorate([
-    ApiProperty({ example: 'Smartphone Patron', description: 'Nom de l\'appareil du commerçant' }),
+    ApiProperty({ example: 'Terminal N\'MaShop', description: 'Nom de l\'appareil de gestion' }),
     IsString(),
     IsNotEmpty(),
     Length(2, 100),

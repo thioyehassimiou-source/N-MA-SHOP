@@ -122,4 +122,87 @@ export class B2StorageService {
       throw err;
     }
   }
+
+  /**
+   * Récupère la dernière sauvegarde pour une licence donnée depuis Backblaze B2.
+   */
+  async getLatestBackup(licenseKey: string) {
+    try {
+      const auth = await this.authorizeAccount();
+      const res = await fetch(`${auth.apiUrl}/b2api/v2/b2_list_file_names`, {
+        method: 'POST',
+        headers: {
+          Authorization: auth.authorizationToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bucketId: this.bucketId,
+          prefix: 'backups/',
+          maxFileCount: 1000,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Échec de récupération de la liste Backblaze B2 (${res.status}): ${errText}`);
+      }
+
+      const data = (await res.json()) as {
+        files: Array<{
+          fileId: string;
+          fileName: string;
+          contentLength: number;
+          contentSha1: string;
+          uploadTimestamp: number;
+          fileInfo?: Record<string, string>;
+        }>;
+      };
+
+      if (!data.files || data.files.length === 0) return null;
+
+      const matching = data.files.filter((f) => {
+        if (!licenseKey) return true;
+        const infoLicense = f.fileInfo?.licensekey || f.fileInfo?.licenseKey;
+        if (infoLicense && infoLicense.toUpperCase() === licenseKey.toUpperCase()) return true;
+        if (f.fileName.toUpperCase().includes(licenseKey.toUpperCase())) return true;
+        return false;
+      });
+
+      if (matching.length === 0) return null;
+
+      matching.sort((a, b) => b.uploadTimestamp - a.uploadTimestamp);
+      const latest = matching[0];
+
+      return {
+        fileId: latest.fileId,
+        fileName: latest.fileName,
+        sizeBytes: latest.contentLength,
+        uploadTimestamp: latest.uploadTimestamp,
+      };
+    } catch (err: any) {
+      this.logger.error(`Erreur getLatestBackup B2: ${err.message}`);
+      throw err;
+    }
+  }
+
+  /**
+   * Télécharge les octets de la sauvegarde sélectionnée depuis Backblaze B2.
+   */
+  async downloadBackupBytes(fileId: string): Promise<Buffer> {
+    const auth = await this.authorizeAccount();
+    const res = await fetch(`${auth.downloadUrl}/b2api/v2/b2_download_file_by_id?fileId=${fileId}`, {
+      headers: {
+        Authorization: auth.authorizationToken,
+      },
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Échec de téléchargement du fichier Backblaze B2 (${res.status}): ${errText}`);
+    }
+
+    const arrayBuffer = await res.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
 }
+

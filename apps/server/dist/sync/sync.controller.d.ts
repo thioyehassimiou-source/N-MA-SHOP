@@ -27,4 +27,25 @@ export declare class SyncController {
         } | null;
         timestamp: string;
     }>;
+    getLatestBackup(body: any): Promise<{
+        success: boolean;
+        backup: {
+            fileId: string;
+            fileName: string;
+            sizeBytes: number;
+            uploadedAt: string;
+        };
+        error?: undefined;
+    } | {
+        success: boolean;
+        error: any;
+        backup?: undefined;
+    }>;
+    downloadBackup(body: any): Promise<{
+        success: boolean;
+        fileName: string;
+        sizeBytes: number;
+        backupBase64: string;
+        downloadedAt: string;
+    }>;
 }

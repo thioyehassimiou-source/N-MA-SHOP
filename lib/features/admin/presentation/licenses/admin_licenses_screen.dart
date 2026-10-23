@@ -776,18 +776,19 @@ class AdminLicensesScreen extends ConsumerWidget {
                     Wrap(
                       spacing: 8,
                       children: [
-                        ChoiceChip(
-                          label: const Text('Mensuelle'),
-                          avatar: const Icon(Icons.calendar_view_month, size: 14),
-                          selected: selectedType == 'monthly',
-                          selectedColor: isDark
-                              ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
-                              : const Color(0xFFDBEAFE),
-                          onSelected: (_) => setDialogState(() {
-                            selectedType = 'monthly';
-                            typeChanged = selectedType != lic.licenseType;
-                          }),
-                        ),
+                        if (lic.licenseType == 'monthly')
+                          ChoiceChip(
+                            label: const Text('Mensuelle (Actuelle)'),
+                            avatar: const Icon(Icons.calendar_view_month, size: 14),
+                            selected: selectedType == 'monthly',
+                            selectedColor: isDark
+                                ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                                : const Color(0xFFDBEAFE),
+                            onSelected: (_) => setDialogState(() {
+                              selectedType = 'monthly';
+                              typeChanged = selectedType != lic.licenseType;
+                            }),
+                          ),
                         ChoiceChip(
                           label: const Text('Annuelle'),
                           avatar: const Icon(Icons.calendar_today, size: 14),

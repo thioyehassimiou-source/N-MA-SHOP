@@ -14,4 +14,11 @@ export declare class B2StorageService {
         sha1: string;
         uploadedAt: string;
     }>;
+    getLatestBackup(licenseKey: string): Promise<{
+        fileId: string;
+        fileName: string;
+        sizeBytes: number;
+        uploadTimestamp: number;
+    } | null>;
+    downloadBackupBytes(fileId: string): Promise<Buffer>;
 }

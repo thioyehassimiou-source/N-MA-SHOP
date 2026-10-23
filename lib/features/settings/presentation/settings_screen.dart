@@ -401,10 +401,143 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _buildSecurityItem(
                 Icons.cloud_upload_rounded,
                 'Sauvegarde Cloud automatique (Backblaze B2 & Neon)',
-                trailing: AppButton(
-                  label: 'Sauvegarder dans le Cloud',
-                  icon: Icons.cloud_upload_rounded,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppButton.secondary(
+                      label: 'Télécharger (.nma)',
+                      icon: Icons.download_rounded,
+                      onPressed: () async {
+                        final license = ref.read(licenseInfoProvider);
+                        final prefs = ref.read(sharedPreferencesProvider);
+                        final serverUrl = prefs.getString('custom_server_url')?.trim().isNotEmpty == true
+                            ? prefs.getString('custom_server_url')!.trim()
+                            : 'https://api.nmashop.gn';
+                        final caisseSecret = prefs.getString('caisse_secret');
+                        final licenseKey = license.key ?? 'DEFAULT-LICENSE';
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Row(
+                              children: [
+                                SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                                SizedBox(width: 12),
+                                Text('Téléchargement de l\'archive Cloud depuis Backblaze B2...'),
+                              ],
+                            ),
+                            duration: Duration(seconds: 4),
+                          ),
+                        );
+
+                        final res = await ExportService.downloadCloudBackupToFile(
+                          serverUrl: serverUrl,
+                          licenseKey: licenseKey,
+                          caisseSecret: caisseSecret,
+                        );
+
+                        if (mounted) {
+                          if (res['success'] == true) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('✅ ${res['message'] ?? 'Archive Cloud téléchargée avec succès !'}'),
+                                backgroundColor: const Color(0xFF10B981),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('❌ ${res['error'] ?? 'Échec du téléchargement Cloud.'}'),
+                                backgroundColor: context.colors.error,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    AppButton(
+                      label: 'Sauvegarder',
+                      icon: Icons.cloud_upload_rounded,
+                      onPressed: () async {
+                        final license = ref.read(licenseInfoProvider);
+                        final prefs = ref.read(sharedPreferencesProvider);
+                        final serverUrl = prefs.getString('custom_server_url')?.trim().isNotEmpty == true
+                            ? prefs.getString('custom_server_url')!.trim()
+                            : 'https://api.nmashop.gn';
+                        final caisseSecret = prefs.getString('caisse_secret');
+                        final licenseKey = license.key ?? 'DEFAULT-LICENSE';
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Row(
+                              children: [
+                                SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                                SizedBox(width: 12),
+                                Text('Téléversement de la sauvegarde vers le Cloud...'),
+                              ],
+                            ),
+                            duration: Duration(seconds: 4),
+                          ),
+                        );
+
+                        final res = await ExportService.backupDatabaseToCloud(
+                          serverUrl: serverUrl,
+                          licenseKey: licenseKey,
+                          caisseSecret: caisseSecret,
+                        );
+
+                        if (mounted) {
+                          if (res['success'] == true) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('✅ ${res['message'] ?? 'Sauvegarde Cloud enregistrée dans le Cloud !'}'),
+                                backgroundColor: const Color(0xFF10B981),
+                              ),
+                            );
+                          } else {
+                            // Fallback vers sauvegarde locale silencieuse sans ouverture de l'explorateur
+                            final localFile = await ExportService.backupDatabaseSilently();
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(localFile != null
+                                    ? '✅ Sauvegarde de sécurité .nma enregistrée en arrière-plan !'
+                                    : '❌ Échec de la création de la sauvegarde.'),
+                                backgroundColor: localFile != null ? const Color(0xFF10B981) : context.colors.error,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _buildSecurityItem(
+                Icons.cloud_download_rounded,
+                'Restauration Cloud directe (Backblaze B2)',
+                trailing: AppButton.secondary(
+                  label: 'Restaurer depuis le Cloud',
+                  icon: Icons.cloud_download_rounded,
                   onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (dialogContext) => AppFormDialog(
+                        title: 'Restaurer depuis le Cloud ?',
+                        subtitle: 'Cette action téléchargera la dernière sauvegarde sécurisée (.nma) hébergée sur Backblaze B2 et remplacera votre base de données locale.\n\nL\'application réactualisera ensuite votre tableau de bord.',
+                        icon: Icons.cloud_download_rounded,
+                        gradientColors: const [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                        width: 480,
+                        primaryLabel: 'Télécharger & Restaurer',
+                        primaryIcon: Icons.cloud_download_rounded,
+                        onCancel: () => Navigator.pop(dialogContext, false),
+                        onPrimary: () => Navigator.pop(dialogContext, true),
+                        body: const SizedBox.shrink(),
+                      ),
+                    );
+                    if (!(confirmed ?? false) || !mounted) return;
+
                     final license = ref.read(licenseInfoProvider);
                     final prefs = ref.read(sharedPreferencesProvider);
                     final serverUrl = prefs.getString('custom_server_url')?.trim().isNotEmpty == true
@@ -419,14 +552,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           children: [
                             SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
                             SizedBox(width: 12),
-                            Text('Téléversement de la sauvegarde vers le Cloud...'),
+                            Text('Téléchargement et restauration depuis Backblaze B2...'),
                           ],
                         ),
-                        duration: Duration(seconds: 4),
+                        duration: Duration(seconds: 10),
                       ),
                     );
 
-                    final res = await ExportService.backupDatabaseToCloud(
+                    final res = await ExportService.restoreDatabaseFromCloud(
                       serverUrl: serverUrl,
                       licenseKey: licenseKey,
                       caisseSecret: caisseSecret,
@@ -436,19 +569,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       if (res['success'] == true) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('✅ ${res['message'] ?? 'Sauvegarde Cloud enregistrée dans le Cloud !'}'),
+                            content: Text('✅ ${res['message'] ?? 'Restauration Cloud réussie ! Redirection...'}'),
                             backgroundColor: const Color(0xFF10B981),
                           ),
                         );
+                        context.go('/');
                       } else {
-                        // Fallback vers sauvegarde locale silencieuse sans ouverture de l'explorateur
-                        final localFile = await ExportService.backupDatabaseSilently();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(localFile != null
-                                ? '✅ Sauvegarde de sécurité .nma enregistrée en arrière-plan !'
-                                : '❌ Échec de la création de la sauvegarde.'),
-                            backgroundColor: localFile != null ? const Color(0xFF10B981) : context.colors.error,
+                            content: Text('❌ ${res['error'] ?? 'Échec de la restauration Cloud.'}'),
+                            backgroundColor: context.colors.error,
                           ),
                         );
                       }
@@ -529,8 +659,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   return _buildSecurityItem(
                     Icons.cloud_sync_rounded,
                     pending > 0
-                        ? '$pending élément(s) en attente'
-                        : 'Données synchronisées',
+                        ? '$pending modification(s) en attente de synchronisation Cloud'
+                        : 'Données synchronisées avec le Cloud',
                     trailing: AppButton.secondary(
                       label: isSyncing ? 'Envoi...' : 'Synchroniser',
                       onPressed: isSyncing

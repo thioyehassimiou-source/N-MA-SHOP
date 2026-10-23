@@ -94,7 +94,7 @@ __decorate([
     Post('login'),
     HttpCode(HttpStatus.OK),
     ApiOperation({
-        summary: '3. Connexion rapide du patron via code PIN',
+        summary: '3. Connexion rapide sécurisée via code PIN',
         description: 'Vérifie le code PIN secret à 4 chiffres sur un appareil déjà jumelé.',
     }),
     ApiResponse({ status: 200, description: 'Authentification réussie, nouveaux jetons JWT retournés.' }),

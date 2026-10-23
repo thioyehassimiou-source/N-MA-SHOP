@@ -51,41 +51,21 @@ const CONFIG = {
       CTA: "Télécharger l'essai gratuit 7 jours",
       ACTION: "download"
     },
-    MONTHLY: {
-      NAME: "Licence Mensuelle",
-      PRICE: "150 000 GNF",
-      PERIOD: "/ mois",
-      BADGE: "Flexibilité sans engagement",
-      DESC: "Idéal pour équiper votre commerce avec un budget maîtrisé mois par mois.",
-      FEATURES: [
-        "Ventes et encaissements illimités",
-        "Tickets de caisse & factures professionnelles",
-        "Suivi du stock en temps réel (CMP)",
-        "Gestion des créances clients & relances",
-        "Comptabilité de base & clôture de caisse",
-        "Sauvegarde Cloud automatique sécurisée",
-        "Mises à jour et assistance incluses"
-      ],
-      CTA: "Prendre l'offre Mensuelle",
-      ACTION: "whatsapp",
-      WHATSAPP_LINK: "https://wa.me/224624193069?text=Bonjour%20N%27MaShop%2C%20je%20souhaite%20activer%20la%20Licence%20Mensuelle%20(150%20000%20GNF%20-%20R%C3%A9f%20%3A%20LIC-MENS)"
-    },
     ANNUAL: {
       NAME: "Licence Annuelle",
       PRICE: "1 500 000 GNF",
-      MONTHLY_EQUIVALENT: "soit 125 000 GNF / mois",
       PERIOD: "/ an (365 jours)",
-      BADGE: "2 MOIS OFFERTS · LE + POPULAIRE",
+      BADGE: "RECOMMANDÉ POUR LES BOUTIQUES",
       POPULAR: true,
-      SAVINGS: "Économisez 300 000 GNF par an",
       DESC: "La formule préférée des magasins pour une année entière de sérénité.",
       FEATURES: [
-        "Tous les avantages de la licence mensuelle",
-        "Soit 125 000 GNF/mois (2 mois complets offerts)",
-        "Thèmes de caisse personnalisés exclusifs",
-        "Rapports financiers détaillés & Bilan (PDF/CSV)",
-        "Gestion multi-vendeurs avec commissions",
-        "Sauvegardes Cloud automatiques (Backblaze B2)",
+        "Ventes, encaissements et caisse POS illimités",
+        "Suivi du stock en direct (CMP) & alertes de ruptures",
+        "Tickets de caisse thermiques & factures PDF",
+        "Thèmes de caisse Clair & Sombre exclusifs",
+        "Rapports financiers détaillés & Bilan des marges (PDF/CSV)",
+        "Gestion multi-caissiers avec droits d'accès",
+        "Sauvegardes Cloud automatiques (Backblaze B2) & Restauration 1-Clic",
         "Support technique prioritaire WhatsApp 7j/7"
       ],
       CTA: "Choisir la formule Annuelle",
@@ -94,7 +74,7 @@ const CONFIG = {
     },
     LIFETIME: {
       NAME: "Licence À Vie",
-      PRICE: "3 500 000 GNF",
+      PRICE: "5 000 000 GNF",
       PERIOD: "Paiement unique définitif",
       BADGE: "Rentabilité Maximale",
       DESC: "Achetez le logiciel une fois pour toutes. Aucun abonnement récurrent à payer.",
@@ -109,7 +89,7 @@ const CONFIG = {
       ],
       CTA: "Acquérir la Licence À Vie",
       ACTION: "whatsapp",
-      WHATSAPP_LINK: "https://wa.me/224624193069?text=Bonjour%20N%27MaShop%2C%20je%20souhaite%20activer%20la%20Licence%20%C3%80%20Vie%20(3%20500%20000%20GNF%20-%20R%C3%A9f%20%3A%20LIC-VIE)"
+      WHATSAPP_LINK: "https://wa.me/224624193069?text=Bonjour%20N%27MaShop%2C%20je%20souhaite%20activer%20la%20Licence%20%C3%80%20Vie%20(5%20000%20000%20GNF%20-%20R%C3%A9f%20%3A%20LIC-VIE)"
     }
   },
   

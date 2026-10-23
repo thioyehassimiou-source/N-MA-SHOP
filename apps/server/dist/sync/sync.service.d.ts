@@ -31,4 +31,22 @@ export declare class SyncService {
         } | null;
         timestamp: string;
     }>;
+    getLatestCloudBackup(licenseKey: string): Promise<{
+        success: boolean;
+        backup: {
+            fileId: string;
+            fileName: string;
+            sizeBytes: number;
+            uploadedAt: string;
+        };
+        error?: undefined;
+    } | {
+        success: boolean;
+        error: any;
+        backup?: undefined;
+    }>;
+    downloadLatestCloudBackup(licenseKey: string): Promise<{
+        buffer: Buffer<ArrayBufferLike>;
+        fileName: string;
+    }>;
 }

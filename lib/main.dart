@@ -100,7 +100,7 @@ Future<void> main() async {
       await container.read(authProvider.notifier).restoreSession();
     }
 
-    // Démarrage non-bloquant du worker de synchronisation en arrière-plan
+    // Démarrage de la synchronisation continue avec le Cloud (Backblaze B2 & Neon)
     container.read(desktopSyncWorkerProvider.notifier);
   } catch (e, stack) {
     debugPrint("Erreur lors de l'initialisation au démarrage: $e\n$stack");

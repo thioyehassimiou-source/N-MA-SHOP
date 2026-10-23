@@ -2936,7 +2936,9 @@ html[data-theme="dark"] .hero-gradient-text {
   }
 
   .pricing-grid-container {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 1140px;
+    margin: 0 auto;
   }
 
   .footer-bottom {

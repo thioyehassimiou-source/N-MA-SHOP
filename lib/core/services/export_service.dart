@@ -283,27 +283,173 @@ class ExportService {
     }
   }
 
-  /// Permet à l'utilisateur de sélectionner un fichier de sauvegarde (.nma propriétaire ou .sqlite historique) et de le restaurer.
-  static Future<bool> restoreDatabase() async {
+  /// Télécharge la dernière sauvegarde conteneur .nma depuis le Cloud et restaure directement la base locale
+  static Future<Map<String, dynamic>> restoreDatabaseFromCloud({
+    required String serverUrl,
+    required String licenseKey,
+    String? caisseSecret,
+  }) async {
     try {
-      final result = await FilePicker.pickFiles(
-        dialogTitle: 'Sélectionner le fichier de sauvegarde (.nma, .sqlite)',
+      final uri = Uri.parse('$serverUrl/api/v1/sync/backup/download');
+      final hwid = await HardwareIdService.getHardwareId();
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      final bodyMap = {
+        'licenseKey': licenseKey,
+        'machineId': hwid,
+      };
+      final bodyStr = jsonEncode(bodyMap);
+
+      String? signature;
+      if (caisseSecret != null && caisseSecret.isNotEmpty) {
+        final rawPayload = '$nowIso.$bodyStr';
+        final hmac = Hmac(sha256, utf8.encode(caisseSecret));
+        signature = hmac.convert(utf8.encode(rawPayload)).toString();
+      }
+
+      final headers = {
+        HttpHeaders.contentTypeHeader: 'application/json',
+        'X-Machine-Id': hwid,
+        'X-License-Key': licenseKey,
+        'X-Timestamp': nowIso,
+        if (signature != null) 'X-Signature': signature,
+      };
+
+      final response = await http
+          .post(uri, headers: headers, body: bodyStr)
+          .timeout(const Duration(seconds: 45));
+
+      if (response.statusCode != 200) {
+        return {
+          'success': false,
+          'error': 'Échec de téléchargement Cloud (HTTP ${response.statusCode})',
+        };
+      }
+
+      final resData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (resData['success'] != true || resData['backupBase64'] == null) {
+        return {
+          'success': false,
+          'error': resData['error'] ?? 'Aucune archive reçue du Cloud.',
+        };
+      }
+
+      final base64String = resData['backupBase64'] as String;
+      final fileBytes = base64Decode(base64String);
+
+      final restored = await restoreDatabaseFromBytes(fileBytes);
+      if (!restored) {
+        return {
+          'success': false,
+          'error': 'L\'archive téléchargée n\'a pas pu être validée ou restaurée.',
+        };
+      }
+
+      return {
+        'success': true,
+        'fileName': resData['fileName'],
+        'sizeBytes': resData['sizeBytes'],
+        'message': 'Base de données restaurée avec succès depuis le Cloud Backblaze B2.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erreur lors de la restauration Cloud: $e',
+      };
+    }
+  }
+
+  /// Télécharge la dernière archive de sauvegarde Cloud (.nma) et permet à l'utilisateur de l'enregistrer sur son ordinateur (clé USB, dossier, etc.)
+  static Future<Map<String, dynamic>> downloadCloudBackupToFile({
+    required String serverUrl,
+    required String licenseKey,
+    String? caisseSecret,
+  }) async {
+    try {
+      final uri = Uri.parse('$serverUrl/api/v1/sync/backup/download');
+      final hwid = await HardwareIdService.getHardwareId();
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      final bodyMap = {
+        'licenseKey': licenseKey,
+        'machineId': hwid,
+      };
+      final bodyStr = jsonEncode(bodyMap);
+
+      String? signature;
+      if (caisseSecret != null && caisseSecret.isNotEmpty) {
+        final rawPayload = '$nowIso.$bodyStr';
+        final hmac = Hmac(sha256, utf8.encode(caisseSecret));
+        signature = hmac.convert(utf8.encode(rawPayload)).toString();
+      }
+
+      final headers = {
+        HttpHeaders.contentTypeHeader: 'application/json',
+        'X-Machine-Id': hwid,
+        'X-License-Key': licenseKey,
+        'X-Timestamp': nowIso,
+        if (signature != null) 'X-Signature': signature,
+      };
+
+      final response = await http
+          .post(uri, headers: headers, body: bodyStr)
+          .timeout(const Duration(seconds: 45));
+
+      if (response.statusCode != 200) {
+        return {
+          'success': false,
+          'error': 'Échec de téléchargement Cloud (HTTP ${response.statusCode})',
+        };
+      }
+
+      final resData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (resData['success'] != true || resData['backupBase64'] == null) {
+        return {
+          'success': false,
+          'error': resData['error'] ?? 'Aucune archive reçue du Cloud.',
+        };
+      }
+
+      final base64String = resData['backupBase64'] as String;
+      final fileBytes = base64Decode(base64String);
+      final fileName = resData['fileName'] as String? ?? "sauvegarde_cloud_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.nma";
+
+      final savedPath = await FilePicker.saveFile(
+        dialogTitle: 'Enregistrer l\'archive de sauvegarde Cloud (.nma)',
+        fileName: fileName,
+        bytes: fileBytes,
         type: FileType.custom,
-        allowedExtensions: ['nma', 'nmabackup', 'sqlite', 'db'],
+        allowedExtensions: ['nma'],
       );
 
-      if (result.isEmpty || result.first.path == null) {
-        return false;
+      if (savedPath == null) {
+        return {
+          'success': false,
+          'error': 'Téléchargement annulé par l\'utilisateur.',
+        };
       }
 
-      final backupPath = p.normalize(p.absolute(result.first.path!));
-      final backupFile = File(backupPath);
-
-      if (!await backupFile.exists()) {
-        return false;
+      final filePath = savedPath.scheme == 'file' ? savedPath.toFilePath() : savedPath.path;
+      final targetFile = File(p.normalize(p.absolute(filePath)));
+      if (!await targetFile.exists() || await targetFile.length() == 0) {
+        await targetFile.writeAsBytes(fileBytes, flush: true);
       }
 
-      final fileBytes = await backupFile.readAsBytes();
+      return {
+        'success': true,
+        'fileName': fileName,
+        'sizeBytes': fileBytes.length,
+        'message': 'Archive Cloud enregistrée avec succès sur votre ordinateur.',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erreur lors du téléchargement: $e',
+      };
+    }
+  }
+
+  /// Restaure la base de données locale à partir d'un flux d'octets (.nma conteneur sécurisé ou .sqlite brut).
+  static Future<bool> restoreDatabaseFromBytes(Uint8List fileBytes) async {
+    try {
       Uint8List sqliteBytes;
 
       // 1. Détection du format conteneur propriétaire .nma
@@ -369,6 +515,35 @@ class ExportService {
     } catch (e) {
       // ignore: avoid_print
       print('Erreur lors de la restauration: $e');
+      return false;
+    }
+  }
+
+  /// Permet à l'utilisateur de sélectionner un fichier de sauvegarde (.nma propriétaire ou .sqlite historique) et de le restaurer.
+  static Future<bool> restoreDatabase() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        dialogTitle: 'Sélectionner le fichier de sauvegarde (.nma, .sqlite)',
+        type: FileType.custom,
+        allowedExtensions: ['nma', 'nmabackup', 'sqlite', 'db'],
+      );
+
+      if (result.isEmpty || result.first.path == null) {
+        return false;
+      }
+
+      final backupPath = p.normalize(p.absolute(result.first.path!));
+      final backupFile = File(backupPath);
+
+      if (!await backupFile.exists()) {
+        return false;
+      }
+
+      final fileBytes = await backupFile.readAsBytes();
+      return await restoreDatabaseFromBytes(fileBytes);
+    } catch (e) {
+      // ignore: avoid_print
+      print('Erreur lors de la sélection du fichier de sauvegarde: $e');
       return false;
     }
   }

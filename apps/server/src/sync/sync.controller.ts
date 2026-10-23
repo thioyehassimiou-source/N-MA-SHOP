@@ -44,4 +44,37 @@ export class SyncController {
   async uploadBackup(@Body() body: any) {
     return this.syncService.saveCloudBackup(body);
   }
+
+  @Post('backup/latest')
+  @UseGuards(CaisseAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Consulter les métadonnées de la dernière sauvegarde Cloud de la caisse',
+    description: 'Permet à la caisse de savoir si une sauvegarde existe dans Backblaze B2 et sa taille/date.',
+  })
+  @ApiResponse({ status: 200, description: 'Informations sur la dernière sauvegarde.' })
+  async getLatestBackup(@Body() body: any) {
+    return this.syncService.getLatestCloudBackup(body.licenseKey);
+  }
+
+  @Post('backup/download')
+  @UseGuards(CaisseAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Télécharger la dernière sauvegarde Cloud (.nma) de la caisse',
+    description: 'Permet à l\'application Desktop de restaurer son état complet depuis Backblaze B2.',
+  })
+  @ApiResponse({ status: 200, description: 'Archive .nma retournée encodée en base64 pour restauration.' })
+  async downloadBackup(@Body() body: any) {
+    const licenseKey = body.licenseKey;
+    const result = await this.syncService.downloadLatestCloudBackup(licenseKey);
+    return {
+      success: true,
+      fileName: result.fileName,
+      sizeBytes: result.buffer.length,
+      backupBase64: result.buffer.toString('base64'),
+      downloadedAt: new Date().toISOString(),
+    };
+  }
 }
+

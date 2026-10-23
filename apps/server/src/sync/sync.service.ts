@@ -416,4 +416,41 @@ export class SyncService {
       timestamp: new Date().toISOString(),
     };
   }
+
+  async getLatestCloudBackup(licenseKey: string) {
+    try {
+      const latest = await this.b2Storage.getLatestBackup(licenseKey);
+      if (!latest) {
+        return {
+          success: false,
+          error: 'Aucune sauvegarde Cloud trouvée pour cette boutique.',
+        };
+      }
+      return {
+        success: true,
+        backup: {
+          fileId: latest.fileId,
+          fileName: latest.fileName,
+          sizeBytes: latest.sizeBytes,
+          uploadedAt: new Date(latest.uploadTimestamp).toISOString(),
+        },
+      };
+    } catch (err: any) {
+      this.logger.error(`Erreur getLatestCloudBackup: ${err.message}`);
+      return { success: false, error: err.message };
+    }
+  }
+
+  async downloadLatestCloudBackup(licenseKey: string) {
+    const latest = await this.b2Storage.getLatestBackup(licenseKey);
+    if (!latest) {
+      throw new Error('Aucune sauvegarde Cloud trouvée pour cette boutique.');
+    }
+    const buffer = await this.b2Storage.downloadBackupBytes(latest.fileId);
+    return {
+      buffer,
+      fileName: latest.fileName.replace(/^backups\//, ''),
+    };
+  }
 }
+

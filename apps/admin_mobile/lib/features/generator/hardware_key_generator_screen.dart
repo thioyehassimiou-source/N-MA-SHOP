@@ -412,19 +412,11 @@ Merci pour votre confiance.
                 ],
                 const SizedBox(height: 18),
 
-                // ── Formule de Licence (Mensuelle / Annuelle / À Vie) ──────────
+                // ── Formule de Licence (Annuelle / À Vie) ──────────
                 const Text('Formule de Licence', style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _buildFormulaCard(
-                      title: 'Mensuelle',
-                      subtitle: '150 000 GNF',
-                      type: AdminLicenseType.days30,
-                      days: 30,
-                      defaultAmount: '150000',
-                    ),
-                    const SizedBox(width: 8),
                     _buildFormulaCard(
                       title: 'Annuelle',
                       subtitle: '1 500 000 GNF',
@@ -435,23 +427,11 @@ Merci pour votre confiance.
                     const SizedBox(width: 8),
                     _buildFormulaCard(
                       title: 'À Vie',
-                      subtitle: '3 500 000 GNF',
+                      subtitle: '5 000 000 GNF',
                       type: AdminLicenseType.lifetime,
                       days: null,
-                      defaultAmount: '3500000',
+                      defaultAmount: '5000000',
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    const Text('Durées rapides : ', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                    _buildQuickMonthChip('3 mois', 3, 450000),
-                    _buildQuickMonthChip('5 mois', 5, 750000),
-                    _buildQuickMonthChip('6 mois', 6, 900000),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -632,40 +612,6 @@ Merci pour votre confiance.
     );
   }
 
-  Widget _buildQuickMonthChip(String label, int months, int amount) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: () {
-        setState(() {
-          _selectedType = AdminLicenseType.days30;
-          final now = DateTime.now();
-          var year = now.year;
-          var month = now.month + months;
-          while (month > 12) {
-            year += 1;
-            month -= 12;
-          }
-          final daysInMonth = DateTime(year, month + 1, 0).day;
-          final day = now.day > daysInMonth ? daysInMonth : now.day;
-          _expiryDate = DateTime(year, month, day);
-          _amountCtrl.text = amount.toString();
-          _generateKeyPreview();
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFCBD5E1)),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textDark),
-        ),
-      ),
-    );
-  }
 
   Widget _buildFormulaCard({
     required String title,

@@ -32,6 +32,20 @@ let SyncController = class SyncController {
     async uploadBackup(body) {
         return this.syncService.saveCloudBackup(body);
     }
+    async getLatestBackup(body) {
+        return this.syncService.getLatestCloudBackup(body.licenseKey);
+    }
+    async downloadBackup(body) {
+        const licenseKey = body.licenseKey;
+        const result = await this.syncService.downloadLatestCloudBackup(licenseKey);
+        return {
+            success: true,
+            fileName: result.fileName,
+            sizeBytes: result.buffer.length,
+            backupBase64: result.buffer.toString('base64'),
+            downloadedAt: new Date().toISOString(),
+        };
+    }
 };
 __decorate([
     Post('push'),
@@ -71,6 +85,34 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], SyncController.prototype, "uploadBackup", null);
+__decorate([
+    Post('backup/latest'),
+    UseGuards(CaisseAuthGuard),
+    HttpCode(HttpStatus.OK),
+    ApiOperation({
+        summary: 'Consulter les métadonnées de la dernière sauvegarde Cloud de la caisse',
+        description: 'Permet à la caisse de savoir si une sauvegarde existe dans Backblaze B2 et sa taille/date.',
+    }),
+    ApiResponse({ status: 200, description: 'Informations sur la dernière sauvegarde.' }),
+    __param(0, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], SyncController.prototype, "getLatestBackup", null);
+__decorate([
+    Post('backup/download'),
+    UseGuards(CaisseAuthGuard),
+    HttpCode(HttpStatus.OK),
+    ApiOperation({
+        summary: 'Télécharger la dernière sauvegarde Cloud (.nma) de la caisse',
+        description: 'Permet à l\'application Desktop de restaurer son état complet depuis Backblaze B2.',
+    }),
+    ApiResponse({ status: 200, description: 'Archive .nma retournée encodée en base64 pour restauration.' }),
+    __param(0, Body()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], SyncController.prototype, "downloadBackup", null);
 SyncController = __decorate([
     ApiTags('Sync'),
     Controller('api/v1/sync'),
