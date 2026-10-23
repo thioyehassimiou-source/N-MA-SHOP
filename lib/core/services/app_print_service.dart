@@ -92,6 +92,7 @@ class AppPrintService {
     BuildContext? context,
     required Future<Uint8List> Function(PdfPageFormat format) onLayout,
     required String documentName,
+    PdfPageFormat? format,
   }) async {
     // 1. Nettoyage préventif
     _cleanGtkDefaultOutputFiles();
@@ -100,6 +101,7 @@ class AppPrintService {
     final result = await Printing.layoutPdf(
       onLayout: onLayout,
       name: safePrintFileName(documentName),
+      format: format ?? PdfPageFormat.a4,
     );
 
     // 3. Post-traitement : si GTK a généré sortie.pdf, on le renomme proprement

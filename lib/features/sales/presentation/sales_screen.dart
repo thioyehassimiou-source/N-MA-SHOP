@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pdf/pdf.dart';
 
 import '../../../core/config/business_domain_config.dart';
 import '../../../core/domain/payment_method.dart';
@@ -955,60 +956,80 @@ class _SubmitButton extends ConsumerWidget {
       barrierDismissible: false,
       builder: (dialogContext) {
         return AppFormDialog(
-          title: 'Vente enregistrée !',
-          subtitle: 'Imprimez le reçu ou enregistrez-le directement en PDF.',
+          title: 'Vente enregistrée avec succès !',
+          subtitle: 'Choisissez le format d\'impression adapté à votre matériel.',
           icon: Icons.check_circle_outline,
           gradientColors: const [AppColors.brandEmerald, Color(0xFF059669)],
-          width: 540,
-          primaryLabel: 'Imprimer Ticket',
-          primaryIcon: Icons.print_outlined,
+          width: 520,
+          primaryLabel: 'Ticket Thermique (80mm)',
+          primaryIcon: Icons.receipt_long_rounded,
           onPrimary: () async {
             Navigator.of(dialogContext).pop();
             await AppPrintService.printDocument(
               context: context,
-              documentName: 'Recu_${receiptData.reference}',
-              onLayout: (_) => PdfReceiptService.generateReceiptPdf(receiptData),
+              documentName: 'Ticket_${receiptData.reference}',
+              format: PdfPageFormat.roll80,
+              onLayout: (_) => PdfReceiptService.generateThermalReceiptPdf(receiptData),
             );
           },
-          secondaryLabel: 'Enregistrer PDF',
-          secondaryIcon: Icons.save_alt_rounded,
+          secondaryLabel: 'Facture A4 (PDF)',
+          secondaryIcon: Icons.picture_as_pdf_rounded,
           onSecondary: () async {
             Navigator.of(dialogContext).pop();
-            final bytes =
-                await PdfReceiptService.generateReceiptPdf(receiptData);
-            if (context.mounted) {
-              await AppPrintService.savePdfWithDialog(
-                context: context,
-                bytes: bytes,
-                defaultFileName: 'Recu_${receiptData.reference}.pdf',
-              );
-            }
+            await AppPrintService.printDocument(
+              context: context,
+              documentName: 'Facture_${receiptData.reference}',
+              format: PdfPageFormat.a4,
+              onLayout: (_) => PdfReceiptService.generateInvoiceA4Pdf(receiptData),
+            );
           },
           onCancel: () => Navigator.of(dialogContext).pop(),
-          body: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Référence : ${receiptData.reference}',
-                style: AppTypography.labelMd,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Montant Total : ${formatGnf(receiptData.total)}',
-                style: AppTypography.bodySm,
-              ),
-              if (receiptData.isCredit) ...[
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Reste à payer (Crédit) : ${formatGnf(receiptData.creditAmount)}',
-                  style: AppTypography.bodySm.copyWith(
-                    color: context.colors.error,
-                    fontWeight: FontWeight.bold,
-                  ),
+          body: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: context.colors.surfaceContainer,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: context.colors.outlineVariant),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Référence :', style: AppTypography.bodySm),
+                    Text(receiptData.reference, style: AppTypography.labelMd.copyWith(fontWeight: FontWeight.bold)),
+                  ],
                 ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Montant Total :', style: AppTypography.bodySm),
+                    Text(formatGnf(receiptData.total), style: AppTypography.labelMd.copyWith(color: context.colors.primary, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Règlement :', style: AppTypography.bodySm),
+                    Text(receiptData.paymentMethodLabel, style: AppTypography.bodySm),
+                  ],
+                ),
+                if (receiptData.isCredit) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Reste à payer (Crédit) :', style: AppTypography.bodySm.copyWith(color: context.colors.error)),
+                      Text(formatGnf(receiptData.creditAmount), style: AppTypography.bodySm.copyWith(color: context.colors.error, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         );
       },

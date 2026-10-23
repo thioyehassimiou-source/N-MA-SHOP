@@ -13,6 +13,7 @@ import '../../../core/widgets/app_form_field.dart';
 import '../application/caisse_providers.dart';
 import '../data/repositories/drift_caisse_repository.dart';
 import '../../../core/domain/payment_method.dart';
+import 'widgets/cloture_caisse_dialog.dart';
 
 import 'package:nmashop/core/theme/app_theme.dart';
 
@@ -64,6 +65,19 @@ class _CaisseScreenState extends ConsumerState<CaisseScreen> {
                   subtitle: 'Suivi en temps réel des flux de trésorerie et encaissements',
                   icon: Icons.account_balance_wallet_outlined,
                   gradientColors: const [Color(0xFF0F1B3D), Color(0xFF1A2B52)],
+                  actions: [
+                    FilledButton.icon(
+                      onPressed: () => _showClotureDialog(context),
+                      icon: const Icon(Icons.point_of_sale_rounded, size: 18),
+                      label: const Text('Clôture Journalière (Rapport Z)'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F1B3D),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 // 1. En-tête des métriques de caisse
@@ -192,6 +206,16 @@ class _CaisseScreenState extends ConsumerState<CaisseScreen> {
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(color: context.colors.error),
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          FilledButton.tonalIcon(
+                            onPressed: () => _showClotureDialog(context),
+                            icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                            label: const Text('Rapport Z'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
                           ),
@@ -369,6 +393,13 @@ class _CaisseScreenState extends ConsumerState<CaisseScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showClotureDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => const ClotureCaisseDialog(),
     );
   }
 }

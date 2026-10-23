@@ -125,6 +125,16 @@ const _mainDestinations = <NavDestination>[
 class AppSidebar extends ConsumerWidget {
   const AppSidebar({super.key});
 
+  String _getStoreInitials(String name) {
+    final clean = name.trim();
+    if (clean.isEmpty) return 'NM';
+    final parts = clean.split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return clean.substring(0, clean.length >= 2 ? 2 : 1).toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
@@ -186,16 +196,38 @@ class AppSidebar extends ConsumerWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: AppImage(
-                    imagePath: settings.logoPath != null && settings.logoPath!.isNotEmpty
-                        ? settings.logoPath
-                        : 'assets/images/nmashop_logo_official.png',
-                    width: 42,
-                    height: 42,
-                    fit: BoxFit.cover,
-                    fallbackIcon: Icons.storefront_rounded,
-                    fallbackColor: logoIcon,
-                  ),
+                  child: settings.logoPath != null && settings.logoPath!.isNotEmpty
+                      ? AppImage(
+                          imagePath: settings.logoPath,
+                          width: 42,
+                          height: 42,
+                          fit: BoxFit.cover,
+                          fallbackIcon: Icons.storefront_rounded,
+                          fallbackColor: logoIcon,
+                        )
+                      : Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFE85D04), Color(0xFFF97316)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Text(
+                              _getStoreInitials(settings.businessName),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

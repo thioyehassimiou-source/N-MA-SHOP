@@ -70,6 +70,10 @@ final caisseDataProvider = FutureProvider<CaisseData>((ref) async {
         ..orderBy([(m) => OrderingTerm(expression: m.date, mode: OrderingMode.desc)]))
       .get();
 
+  final expenses = await (db.select(db.expenses)
+        ..orderBy([(e) => OrderingTerm(expression: e.date, mode: OrderingMode.desc)]))
+      .get();
+
   final movements = <CashMovementView>[];
 
   // Entrées par ventes
@@ -149,6 +153,22 @@ final caisseDataProvider = FutureProvider<CaisseData>((ref) async {
         type: m.type,
         paymentMethodName: m.paymentMethod.name.toUpperCase(),
         icon: isInflow ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+      ),
+    );
+  }
+
+  // Sorties par dépenses d'exploitation
+  for (final e in expenses) {
+    movements.add(
+      CashMovementView(
+        id: e.id,
+        reference: e.reference,
+        description: 'Dépense : ${e.description}',
+        date: e.date,
+        amount: e.amount,
+        type: CashMovementType.outflow,
+        paymentMethodName: e.paymentMethod.name.toUpperCase(),
+        icon: Icons.money_off_outlined,
       ),
     );
   }
