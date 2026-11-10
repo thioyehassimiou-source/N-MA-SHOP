@@ -20,3 +20,4 @@ if [ -f "$OUTPUT_APK" ]; then
     echo "   👉 $DEST_APK"
     echo "   Taille : $(du -h "$DEST_APK" | cut -f1)"
 fi
+

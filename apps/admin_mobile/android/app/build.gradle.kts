@@ -8,8 +8,7 @@ plugins {
 android {
     namespace = "com.nmashop.admin"
     compileSdk = flutter.compileSdkVersion
-    buildToolsVersion = "35.0.0"
-    ndkVersion = "28.2.13676358"
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

@@ -56,6 +56,8 @@ audio_demo/
 
 .env
 .env.g.dart
+!apps/admin_mobile/lib/core/config/env.g.dart
+!apps/customer_mobile/lib/core/config/env.g.dart
 releases/
 *.apk
 .github/workflows_disabled/
