@@ -245,6 +245,7 @@ jobs:
       - name: 🔨 Compiler APK Release
         run: |
           cd apps/admin_mobile
+          chmod +x android/gradlew
           flutter build apk --release --build-name=${{ env.APP_VERSION }}
 
       - name: 📦 Préparer l'APK pour la distribution
