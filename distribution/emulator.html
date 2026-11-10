@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>N'MaShop Mobile — Émulateur Interactif Officiel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brand-navy: #0F172A;
+      --brand-navy-dark: #090D16;
+      --brand-orange: #EA580C;
+      --brand-emerald: #10B981;
+      --surface: #FFFFFF;
+      --surface-variant: #F1F5F9;
+      --background: #F8FAFC;
+      --border: #E2E8F0;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --danger: #EF4444;
+      --warning: #F59E0B;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at 50% 10%, #1E293B, #0B0F19 85%);
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      color: #fff;
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 16px;
+    }
+    .top-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(234, 88, 12, 0.18);
+      border: 1px solid rgba(234, 88, 12, 0.4);
+      color: #FF9248;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+    .btn-reset-app {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #E2E8F0;
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-reset-app:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.5);
+      color: #FCA5A5;
+    }
+
+    /* Cadre Smartphone */
+    .phone-mockup {
+      width: 412px;
+      height: 840px;
+      background: var(--brand-navy-dark);
+      border-radius: 48px;
+      border: 10px solid #1E293B;
+      box-shadow: 0 25px 65px -15px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.12);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Notch */
+    .phone-notch {
+      width: 110px;
+      height: 24px;
+      background: #000;
+      border-radius: 14px;
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .camera-lens {
+      width: 9px;
+      height: 9px;
+      background: #111827;
+      border-radius: 50%;
+      border: 1px solid #1f2937;
+    }
+
+    /* Écran Mobile */
+    .screen {
+      flex: 1;
+      background: var(--background);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .status-bar {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--brand-navy);
+      z-index: 50;
+    }
+
+    /* Vue Onboarding / Configuration */
+    .setup-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      background: var(--background);
+    }
+
+    .hero-banner {
+      background: linear-gradient(135deg, var(--brand-navy), #1E293B);
+      color: #fff;
+      padding: 16px 20px 20px 20px;
+      border-bottom: 2px solid rgba(255,255,255,0.06);
+    }
+    .badge-assistant {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+    .hero-title {
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.25;
+      margin-bottom: 4px;
+    }
+    .hero-subtitle {
+      font-size: 12px;
+      color: #94A3B8;
+      line-height: 1.4;
+    }
+
+    /* Stepper */
+    .stepper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fff;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    .step-circle {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--surface-variant);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10.5px;
+      font-weight: 800;
+    }
+    .step-item.active { color: var(--brand-navy); }
+    .step-item.active .step-circle { background: var(--brand-navy); color: #fff; }
+    .step-item.done { color: var(--brand-orange); }
+    .step-item.done .step-circle { background: var(--brand-orange); color: #fff; }
+    .step-line {
+      flex: 1;
+      height: 2px;
+      background: var(--border);
+      margin: 0 8px;
+    }
+    .step-line.done { background: var(--brand-orange); }
+
+    .step-content {
+      padding: 16px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .form-card {
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+
+    .field-group { margin-bottom: 12px; }
+    .field-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--brand-navy);
+      margin-bottom: 5px;
+      display: block;
+    }
+    .field-input, .field-select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #F8FAFC;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field-input:focus, .field-select:focus {
+      border-color: var(--brand-orange);
+      background: #fff;
+    }
+
+    .option-card {
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      background: #fff;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      transition: all 0.2s;
+    }
+    .option-card.selected {
+      border-color: var(--brand-orange);
+      background: rgba(234, 88, 12, 0.04);
+    }
+    .option-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #F1F5F9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      flex-shrink: 0;
+    }
+    .option-title { font-size: 13px; font-weight: 800; color: var(--brand-navy); }
+    .option-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.35; }
+
+    .nav-footer {
+      background: #fff;
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      gap: 10px;
+    }
+    .btn-prev {
+      flex: 1;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--brand-navy);
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-next {
+      flex: 2;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      background: var(--brand-orange);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+    }
+
+    /* ── Vue POS & Magasin Principal ── */
+    .app-topbar {
+      background: var(--brand-navy);
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .btn-drawer-toggle {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+    }
+
+    /* Drawer Mobile (Exactement conforme à la capture utilisateur) */
+    .drawer-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 500;
+      display: none;
+      backdrop-filter: blur(2px);
+    }
+    .drawer-backdrop.open { display: block; }
+    .drawer-panel {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 320px;
+      background: #fff;
+      z-index: 600;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 10px 0 30px rgba(0,0,0,0.4);
+    }
+    .drawer-backdrop.open .drawer-panel { transform: translateX(0); }
+
+    .drawer-header {
+      background: linear-gradient(135deg, var(--brand-navy), #1E293B);
+      color: #fff;
+      padding: 24px 18px 18px 18px;
+    }
+    .drawer-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .drawer-logo-icon {
+      width: 42px;
+      height: 42px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(234,88,12,0.4);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    .badge-offline-mode {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--brand-emerald);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 9.5px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .drawer-menu {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 0;
+    }
+    .drawer-section-title {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      padding: 10px 18px 4px 18px;
+    }
+    .drawer-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 11px 18px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .drawer-item:hover, .drawer-item.active { background: #F1F5F9; }
+    .drawer-item-icon { font-size: 18px; width: 24px; text-align: center; }
+    .drawer-item-title { font-size: 13px; font-weight: 700; color: var(--text-main); }
+    .drawer-item-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    /* Module Navigation Pills */
+    .module-pills {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 14px;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      scrollbar-width: none;
+    }
+    .module-pills::-webkit-scrollbar { display: none; }
+    .module-pill {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--background);
+      color: var(--brand-navy);
+      border: 1px solid var(--border);
+    }
+    .module-pill.active {
+      background: var(--brand-navy);
+      color: #fff;
+      border-color: var(--brand-navy);
+    }
+
+    /* Product Cards & Empty States */
+    .product-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+    }
+    .product-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #F1F5F9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+
+    /* Tab Bar */
+    .tab-bar {
+      height: 60px;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 10px;
+      z-index: 100;
+    }
+    .tab-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .tab-btn.active { color: var(--brand-orange); }
+
+    /* Modal Ajout Produit */
+    .modal-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 800;
+      display: none;
+      align-items: flex-end;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet {
+      background: #fff;
+      width: 100%;
+      border-radius: 24px 24px 0 0;
+      padding: 18px 20px 24px 20px;
+      max-height: 80%;
+      overflow-y: auto;
+      box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-controls">
+    <div class="top-badge">📱 ÉMULATEUR FLUTTER MOBILE N'MASHOP</div>
+    <button class="btn-reset-app" onclick="resetToInitialSetup()">Réinitialiser Boutique</button>
+  </div>
+
+  <div class="phone-mockup">
+    <div class="phone-notch">
+      <div class="camera-lens"></div>
+    </div>
+
+    <div class="screen">
+      <div class="status-bar" id="statusBar">
+        <span>09:41</span>
+        <span>📶 🔋 100%</span>
+      </div>
+
+      <!-- ── VUE 1 : ASSISTANT DE CONFIGURATION (Parité Desktop 100%) ── -->
+      <div class="setup-container" id="setupView">
+        <div class="hero-banner">
+          <div class="badge-assistant">ASSISTANT DE CONFIGURATION</div>
+          <div class="hero-title" id="stepTitle">Fiche de votre Boutique</div>
+          <div class="hero-subtitle" id="stepSubtitle">Renseignez l'identité commerciale qui figurera sur vos reçus.</div>
+        </div>
+
+        <div class="stepper">
+          <div class="step-item active" id="badgeStep1">
+            <div class="step-circle" id="circle1">1</div>
+            <span>Boutique</span>
+          </div>
+          <div class="step-line" id="line1"></div>
+          <div class="step-item" id="badgeStep2">
+            <div class="step-circle" id="circle2">2</div>
+            <span>Licence</span>
+          </div>
+          <div class="step-line" id="line2"></div>
+          <div class="step-item" id="badgeStep3">
+            <div class="step-circle" id="circle3">3</div>
+            <span>Admin</span>
+          </div>
+        </div>
+
+        <div class="step-content" id="stepContent"></div>
+
+        <div class="nav-footer">
+          <button class="btn-prev" id="btnPrev" onclick="prevStep()">Retour</button>
+          <button class="btn-next" id="btnNext" onclick="nextStep()">
+            <span id="btnNextLabel">Suivant</span>
+            <span>➔</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── VUE 2 : CAISSE & APPLICATION MOBILE PRINCIPALE ── -->
+      <div class="setup-container" id="posView" style="display: none;">
+        
+        <!-- Topbar avec Toggle Drawer -->
+        <div class="app-topbar">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="btn-drawer-toggle" onclick="toggleDrawer(true)">☰</button>
+            <div>
+              <div style="font-size: 9.5px; color: #94A3B8; font-weight: 800; letter-spacing: 0.5px;">BOUTIQUE COMMERCIALE</div>
+              <div style="font-size: 14.5px; font-weight: 800;" id="openedShopName">Boutique Diallo & Frères</div>
+            </div>
+          </div>
+          <div class="badge-offline-mode">
+            <span>●</span> 100% LOCAL
+          </div>
+        </div>
+
+        <!-- Pilules de Navigation Rapide -->
+        <div class="module-pills">
+          <div class="module-pill active" id="pillStock" onclick="showModule('stock')">📦 Stocks (<span id="stockCountBadge">0</span>)</div>
+          <div class="module-pill" id="pillDeliveries" onclick="showModule('deliveries')">🛵 Livraisons (1)</div>
+          <div class="module-pill" id="pillCredits" onclick="showModule('credits')">💳 Crédits Clients</div>
+          <div class="module-pill" id="pillClients" onclick="showModule('clients')">👥 Clients</div>
+          <div class="module-pill" id="pillReports" onclick="showModule('reports')">📊 Bilan Financier</div>
+        </div>
+
+        <!-- Conteneur dynamique du module actif -->
+        <div style="padding: 14px; flex: 1; overflow-y: auto;" id="moduleContainer"></div>
+
+        <!-- Barre de Navigation Inférieure (Bottom Bar) -->
+        <div class="tab-bar">
+          <div class="tab-btn" id="tabHome" onclick="showModule('stock')"><span>🏠</span><span>Accueil</span></div>
+          <div class="tab-btn" id="tabSales" onclick="alert('Module Caisse Vente Rapide : Ajout au panier 1-clic avec tickets de caisse.')"><span>🧾</span><span>Ventes</span></div>
+          <div class="tab-btn" id="tabTreasury" onclick="alert('Trésorerie & Dépenses du jour.')"><span>💼</span><span>Caisse</span></div>
+          <div class="tab-btn active" id="tabStock" onclick="showModule('stock')"><span>📦</span><span>Stocks</span></div>
+          <div class="tab-btn" onclick="toggleDrawer(true)"><span>⚙️</span><span>Menu</span></div>
+        </div>
+
+        <!-- Drawer Latéral Complet (Exact Parité Desktop) -->
+        <div class="drawer-backdrop" id="drawerBackdrop" onclick="toggleDrawer(false)">
+          <div class="drawer-panel" onclick="event.stopPropagation()">
+            <div class="drawer-header">
+              <div class="drawer-logo-row">
+                <div class="drawer-logo-icon">🛒</div>
+                <div>
+                  <div style="font-size: 16px; font-weight: 900; color: #fff;">N'MaShop</div>
+                  <div style="font-size: 10.5px; color: #94A3B8;">Gestion Commerciale & Caisse POS</div>
+                </div>
+              </div>
+              <div class="badge-offline-mode">
+                ✓ MODE 100% AUTONOME LOCAL
+              </div>
+            </div>
+
+            <div class="drawer-menu">
+              <div class="drawer-section-title">GESTION COMMERCIALE</div>
+              <div class="drawer-item" onclick="showModule('stock'); toggleDrawer(false);">
+                <span class="drawer-item-icon">🧾</span>
+                <div>
+                  <div class="drawer-item-title">Ventes & Encaissement POS</div>
+                  <div class="drawer-item-sub">Comptoir, factures & tickets de caisse</div>
+                </div>
+              </div>
+              <div class="drawer-item active" onclick="showModule('stock'); toggleDrawer(false);">
+                <span class="drawer-item-icon">📦</span>
+                <div>
+                  <div class="drawer-item-title">Catalogue & Stocks</div>
+                  <div class="drawer-item-sub">Articles, prix & mouvements d'inventaire</div>
+                </div>
+              </div>
+              <div class="drawer-item" onclick="showModule('credits'); toggleDrawer(false);">
+                <span class="drawer-item-icon">💳</span>
+                <div>
+                  <div class="drawer-item-title">Créances & Clients Débiteurs</div>
+                  <div class="drawer-item-sub">Argent dehors & relances règlements</div>
+                </div>
+              </div>
+              <div class="drawer-item" onclick="showModule('clients'); toggleDrawer(false);">
+                <span class="drawer-item-icon">👥</span>
+                <div>
+                  <div class="drawer-item-title">Répertoire des Clients</div>
+                  <div class="drawer-item-sub">Annuaire complet, fidélité & coordonnées</div>
+                </div>
+              </div>
+              <div class="drawer-item" onclick="alert('Module Devis & Proforma : Conversion 1-clic en vente active.'); toggleDrawer(false);">
+                <span class="drawer-item-icon">📑</span>
+                <div>
+                  <div class="drawer-item-title">Devis & Factures Proforma</div>
+                  <div class="drawer-item-sub">Propositions & conversion directe en vente</div>
+                </div>
+              </div>
+
+              <div class="drawer-section-title" style="margin-top: 10px;">FINANCES & LOGISTIQUE</div>
+              <div class="drawer-item" onclick="showModule('deliveries'); toggleDrawer(false);">
+                <span class="drawer-item-icon">🛵</span>
+                <div>
+                  <div class="drawer-item-title">Livraisons & Coursiers</div>
+                  <div class="drawer-item-sub">Suivi des colis & gestion des livreurs</div>
+                </div>
+              </div>
+              <div class="drawer-item" onclick="showModule('reports'); toggleDrawer(false);">
+                <span class="drawer-item-icon">📊</span>
+                <div>
+                  <div class="drawer-item-title">Bilan & Bénéfices Réels</div>
+                  <div class="drawer-item-sub">Marges nettes, rentabilité & ratios</div>
+                </div>
+              </div>
+              <div class="drawer-item" onclick="alert('Caisse & Trésorerie : Saisie des dépenses locales.'); toggleDrawer(false);">
+                <span class="drawer-item-icon">💵</span>
+                <div>
+                  <div class="drawer-item-title">Caisse & Trésorerie</div>
+                  <div class="drawer-item-sub">Solde théorique & saisie des dépenses</div>
+                </div>
+              </div>
+              <div class="drawer-item" onclick="alert('Fournisseurs & Achats : Gestion des commandes grossistes.'); toggleDrawer(false);">
+                <span class="drawer-item-icon">🚚</span>
+                <div>
+                  <div class="drawer-item-title">Fournisseurs & Achats</div>
+                  <div class="drawer-item-sub">Approvisionnements & dettes grossistes</div>
+                </div>
+              </div>
+
+              <div class="drawer-section-title" style="margin-top: 10px;">SYSTÈME & SÉCURITÉ</div>
+              <div class="drawer-item" onclick="alert('Centre d\'Alertes : Notification automatique des stocks bas.'); toggleDrawer(false);">
+                <span class="drawer-item-icon">🔔</span>
+                <div>
+                  <div class="drawer-item-title">Centre d'Alertes & Ruptures</div>
+                  <div class="drawer-item-sub">Seuils critiques & produits épuisés</div>
+                </div>
+              </div>
+              <div class="drawer-item" onclick="resetToInitialSetup()">
+                <span class="drawer-item-icon">⚙️</span>
+                <div>
+                  <div class="drawer-item-title">Recommencer l'Ouverture</div>
+                  <div class="drawer-item-sub">Reprendre l'assistant de configuration</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Ajout Produit Réel avec Support Photo -->
+        <div class="modal-overlay" id="addProductModal" onclick="closeProductModal()">
+          <div class="modal-sheet" onclick="event.stopPropagation()">
+            <div style="width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 12px auto;"></div>
+            <div style="font-size: 15px; font-weight: 900; color: var(--brand-navy); margin-bottom: 12px;">+ Ajouter un nouvel article</div>
+
+            <!-- Sélecteur Photo Produit Réel -->
+            <div style="display: flex; align-items: center; gap: 12px; background: var(--surface-variant); padding: 10px; border-radius: 12px; margin-bottom: 12px;">
+              <div id="modalPhotoPreview" style="width: 48px; height: 48px; border-radius: 8px; background: #fff; border: 1px dashed var(--border); display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                📷
+              </div>
+              <div>
+                <div style="font-size: 11px; font-weight: 700; color: var(--brand-navy);">Photo de l'article</div>
+                <div style="display: flex; gap: 6px; margin-top: 4px;">
+                  <button type="button" style="background: var(--brand-navy); color: #fff; border: none; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer;" onclick="setDummyImage('apple')">🍎 Fruit</button>
+                  <button type="button" style="background: var(--brand-navy); color: #fff; border: none; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer;" onclick="setDummyImage('bottle')">🧴 Bouteille</button>
+                  <button type="button" style="background: var(--brand-navy); color: #fff; border: none; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; cursor: pointer;" onclick="setDummyImage('sack')">🌾 Sac</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Désignation du produit *</label>
+              <input type="text" class="field-input" id="newProdName" placeholder="ex: Lait Bonnet Rouge 400g" />
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+              <div class="field-group" style="flex: 1;">
+                <label class="field-label">Prix d'Achat (GNF)</label>
+                <input type="number" class="field-input" id="newProdPurchase" placeholder="12000" />
+              </div>
+              <div class="field-group" style="flex: 1;">
+                <label class="field-label">Prix de Vente (GNF) *</label>
+                <input type="number" class="field-input" id="newProdSale" placeholder="15000" />
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+              <div class="field-group" style="flex: 1;">
+                <label class="field-label">Quantité en stock</label>
+                <input type="number" class="field-input" id="newProdQty" value="25" />
+              </div>
+              <div class="field-group" style="flex: 1;">
+                <label class="field-label">Unité</label>
+                <select class="field-select" id="newProdUnit">
+                  <option value="pièce">pièce</option>
+                  <option value="kg">kg</option>
+                  <option value="litre">litre</option>
+                  <option value="Sac">Sac</option>
+                  <option value="Carton">Carton</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="button" class="btn-next" style="width: 100%; margin-top: 10px;" onclick="saveNewProduct()">
+              Enregistrer le produit dans le stock
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── État de l'Application ──
+    let currentStep = 0;
+    let shopName = "Boutique Diallo & Frères";
+    let shopPhone = "+224 624 00 00 00";
+    let shopAddress = "Madina Marché, Conakry";
+    let isTrial = true;
+    let selectedImageEmoji = "📦";
+
+    // Base de données locale de produits (100% VIERGE PAR DÉFAUT)
+    let localProducts = [];
+
+    // Hardware ID Mobile émulé
+    const hardwareId = "MOB-94B2-781A";
+
+    function renderStep() {
+      const titleEl = document.getElementById('stepTitle');
+      const subtitleEl = document.getElementById('stepSubtitle');
+      const contentEl = document.getElementById('stepContent');
+      const btnPrevEl = document.getElementById('btnPrev');
+      const btnNextLabel = document.getElementById('btnNextLabel');
+
+      for (let i = 1; i <= 3; i++) {
+        const badge = document.getElementById(`badgeStep${i}`);
+        const circle = document.getElementById(`circle${i}`);
+        badge.className = "step-item";
+        circle.innerText = i;
+        if (i - 1 < currentStep) {
+          badge.classList.add("done");
+          circle.innerText = "✓";
+        } else if (i - 1 === currentStep) {
+          badge.classList.add("active");
+        }
+      }
+      document.getElementById('line1').className = currentStep >= 1 ? "step-line done" : "step-line";
+      document.getElementById('line2').className = currentStep >= 2 ? "step-line done" : "step-line";
+
+      if (currentStep === 0) {
+        titleEl.innerText = "Fiche de votre Boutique";
+        subtitleEl.innerText = "Renseignez l'identité commerciale qui figurera sur vos reçus.";
+        btnPrevEl.innerText = "Quitter";
+        btnNextLabel.innerText = "Suivant";
+
+        contentEl.innerHTML = `
+          <div class="form-card">
+            <!-- Logo Sélecteur -->
+            <div style="text-align: center; margin-bottom: 14px;">
+              <div style="width: 68px; height: 68px; border-radius: 50%; background: #F8FAFC; border: 2px dashed var(--brand-orange); display: inline-flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer;" onclick="alert('Photo de logo prise en compte !');">
+                🏪
+              </div>
+              <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 4px;">Logo ou photo de votre boutique</div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Nom de la boutique *</label>
+              <input type="text" class="field-input" id="inputShopName" value="${shopName}" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">Domaine d'activité *</label>
+              <select class="field-select">
+                <option value="Alimentation Générale">Alimentation Générale</option>
+                <option value="Quincaillerie & Matériaux">Quincaillerie & Matériaux</option>
+                <option value="Mode & Prêt-à-porter">Mode & Prêt-à-porter</option>
+                <option value="Électronique & Informatique">Électronique & Informatique</option>
+                <option value="Pharmacie & Santé">Pharmacie & Santé</option>
+                <option value="Autre">Autre commerce</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Numéro de Téléphone (Reçus & WhatsApp)</label>
+              <input type="text" class="field-input" id="inputShopPhone" value="${shopPhone}" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">NIF / Numéro Fiscal (Optionnel)</label>
+              <input type="text" class="field-input" placeholder="NIF ou RCCM de la boutique" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">Adresse physique / Ville</label>
+              <input type="text" class="field-input" id="inputShopAddress" value="${shopAddress}" />
+            </div>
+          </div>
+        `;
+      } else if (currentStep === 1) {
+        titleEl.innerText = "Licence & Activation";
+        subtitleEl.innerText = "Activez votre licence officielle ou profitez de vos 7 jours d'essai.";
+        btnPrevEl.innerText = "Précédent";
+        btnNextLabel.innerText = "Suivant";
+
+        contentEl.innerHTML = `
+          <!-- Option Essai 7 Jours -->
+          <div class="option-card ${isTrial ? 'selected' : ''}" onclick="selectTrial(true)">
+            <div class="option-icon">🎁</div>
+            <div>
+              <div class="option-title">Période d'essai gratuite (7 jours)</div>
+              <div class="option-desc">Découvrez toutes les fonctionnalités à 100% sans carte ni engagement.</div>
+            </div>
+          </div>
+
+          <!-- Option Clé Officielle avec Hardware ID -->
+          <div class="option-card ${!isTrial ? 'selected' : ''}" onclick="selectTrial(false)">
+            <div class="option-icon">🛡️</div>
+            <div>
+              <div class="option-title">J'ai une clé de licence officielle</div>
+              <div class="option-desc">Activez votre abonnement Annuel ou Licence À Vie.</div>
+            </div>
+          </div>
+
+          <!-- Détail si mode clé -->
+          <div id="licenseKeySection" style="display: ${isTrial ? 'none' : 'block'}; margin-top: 12px;">
+            <!-- Box Référence Matérielle de l'appareil (Device ID exact comme sur Desktop) -->
+            <div style="background: #F1F5F9; border: 1px solid var(--border); border-radius: 14px; padding: 12px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <div>
+                <div style="font-size: 9.5px; font-weight: 800; color: var(--text-muted);">RÉFÉRENCE MATÉRIELLE DE CET APPAREIL</div>
+                <div style="font-size: 14px; font-weight: 900; color: var(--brand-navy); letter-spacing: 0.8px;">${hardwareId}</div>
+              </div>
+              <button style="background: var(--brand-orange); color: #fff; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer;" onclick="navigator.clipboard.writeText('${hardwareId}'); alert('Référence copiée : ${hardwareId}');">Copier</button>
+            </div>
+
+            <div class="form-card">
+              <div class="field-group">
+                <label class="field-label">Clé de licence (ex: NMAS-94B2-20271109-8F3B21E0)</label>
+                <input type="text" class="field-input" id="inputLicKey" placeholder="NMAS-XXXX-YYYYMMDD-XXXXXXXX" style="font-weight: bold; text-transform: uppercase;" />
+              </div>
+              <a href="https://wa.me/224624193069?text=Bonjour%20Hassimiou%20Thioye%2C%20je%20souhaite%20obtenir%20une%20cl%C3%A9%20N'MaShop.%20R%C3%A9f%20%3A%20${hardwareId}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 800; color: #15803D; text-decoration: none; margin-top: 4px;">
+                💬 Commander votre clé sur WhatsApp (+224 624 19 30 69)
+              </a>
+            </div>
+          </div>
+        `;
+      } else if (currentStep === 2) {
+        titleEl.innerText = "Compte Administrateur Maître";
+        subtitleEl.innerText = "Protégez l'accès patron avec un mot de passe et un code de secours.";
+        btnPrevEl.innerText = "Précédent";
+        btnNextLabel.innerText = "Finaliser et Ouvrir";
+
+        contentEl.innerHTML = `
+          <div class="form-card">
+            <div class="field-group">
+              <label class="field-label">Nom complet du propriétaire / Gérant *</label>
+              <input type="text" class="field-input" id="inputOwnerName" value="Mamadou Diallo" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">Mot de passe maître ou PIN caisse *</label>
+              <input type="password" class="field-input" value="1234" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">Confirmer le mot de passe *</label>
+              <input type="password" class="field-input" value="1234" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">Code secret de récupération (en cas d'oubli) *</label>
+              <input type="text" class="field-input" value="CONAKRY-2026" />
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+              <input type="checkbox" checked id="cguCheck" />
+              <label for="cguCheck" style="font-size: 11px; color: var(--text-muted);">J'accepte les conditions d'utilisation N'MaShop 100% hors-ligne.</label>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function selectTrial(val) {
+      isTrial = val;
+      renderStep();
+    }
+
+    function nextStep() {
+      if (currentStep === 0) {
+        shopName = document.getElementById('inputShopName').value || shopName;
+        currentStep = 1;
+        renderStep();
+      } else if (currentStep === 1) {
+        currentStep = 2;
+        renderStep();
+      } else if (currentStep === 2) {
+        document.getElementById('setupView').style.display = 'none';
+        document.getElementById('posView').style.display = 'flex';
+        document.getElementById('openedShopName').innerText = shopName;
+        showModule('stock');
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 0) {
+        currentStep--;
+        renderStep();
+      }
+    }
+
+    function toggleDrawer(open) {
+      const drawer = document.getElementById('drawerBackdrop');
+      if (open) drawer.classList.add('open');
+      else drawer.classList.remove('open');
+    }
+
+    function resetToInitialSetup() {
+      currentStep = 0;
+      localProducts = []; // Purgé 100%
+      document.getElementById('posView').style.display = 'none';
+      document.getElementById('setupView').style.display = 'flex';
+      toggleDrawer(false);
+      renderStep();
+    }
+
+    // ── Affichage Dynamique des Modules ──
+    function showModule(mod) {
+      ['stock', 'deliveries', 'credits', 'clients', 'reports'].forEach(m => {
+        const p = document.getElementById('pill' + m.charAt(0).toUpperCase() + m.slice(1));
+        if (p) p.className = m === mod ? 'module-pill active' : 'module-pill';
+      });
+
+      const container = document.getElementById('moduleContainer');
+
+      if (mod === 'stock') {
+        let totalVal = 0;
+        localProducts.forEach(p => { totalVal += (p.qty * p.purchasePrice); });
+
+        let productsHtml = '';
+        if (localProducts.length === 0) {
+          productsHtml = `
+            <div style="background: #fff; border: 1px dashed var(--border); border-radius: 16px; padding: 28px 16px; text-align: center; margin-top: 10px;">
+              <div style="font-size: 32px; margin-bottom: 8px;">📦</div>
+              <div style="font-weight: 800; font-size: 13.5px; color: var(--brand-navy);">Catalogue 100% Vierge</div>
+              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.4;">
+                Toutes les données fictives ont été vidées.<br>Ajoutez votre premier article réel en cliquant ci-dessous.
+              </div>
+              <button style="margin-top: 14px; background: var(--brand-orange); color: #fff; border: none; padding: 10px 18px; border-radius: 12px; font-size: 12px; font-weight: 800; cursor: pointer;" onclick="openProductModal()">
+                + Ajouter le premier produit
+              </button>
+            </div>
+          `;
+        } else {
+          productsHtml = localProducts.map(p => `
+            <div class="product-card">
+              <div class="product-thumb">${p.emoji}</div>
+              <div style="flex: 1;">
+                <div style="font-size: 13px; font-weight: 800; color: var(--brand-navy);">${p.name}</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                  Vente : <strong>${p.salePrice.toLocaleString()} GNF</strong> • Achat : ${p.purchasePrice.toLocaleString()} GNF
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <span style="background: rgba(16, 185, 129, 0.12); color: var(--brand-emerald); font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px;">
+                  ${p.qty} ${p.unit}(s)
+                </span>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        container.innerHTML = `
+          <!-- Synthèse Stock -->
+          <div style="background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px;">
+            <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 800; letter-spacing: 0.5px;">VALEUR DU STOCK (ACHAT)</div>
+            <div style="font-size: 22px; font-weight: 900; color: var(--brand-navy); margin: 4px 0;">${totalVal.toLocaleString()} GNF</div>
+            <div style="font-size: 11px; color: var(--brand-emerald); font-weight: 700;">✓ Données réelles isolées en local (Zéro fictif)</div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 13px; font-weight: 800; color: var(--brand-navy);">Articles Réels (${localProducts.length})</div>
+            <button style="background: var(--brand-navy); color: #fff; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;" onclick="openProductModal()">+ Nouvel Article</button>
+          </div>
+
+          ${productsHtml}
+        `;
+        document.getElementById('stockCountBadge').innerText = localProducts.length;
+      } else if (mod === 'deliveries') {
+        container.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 14px; font-weight: 900; color: var(--brand-navy);">Livraisons & Flotte Livreurs</div>
+            <button style="background: var(--brand-orange); color: #fff; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;" onclick="alert('Formulaire Nouvelle Livraison')">+ Expédier</button>
+          </div>
+          <div style="background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-weight: 800; font-size: 13px; color: var(--brand-navy);">LIV-4921</span>
+              <span style="background: #EEF2FF; color: #4F46E5; font-size: 10.5px; font-weight: 800; padding: 3px 8px; border-radius: 6px;">🛵 En transit</span>
+            </div>
+            <div style="font-size: 12px; font-weight: bold; margin-top: 6px;">Client : Mamadou Lamarana</div>
+            <div style="font-size: 11.5px; color: var(--text-muted);">📍 Dixinn Terrasse • +224 621 11 22 33</div>
+            <div style="font-size: 11.5px; color: var(--brand-navy); margin-top: 4px;">Livreur assigné : <strong>Ibrahima Sory (Moto TVS)</strong></div>
+            <div style="margin-top: 8px; font-size: 13px; font-weight: 800; color: var(--brand-orange);">À encaisser : 185 000 GNF</div>
+          </div>
+        `;
+      } else if (mod === 'credits') {
+        container.innerHTML = `
+          <div style="background: #FFF7ED; border: 1px solid #FFEDD5; border-radius: 16px; padding: 16px; margin-bottom: 12px;">
+            <div style="font-size: 10.5px; color: #C2410C; font-weight: 800;">TOTAL CRÉANCES (ARGENT DEHORS)</div>
+            <div style="font-size: 22px; font-weight: 900; color: #EA580C; margin: 4px 0;">320 000 GNF</div>
+            <div style="font-size: 11px; color: #9A3412;">2 clients débiteurs avec traçabilité des versements</div>
+          </div>
+          <div style="background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="font-weight: 800; font-size: 13.5px; color: var(--brand-navy);">Oumar Chérif</span>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">+224 622 99 88 77 • Matam Marché</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 10px; color: #EF4444; font-weight: 700;">RESTE DÛ</div>
+                <span style="color: #DC2626; font-weight: 900; font-size: 14px;">200 000 GNF</span>
+              </div>
+            </div>
+
+            <!-- Historique des versements successifs avec dates -->
+            <div style="margin-top: 10px; padding: 10px; background: #F8FAFC; border-radius: 10px; border: 1px solid #E2E8F0;">
+              <div style="font-size: 10.5px; font-weight: 800; color: var(--brand-navy); margin-bottom: 6px;">📅 VERSEMENTS SUCCESSIFS REÇUS :</div>
+              <div style="font-size: 11px; color: #334155; display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>• 05/11/2026 à 14:15 <small style="color:#64748B;">(Orange Money)</small></span>
+                <strong style="color: #059669;">+ 50 000 GNF</strong>
+              </div>
+              <div style="font-size: 11px; color: #334155; display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>• 08/11/2026 à 10:30 <small style="color:#64748B;">(Espèces)</small></span>
+                <strong style="color: #059669;">+ 100 000 GNF</strong>
+              </div>
+              <div style="border-top: 1px dashed #CBD5E1; margin-top: 6px; padding-top: 4px; font-size: 10.5px; display: flex; justify-content: space-between; font-weight: 700;">
+                <span>Total réglé : 150 000 GNF</span>
+                <span style="color: #DC2626;">Reste : 200 000 GNF</span>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 6px; margin-top: 10px;">
+              <a href="https://wa.me/224622998877?text=Bonjour%20Oumar%20Ch%C3%A9rif%2C%20rappel%20de%20votre%20cr%C3%A9dit%20de%20200%20000%20GNF" target="_blank" style="flex: 1; text-align: center; background: #25D366; color: #fff; text-decoration: none; padding: 7px 4px; border-radius: 8px; font-size: 10.5px; font-weight: 800;">
+                💬 Rappel
+              </a>
+              <a href="https://wa.me/224622998877?text=Relev%C3%A9%20de%20compte%20N'MaShop%20-%20Oumar%20Ch%C3%A9rif%20%3A%20Versements%20re%C3%A7us%20150%20000%20GNF%2C%20Reste%20d%C3%BB%20200%20000%20GNF" target="_blank" style="flex: 1.2; text-align: center; background: var(--brand-navy); color: #fff; text-decoration: none; padding: 7px 4px; border-radius: 8px; font-size: 10.5px; font-weight: 800;">
+                📑 Relevé complet
+              </a>
+            </div>
+          </div>
+        `;
+      } else if (mod === 'clients') {
+        container.innerHTML = `
+          <div style="font-size: 14px; font-weight: 800; color: var(--brand-navy); margin-bottom: 10px;">Répertoire des Clients Fidèles</div>
+          <div style="background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 12px; margin-bottom: 8px;">
+            <div style="font-weight: 800; font-size: 13px;">Amadou Sow</div>
+            <div style="font-size: 11.5px; color: var(--text-muted);">+224 625 33 44 55 • Matam Marché</div>
+            <div style="font-size: 11px; color: var(--brand-emerald); margin-top: 4px; font-weight: 700;">Cumul achats : 1 450 000 GNF (8 passages)</div>
+          </div>
+        `;
+      } else if (mod === 'reports') {
+        container.innerHTML = `
+          <div style="background: #0F172A; color: #fff; border-radius: 16px; padding: 18px; margin-bottom: 12px;">
+            <div style="font-size: 10.5px; color: #94A3B8; font-weight: 800;">BÉNÉFICE NET RÉEL (SYSCOHADA)</div>
+            <div style="font-size: 24px; font-weight: 900; color: #34D399; margin: 4px 0;">+ 2 450 000 GNF</div>
+            <div style="font-size: 11px; color: rgba(255,255,255,0.7);">Taux de marge nette : 28%</div>
+          </div>
+          <div style="background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+              <span>Chiffre d'Affaires</span><strong>8 750 000 GNF</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; color: var(--text-muted);">
+              <span>Coût d'Achat (CMP)</span><strong>- 5 800 000 GNF</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--danger);">
+              <span>Dépenses Locales</span><strong>- 500 000 GNF</strong>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // ── Gestion Ajout de Produit Réel ──
+    function openProductModal() {
+      document.getElementById('addProductModal').classList.add('open');
+    }
+    function closeProductModal() {
+      document.getElementById('addProductModal').classList.remove('open');
+    }
+    function setDummyImage(type) {
+      if (type === 'apple') selectedImageEmoji = '🍎';
+      else if (type === 'bottle') selectedImageEmoji = '🧴';
+      else if (type === 'sack') selectedImageEmoji = '🌾';
+      document.getElementById('modalPhotoPreview').innerText = selectedImageEmoji;
+    }
+    function saveNewProduct() {
+      const name = document.getElementById('newProdName').value.trim();
+      const sale = parseInt(document.getElementById('newProdSale').value) || 0;
+      const purchase = parseInt(document.getElementById('newProdPurchase').value) || 0;
+      const qty = parseInt(document.getElementById('newProdQty').value) || 1;
+      const unit = document.getElementById('newProdUnit').value;
+
+      if (!name) {
+        alert('Veuillez renseigner le nom de l\'article.');
+        return;
+      }
+
+      localProducts.push({
+        id: 'prod-' + Date.now(),
+        name: name,
+        salePrice: sale,
+        purchasePrice: purchase,
+        qty: qty,
+        unit: unit,
+        emoji: selectedImageEmoji
+      });
+
+      closeProductModal();
+      document.getElementById('newProdName').value = '';
+      showModule('stock');
+    }
+
+    // Initialisation
+    renderStep();
+  </script>
+</body>
+</html>

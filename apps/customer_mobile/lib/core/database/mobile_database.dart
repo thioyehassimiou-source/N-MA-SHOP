@@ -197,6 +197,26 @@ class MobileDatabase extends _$MobileDatabase {
 
   @override
   int get schemaVersion => 1;
+
+  /// Purge l'intégralité des données locales de la boutique pour un démarrage 100% propre.
+  Future<void> purgeAllData() async {
+    await transaction(() async {
+      await delete(mobileSales).go();
+      await delete(mobileSaleItems).go();
+      await delete(mobileStockMovements).go();
+      await delete(mobileExpenses).go();
+      await delete(mobilePurchases).go();
+      await delete(mobilePurchaseItems).go();
+      await delete(mobileProducts).go();
+      await delete(mobileCategories).go();
+      await delete(mobileCustomers).go();
+      await delete(mobileSuppliers).go();
+      await delete(mobileSyncQueue).go();
+      try {
+        await customStatement('DELETE FROM mobile_quotes;');
+      } catch (_) {}
+    });
+  }
 }
 
 // ── Riverpod Provider ──

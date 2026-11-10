@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/database/mobile_database.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/app_product_image.dart';
+import '../../../../core/widgets/mobile_barcode_scanner_modal.dart';
 import '../../../../core/widgets/nma_mobile_header.dart';
 import '../../receivables/presentation/receivables_screen.dart';
 import '../../stock/presentation/stock_screen.dart';
@@ -17,33 +19,13 @@ final salesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
   final db = ref.watch(mobileDatabaseProvider);
   final period = ref.watch(salesPeriodProvider);
 
-  List<MobileSale> sales = await db.select(db.mobileSales).get();
+  // Nettoyage immédiat des ventes de démonstration si présentes
+  try {
+    await db.customStatement("DELETE FROM mobile_sales WHERE id LIKE 'sale-%-1' OR id LIKE 'sale-%-2' OR id LIKE 'sale-init-%';");
+    await db.customStatement("DELETE FROM mobile_sale_items WHERE id LIKE 'item-%' AND sale_id NOT IN (SELECT id FROM mobile_sales);");
+  } catch (_) {}
 
-  // Si aucune vente en BDD locale au premier démarrage, insérer 2 échantillons par défaut
-  if (sales.isEmpty) {
-    final now = DateTime.now();
-    final s1 = MobileSalesCompanion.insert(
-      id: 'sale-${now.millisecondsSinceEpoch}-1',
-      reference: 'FAC-${now.millisecondsSinceEpoch % 10000}',
-      date: drift.Value(now),
-      total: const drift.Value(40000),
-      amountPaid: const drift.Value(40000),
-      paymentMethod: const drift.Value(0), // Espèces
-      sellerName: const drift.Value('Administrateur'),
-    );
-    final s2 = MobileSalesCompanion.insert(
-      id: 'sale-${now.millisecondsSinceEpoch}-2',
-      reference: 'FAC-${(now.millisecondsSinceEpoch + 1) % 10000}',
-      date: drift.Value(now.subtract(const Duration(hours: 3))),
-      total: const drift.Value(210000),
-      amountPaid: const drift.Value(210000),
-      paymentMethod: const drift.Value(1), // Orange Money / Wave
-      sellerName: const drift.Value('Administrateur'),
-    );
-    await db.into(db.mobileSales).insert(s1);
-    await db.into(db.mobileSales).insert(s2);
-    sales = await db.select(db.mobileSales).get();
-  }
+  List<MobileSale> sales = await db.select(db.mobileSales).get();
 
   final now = DateTime.now();
   DateTime cutoff = DateTime(now.year, now.month, now.day);
@@ -131,6 +113,44 @@ class SalesScreen extends ConsumerWidget {
         title: 'Caisse & Ventes',
         subtitle: 'Encaissement POS & Factures',
         actions: [
+          NmaMobileHeaderAction(
+            icon: Icons.qr_code_scanner_rounded,
+            tooltip: 'Scanner un article (Caméra)',
+            onPressed: () async {
+              final scannedCode = await MobileBarcodeScannerModal.show(
+                context,
+                title: 'Scanner pour Vente',
+                hintText: 'Cadrez le code-barres pour ouvrir une vente',
+              );
+              if (scannedCode != null && scannedCode.isNotEmpty) {
+                final db = ref.read(mobileDatabaseProvider);
+                final products = await db.select(db.mobileProducts).get();
+                final matching = products.where((p) =>
+                  (p.barcode != null && p.barcode!.trim().toLowerCase() == scannedCode.trim().toLowerCase()) ||
+                  (p.reference != null && p.reference!.trim().toLowerCase() == scannedCode.trim().toLowerCase()) ||
+                  p.name.toLowerCase() == scannedCode.toLowerCase()
+                ).firstOrNull;
+
+                if (!context.mounted) return;
+                if (matching != null) {
+                  _showAddSaleModal(context, ref, initialCart: {matching.id: 1});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Article "${matching.name}" scanné et ajouté au panier'),
+                      backgroundColor: AppColors.brandEmerald,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Aucun article trouvé pour le code "$scannedCode".'),
+                      backgroundColor: AppColors.warning,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
           NmaMobileHeaderAction(
             icon: Icons.refresh_rounded,
             tooltip: 'Actualiser',
@@ -971,7 +991,7 @@ class SalesScreen extends ConsumerWidget {
   }
 
   // ── Modal de Saisie POS & Encaissement ──
-  void _showAddSaleModal(BuildContext context, WidgetRef ref) async {
+  void _showAddSaleModal(BuildContext context, WidgetRef ref, {Map<String, int>? initialCart}) async {
     final db = ref.read(mobileDatabaseProvider);
     final products = await db.select(db.mobileProducts).get();
     final customers = await db.select(db.mobileCustomers).get();
@@ -985,7 +1005,7 @@ class SalesScreen extends ConsumerWidget {
       return;
     }
 
-    final Map<String, int> cart = {};
+    final Map<String, int> cart = initialCart != null ? Map.from(initialCart) : {};
     String selectedCustomerName = 'Client Comptoir';
     int selectedPaymentMethod = 0; // 0: Espèces, 1: Orange Money, 2: Wave, 3: Moov, 4: Virement, 5: Crédit
     final amountPaidCtrl = TextEditingController();
@@ -1078,22 +1098,100 @@ class SalesScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 10),
 
-                // Filtre de recherche d'articles
-                TextField(
-                  onChanged: (val) => setStateModal(() => itemSearchQuery = val),
-                  decoration: InputDecoration(
-                    hintText: 'Filtrer les articles du comptoir...',
-                    hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                    prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textMuted),
-                    filled: true,
-                    fillColor: AppColors.surfaceVariant,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
+                // Filtre de recherche d'articles + Scanner Caméra
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        onChanged: (val) => setStateModal(() => itemSearchQuery = val),
+                        decoration: InputDecoration(
+                          hintText: 'Filtrer les articles du comptoir...',
+                          hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                          prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textMuted),
+                          filled: true,
+                          fillColor: AppColors.surfaceVariant,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Material(
+                      color: AppColors.brandOrange,
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () async {
+                          final scannedCode = await MobileBarcodeScannerModal.show(
+                            ctx,
+                            title: 'Scanner pour Ajouter',
+                            hintText: 'Pointez la caméra vers le code-barres',
+                          );
+                          if (scannedCode != null && scannedCode.isNotEmpty) {
+                            final matching = products.where((p) =>
+                              (p.barcode != null && p.barcode!.trim().toLowerCase() == scannedCode.trim().toLowerCase()) ||
+                              (p.reference != null && p.reference!.trim().toLowerCase() == scannedCode.trim().toLowerCase()) ||
+                              p.name.toLowerCase() == scannedCode.toLowerCase()
+                            ).firstOrNull;
+
+                            if (matching != null) {
+                              final currentQty = cart[matching.id] ?? 0;
+                              if (currentQty >= matching.stockQuantity) {
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Stock max atteint pour ${matching.name} (${matching.stockQuantity} dispo)'),
+                                      backgroundColor: AppColors.warning,
+                                    ),
+                                  );
+                                }
+                              } else {
+                                setStateModal(() {
+                                  cart[matching.id] = currentQty + 1;
+                                });
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(
+                                      content: Text('${matching.name} ajouté (+1)'),
+                                      backgroundColor: AppColors.brandEmerald,
+                                      duration: const Duration(milliseconds: 1200),
+                                    ),
+                                  );
+                                }
+                              }
+                            } else {
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Code "$scannedCode" non trouvé dans le stock.'),
+                                    backgroundColor: AppColors.warning,
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 18),
+                              SizedBox(width: 5),
+                              Text(
+                                'Biper',
+                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
 
@@ -1122,6 +1220,13 @@ class SalesScreen extends ConsumerWidget {
                               ),
                               child: Row(
                                 children: [
+                                  AppProductImage(
+                                    imageSource: prod.imageUrl,
+                                    width: 38,
+                                    height: 38,
+                                    borderRadius: 8,
+                                  ),
+                                  const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,

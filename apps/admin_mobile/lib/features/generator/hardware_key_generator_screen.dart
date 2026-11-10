@@ -37,11 +37,15 @@ class _HardwareKeyGeneratorScreenState extends ConsumerState<HardwareKeyGenerato
   AdminLicenseType _selectedType = AdminLicenseType.annual;
   DateTime _expiryDate = DateTime.now().add(const Duration(days: 365));
   String? _generatedKey;
+  bool _isMobileTarget = false;
 
   @override
   void initState() {
     super.initState();
     _selectedClient = widget.preselectedClient;
+    if (_selectedClient?.hardwareId.toUpperCase().contains('MOB') == true) {
+      _isMobileTarget = true;
+    }
 
     _hardwareIdCtrl = TextEditingController();
     _storeNameCtrl = TextEditingController(text: _selectedClient?.storeName ?? '');
@@ -63,10 +67,13 @@ class _HardwareKeyGeneratorScreenState extends ConsumerState<HardwareKeyGenerato
 
   void _generateKeyPreview() {
     final hwId = _hardwareIdCtrl.text.trim().toUpperCase();
+    if (hwId.contains('MOB')) {
+      _isMobileTarget = true;
+    }
 
     setState(() {
       if (hwId.isNotEmpty) {
-        // Mode Device Binding : Clé 100% verrouillée sur ce PC (4 segments)
+        // Mode Device Binding : Clé 100% verrouillée sur ce PC ou Smartphone (4 segments)
         if (_selectedType == AdminLicenseType.lifetime) {
           _generatedKey = LicenseCryptoEngine.generateHardwareBoundLifetimeKey(hwId);
         } else {
@@ -111,6 +118,10 @@ class _HardwareKeyGeneratorScreenState extends ConsumerState<HardwareKeyGenerato
 
     final extracted = match != null ? match.group(0)!.toUpperCase() : text.trim().toUpperCase();
 
+    if (extracted.contains('MOB')) {
+      _isMobileTarget = true;
+    }
+
     _hardwareIdCtrl.text = extracted;
     _generateKeyPreview();
 
@@ -143,24 +154,36 @@ class _HardwareKeyGeneratorScreenState extends ConsumerState<HardwareKeyGenerato
       _ => 'Abonnement Annuel (1 An — Expire le ${DateFormat('dd/MM/yyyy').format(_expiryDate)})',
     };
 
+    final targetAppName = _isMobileTarget ? 'N\'MaShop Mobile' : 'N\'MaShop PC';
+    final targetDeviceName = _isMobileTarget ? 'smartphone' : 'ordinateur';
+
     final bindingNotice = isBound
-        ? '\n🔒 *Sécurité Machine* : Clé sécurisée liée spécifiquement à votre ordinateur (${_hardwareIdCtrl.text.trim()}).'
+        ? '\n🔒 *Sécurité Matérielle* : Clé sécurisée liée spécifiquement à votre $targetDeviceName (${_hardwareIdCtrl.text.trim()}).'
         : '';
 
-    final message = '''
-Bonjour *$storeName*,
+    final instructions = _isMobileTarget
+        ? '''📌 *Instructions d'activation sur votre Smartphone* :
+1. Ouvrez l'application N'MaShop sur votre téléphone.
+2. Allez dans Paramètres > Gérer ma licence (ou cliquez sur "Activer ma licence").
+3. Collez ce code ci-dessus et validez.
 
-Voici votre clé d'activation officielle N'MaShop PC :
-
-🔑 *Code d'Activation* : $_generatedKey
-⏳ *Formule* : $typeLabel$bindingNotice
-
-📌 *Instructions d'activation sur votre PC* :
+Votre application fonctionnera immédiatement en local 100% hors-ligne !'''
+        : '''📌 *Instructions d'activation sur votre PC* :
 1. Ouvrez l'application N'MaShop sur votre ordinateur.
 2. Cliquez sur "Activer ma licence" (ou Paramètres > Sécurité).
 3. Collez ce code ci-dessus et validez.
 
-Votre logiciel sera opérationnel immédiatement !
+Votre logiciel sera opérationnel immédiatement !''';
+
+    final message = '''
+Bonjour *$storeName*,
+
+Voici votre clé d'activation officielle $targetAppName :
+
+🔑 *Code d'Activation* : $_generatedKey
+⏳ *Formule* : $typeLabel$bindingNotice
+
+$instructions
 
 Merci pour votre confiance.
 — Hassimiou Thioye (Développeur N'MaShop)
@@ -251,7 +274,7 @@ Merci pour votre confiance.
     return Scaffold(
       backgroundColor: AppTheme.bgSlate,
       appBar: AppBar(
-        title: const Text('Générateur N\'MaShop PC'),
+        title: Text(_isMobileTarget ? 'Générateur Licence Mobile' : 'Générateur Licence PC'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -268,33 +291,124 @@ Merci pour votre confiance.
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ── Réf. Boutique / Hardware ID Machine PC ───────────────────
+                // ── Sélecteur de Terminal (PC Desktop vs Smartphone Mobile) ──
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.borderSlate),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            setState(() {
+                              _isMobileTarget = false;
+                              _generateKeyPreview();
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: !_isMobileTarget ? AppTheme.primaryIndigo : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.computer_rounded, size: 16, color: !_isMobileTarget ? Colors.white : AppTheme.textMuted),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'PC Desktop 🖥️',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12.5,
+                                    color: !_isMobileTarget ? Colors.white : AppTheme.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            setState(() {
+                              _isMobileTarget = true;
+                              _generateKeyPreview();
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: _isMobileTarget ? AppTheme.emeraldActive : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.phone_android_rounded, size: 16, color: _isMobileTarget ? Colors.white : AppTheme.textMuted),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Smartphone Mobile 📱',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12.5,
+                                    color: _isMobileTarget ? Colors.white : AppTheme.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Réf. Boutique / Hardware ID Machine ───────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Réf. Boutique / ID Machine PC',
-                      style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold, fontSize: 14),
+                    Text(
+                      _isMobileTarget ? 'ID Smartphone (Optionnel pour Mobile)' : 'Réf. Boutique / ID Machine PC',
+                      style: const TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold, fontSize: 13.5),
                     ),
-                    TextButton.icon(
-                      onPressed: _pasteAndExtractHardwareId,
-                      icon: const Icon(Icons.content_paste_rounded, size: 16, color: AppTheme.primaryIndigo),
-                      label: const Text('Coller Réf.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        visualDensity: VisualDensity.compact,
+                    if (!_isMobileTarget)
+                      TextButton.icon(
+                        onPressed: _pasteAndExtractHardwareId,
+                        icon: const Icon(Icons.content_paste_rounded, size: 16, color: AppTheme.primaryIndigo),
+                        label: const Text('Coller Réf.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          visualDensity: VisualDensity.compact,
+                        ),
                       ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                if (_isMobileTarget)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      '💡 Le boutiquier n\'a rien à envoyer. Laissez vide pour générer sa clé mobile directement.',
+                      style: TextStyle(fontSize: 11.5, color: Colors.blueGrey[700], fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                const SizedBox(height: 4),
                 TextFormField(
                   controller: _hardwareIdCtrl,
                   style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Ex: NMA-8F3A-92B1-4C07 (ou vide pour universelle)',
+                    hintText: _isMobileTarget ? 'Optionnel (laisser vide pour générer sans ID)' : 'Ex: NMA-8F3A-92B1-4C07 (ou vide pour universelle)',
                     hintStyle: const TextStyle(fontFamily: 'sans-serif', fontSize: 13, color: AppTheme.textMuted),
-                    prefixIcon: const Icon(Icons.computer_rounded, color: AppTheme.primaryIndigo),
+                    prefixIcon: Icon(_isMobileTarget ? Icons.phone_android_rounded : Icons.computer_rounded, color: AppTheme.primaryIndigo),
                     suffixIcon: _hardwareIdCtrl.text.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 18),
@@ -312,31 +426,35 @@ Merci pour votre confiance.
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isBound ? AppTheme.emeraldBg : AppTheme.amberBg,
+                    color: isBound ? AppTheme.emeraldBg : (_isMobileTarget ? const Color(0xFFEFF6FF) : AppTheme.amberBg),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: isBound
                           ? AppTheme.emeraldActive.withValues(alpha: 0.3)
-                          : AppTheme.amberTrial.withValues(alpha: 0.3),
+                          : (_isMobileTarget ? Colors.blue.withValues(alpha: 0.3) : AppTheme.amberTrial.withValues(alpha: 0.3)),
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        isBound ? Icons.lock_rounded : Icons.public_rounded,
+                        isBound ? Icons.lock_rounded : (_isMobileTarget ? Icons.phone_android_rounded : Icons.public_rounded),
                         size: 16,
-                        color: isBound ? AppTheme.emeraldActive : AppTheme.amberTrial,
+                        color: isBound ? AppTheme.emeraldActive : (_isMobileTarget ? const Color(0xFF1D4ED8) : AppTheme.amberTrial),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           isBound
-                              ? 'Clé verrouillée à 100% sur cette machine (Format 4 segments)'
-                              : 'Clé universelle (Peut être activée sur n\'importe quel PC)',
+                              ? (_isMobileTarget
+                                  ? 'Clé verrouillée à 100% sur ce smartphone (Format 4 segments)'
+                                  : 'Clé verrouillée à 100% sur cette machine PC (Format 4 segments)')
+                              : (_isMobileTarget
+                                  ? 'Clé d\'activation Mobile directe (Aucun code requis du boutiquier)'
+                                  : 'Clé universelle (Peut être activée sur n\'importe quel PC)'),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: isBound ? AppTheme.emeraldActive : AppTheme.amberTrial,
+                            color: isBound ? AppTheme.emeraldActive : (_isMobileTarget ? const Color(0xFF1D4ED8) : AppTheme.amberTrial),
                           ),
                         ),
                       ),

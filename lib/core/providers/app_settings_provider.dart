@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../license/license_provider.dart';
 import '../theme/app_palette.dart';
@@ -148,6 +150,14 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   }) async {
     if (businessName != null) {
       await _prefs.setString(_kBusinessName, businessName);
+      try {
+        if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+          final title = businessName.isNotEmpty && businessName != 'Ma Boutique'
+              ? "$businessName • N'MaShop POS"
+              : "N'MaShop - Gestion Commerciale & Caisse POS";
+          windowManager.setTitle(title);
+        }
+      } catch (_) {}
     }
     if (currency != null) {
       await _prefs.setString(_kCurrency, currency);
@@ -208,6 +218,14 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   }) async {
     await _prefs.setBool(_kIsSetupCompleted, true);
     await _prefs.setString(_kBusinessName, businessName);
+    try {
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        final title = businessName.isNotEmpty && businessName != 'Ma Boutique'
+            ? "$businessName • N'MaShop POS"
+            : "N'MaShop - Gestion Commerciale & Caisse POS";
+        windowManager.setTitle(title);
+      }
+    } catch (_) {}
     await _prefs.setString(_kCurrency, currency);
     if (logoPath != null) {
       await _prefs.setString(_kLogoPath, logoPath);

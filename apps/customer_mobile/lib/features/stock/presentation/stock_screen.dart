@@ -4,10 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/database/mobile_database.dart';
+import '../../../../core/storage/secure_storage_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/image_picker_helper.dart';
+import '../../../../core/widgets/app_product_image.dart';
+import '../../../../core/widgets/mobile_barcode_scanner_modal.dart';
 import '../../../../core/widgets/nma_mobile_header.dart';
+
+final stockUserRoleProvider = FutureProvider.autoDispose<String>((ref) async {
+  return ref.watch(storageServiceProvider).getUserRole();
+});
 
 final stockFilterProvider = StateProvider<String>((ref) => 'all'); // 'all', 'low', 'out'
 final stockSearchProvider = StateProvider<String>((ref) => '');
@@ -15,63 +22,21 @@ final stockSearchProvider = StateProvider<String>((ref) => '');
 final stockDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final db = ref.watch(mobileDatabaseProvider);
 
-  // Charger les produits depuis la base SQLite locale (MobileDatabase)
-  List<MobileProduct> products = await db.select(db.mobileProducts).get();
+  // Nettoyage radical et automatique des données fictives (Jus de Mangue, Riz Parfumé 25kg, Mangue, etc.)
+  try {
+    await db.customStatement(
+      "DELETE FROM mobile_products WHERE name IN ('Jus de Mangue 1L', 'Sac de Riz Parfumé 25kg', 'Mangue') "
+      "OR barcode IN ('61510001002', '61510001003') "
+      "OR reference IN ('REF-JUS-01', 'REF-RIZ-25', 'REF-2920');"
+    );
+    await db.customStatement(
+      "DELETE FROM mobile_stock_movements WHERE id LIKE 'mvt-init-%' "
+      "OR reason = 'Stock initial' AND productId NOT IN (SELECT id FROM mobile_products);"
+    );
+  } catch (_) {}
 
-  // Si la base est totalement vide au premier démarrage, insérer 2 échantillons par défaut
-  if (products.isEmpty) {
-    final now = DateTime.now();
-    final sample1 = MobileProductsCompanion.insert(
-      id: 'prod-${now.millisecondsSinceEpoch}-1',
-      name: 'Jus de Mangue 1L',
-      barcode: const drift.Value('61510001002'),
-      reference: const drift.Value('REF-JUS-01'),
-      unit: const drift.Value('pièce'),
-      purchasePrice: const drift.Value(15000),
-      salePrice: const drift.Value(20000),
-      stockQuantity: const drift.Value(20),
-      lowStockThreshold: const drift.Value(5),
-    );
-    final sample2 = MobileProductsCompanion.insert(
-      id: 'prod-${now.millisecondsSinceEpoch}-2',
-      name: 'Sac de Riz Parfumé 25kg',
-      barcode: const drift.Value('61510001003'),
-      reference: const drift.Value('REF-RIZ-25'),
-      unit: const drift.Value('Sac'),
-      purchasePrice: const drift.Value(180000),
-      salePrice: const drift.Value(210000),
-      stockQuantity: const drift.Value(3),
-      lowStockThreshold: const drift.Value(5),
-    );
-    await db.into(db.mobileProducts).insert(sample1);
-    await db.into(db.mobileProducts).insert(sample2);
-
-    // Enregistrer les mouvements initiaux
-    await db.into(db.mobileStockMovements).insert(
-      MobileStockMovementsCompanion.insert(
-        id: 'mvt-init-1',
-        productId: 'prod-${now.millisecondsSinceEpoch}-1',
-        type: 0,
-        quantity: 20,
-        unitCost: const drift.Value(15000),
-        reason: const drift.Value('Stock initial'),
-        date: drift.Value(now),
-      ),
-    );
-    await db.into(db.mobileStockMovements).insert(
-      MobileStockMovementsCompanion.insert(
-        id: 'mvt-init-2',
-        productId: 'prod-${now.millisecondsSinceEpoch}-2',
-        type: 0,
-        quantity: 3,
-        unitCost: const drift.Value(180000),
-        reason: const drift.Value('Stock initial'),
-        date: drift.Value(now),
-      ),
-    );
-
-    products = await db.select(db.mobileProducts).get();
-  }
+  // Charger les produits réels depuis la base SQLite locale (MobileDatabase)
+  final products = await db.select(db.mobileProducts).get();
 
   num totalValue = 0;
   int lowCount = 0;
@@ -119,6 +84,8 @@ class StockScreen extends ConsumerWidget {
     final filter = ref.watch(stockFilterProvider);
     final search = ref.watch(stockSearchProvider);
     final stockAsync = ref.watch(stockDataProvider);
+    final roleAsync = ref.watch(stockUserRoleProvider);
+    final isAdmin = (roleAsync.valueOrNull ?? 'admin') != 'cashier';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
@@ -127,22 +94,44 @@ class StockScreen extends ConsumerWidget {
         subtitle: 'Gestion du catalogue & réassorts',
         actions: [
           NmaMobileHeaderAction(
+            icon: Icons.qr_code_scanner_rounded,
+            tooltip: 'Scanner un article (Caméra)',
+            onPressed: () async {
+              final scannedCode = await MobileBarcodeScannerModal.show(
+                context,
+                title: 'Recherche Stock',
+                hintText: 'Scannez le produit pour le trouver dans la liste',
+              );
+              if (scannedCode != null && scannedCode.isNotEmpty) {
+                ref.read(stockSearchProvider.notifier).state = scannedCode;
+              }
+            },
+          ),
+          if (isAdmin)
+            NmaMobileHeaderAction(
+              icon: Icons.delete_sweep_rounded,
+              tooltip: 'Vider le catalogue (Remise à zéro)',
+              onPressed: () => _confirmPurgeStock(context, ref),
+            ),
+          NmaMobileHeaderAction(
             icon: Icons.refresh_rounded,
             tooltip: 'Actualiser',
             onPressed: () => ref.invalidate(stockDataProvider),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab_stock',
-        onPressed: () => _showAddProductModal(context, ref),
-        backgroundColor: AppColors.brandNavy,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'Nouvel Article',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              heroTag: 'fab_stock',
+              onPressed: () => _showAddProductModal(context, ref),
+              backgroundColor: AppColors.brandNavy,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text(
+                'Nouvel Article',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            )
+          : null,
       body: stockAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (err, _) => Center(
@@ -208,10 +197,13 @@ class StockScreen extends ConsumerWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Valeur Globale du Stock (Achat)', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                              Text(
+                                isAdmin ? 'Valeur Globale du Stock (Achat)' : 'Catalogue Articles & Stock',
+                                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                              ),
                               const SizedBox(height: 2),
                               Text(
-                                AppFormatters.formatCurrency(totalInventoryValue),
+                                isAdmin ? AppFormatters.formatCurrency(totalInventoryValue) : '$totalProducts références',
                                 style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
                               ),
                             ],
@@ -250,7 +242,20 @@ class StockScreen extends ConsumerWidget {
                                 icon: const Icon(Icons.clear, size: 18, color: AppColors.textMuted),
                                 onPressed: () => ref.read(stockSearchProvider.notifier).state = '',
                               )
-                            : null,
+                            : IconButton(
+                                icon: const Icon(Icons.qr_code_scanner_rounded, size: 20, color: AppColors.brandOrange),
+                                tooltip: 'Scanner pour rechercher',
+                                onPressed: () async {
+                                  final code = await MobileBarcodeScannerModal.show(
+                                    context,
+                                    title: 'Recherche Stock',
+                                    hintText: 'Scannez le produit pour le trouver dans le catalogue',
+                                  );
+                                  if (code != null && code.isNotEmpty) {
+                                    ref.read(stockSearchProvider.notifier).state = code;
+                                  }
+                                },
+                              ),
                         filled: true,
                         fillColor: AppColors.surfaceVariant,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -298,7 +303,7 @@ class StockScreen extends ConsumerWidget {
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final item = filteredItems[index];
-                          return _buildProductCard(context, ref, item);
+                          return _buildProductCard(context, ref, item, isAdmin: isAdmin);
                         },
                       ),
               ),
@@ -332,7 +337,7 @@ class StockScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProductCard(BuildContext context, WidgetRef ref, Map<String, dynamic> item) {
+  Widget _buildProductCard(BuildContext context, WidgetRef ref, Map<String, dynamic> item, {bool isAdmin = true}) {
     final qty = (item['quantity'] as num?) ?? 0;
     final price = (item['unitPrice'] as num?) ?? 0;
     final unit = item['unit'] as String? ?? 'pièce';
@@ -357,33 +362,17 @@ class StockScreen extends ConsumerWidget {
       statusText = '$qty $unit(s)';
     }
 
-    Widget leadImage;
-    if (imageUrl != null && imageUrl.isNotEmpty && File(imageUrl).existsSync()) {
-      leadImage = ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.file(
-          File(imageUrl),
-          width: 48,
-          height: 48,
-          fit: BoxFit.cover,
-        ),
-      );
-    } else {
-      leadImage = Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: AppColors.brandNavy.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Icon(Icons.inventory_2_rounded, color: AppColors.brandNavy, size: 24),
-      );
-    }
+    final leadImage = AppProductImage(
+      imageSource: imageUrl,
+      width: 48,
+      height: 48,
+      borderRadius: 10,
+    );
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => _showProductDetailModal(context, ref, item),
+        onTap: () => _showProductDetailModal(context, ref, item, isAdmin: isAdmin),
         borderRadius: BorderRadius.circular(14),
         child: Container(
           padding: const EdgeInsets.all(12),
@@ -450,7 +439,7 @@ class StockScreen extends ConsumerWidget {
   }
 
   // ── Fiche Détaillée & Actions Produit ──
-  void _showProductDetailModal(BuildContext context, WidgetRef ref, Map<String, dynamic> item) async {
+  void _showProductDetailModal(BuildContext context, WidgetRef ref, Map<String, dynamic> item, {bool isAdmin = true}) async {
     final db = ref.read(mobileDatabaseProvider);
     final productId = item['id'] as String;
 
@@ -501,26 +490,13 @@ class StockScreen extends ConsumerWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (product.imageUrl != null && product.imageUrl!.isNotEmpty && File(product.imageUrl!).existsSync())
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        File(product.imageUrl!),
-                        width: 54,
-                        height: 54,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  else
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: AppColors.brandNavy.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.inventory_2_rounded, color: AppColors.brandNavy, size: 28),
-                    ),
+                  AppProductImage(
+                    imageSource: product.imageUrl,
+                    width: 54,
+                    height: 54,
+                    borderRadius: 12,
+                    fallbackIcon: Icons.inventory_2_rounded,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -561,55 +537,80 @@ class StockScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
-              // Grille des métriques économiques
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildDetailCard(
-                      'Prix d\'Achat',
-                      AppFormatters.formatCurrency(product.purchasePrice),
-                      'Coût unitaire',
-                      Icons.shopping_bag_outlined,
-                      AppColors.brandNavy,
+              // Grille des métriques économiques (Prix d'achat masqué pour les caissiers)
+              if (isAdmin) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDetailCard(
+                        'Prix d\'Achat',
+                        AppFormatters.formatCurrency(product.purchasePrice),
+                        'Coût unitaire',
+                        Icons.shopping_bag_outlined,
+                        AppColors.brandNavy,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildDetailCard(
-                      'Prix de Vente',
-                      AppFormatters.formatCurrency(product.salePrice),
-                      'Comptoir TTC',
-                      Icons.sell_outlined,
-                      AppColors.brandOrange,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildDetailCard(
+                        'Prix de Vente',
+                        AppFormatters.formatCurrency(product.salePrice),
+                        'Comptoir TTC',
+                        Icons.sell_outlined,
+                        AppColors.brandOrange,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildDetailCard(
-                      'Marge Unitaire',
-                      AppFormatters.formatCurrency(margin),
-                      marginPercent >= 0 ? '+$marginPercent% de rentabilité' : '$marginPercent%',
-                      Icons.trending_up_rounded,
-                      AppColors.brandEmerald,
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDetailCard(
+                        'Marge Unitaire',
+                        AppFormatters.formatCurrency(margin),
+                        marginPercent >= 0 ? '+$marginPercent% de rentabilité' : '$marginPercent%',
+                        Icons.trending_up_rounded,
+                        AppColors.brandEmerald,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildDetailCard(
-                      'Stock Disponible',
-                      '${product.stockQuantity} ${product.unit}(s)',
-                      'Valeur : ${AppFormatters.formatCurrency(stockValue)}',
-                      Icons.warehouse_rounded,
-                      product.stockQuantity <= product.lowStockThreshold ? AppColors.warning : AppColors.brandNavy,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildDetailCard(
+                        'Stock Disponible',
+                        '${product.stockQuantity} ${product.unit}(s)',
+                        'Valeur : ${AppFormatters.formatCurrency(stockValue)}',
+                        Icons.warehouse_rounded,
+                        product.stockQuantity <= product.lowStockThreshold ? AppColors.warning : AppColors.brandNavy,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDetailCard(
+                        'Prix de Vente',
+                        AppFormatters.formatCurrency(product.salePrice),
+                        'Comptoir Public TTC',
+                        Icons.sell_outlined,
+                        AppColors.brandOrange,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildDetailCard(
+                        'Stock Disponible',
+                        '${product.stockQuantity} ${product.unit}(s)',
+                        product.stockQuantity <= product.lowStockThreshold ? 'Alerte seuil bas' : 'Disponible en rayon',
+                        Icons.warehouse_rounded,
+                        product.stockQuantity <= product.lowStockThreshold ? AppColors.warning : AppColors.brandNavy,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 16),
 
               // Boutons d'Action Principaux (Ajuster Stock / Modifier / Supprimer)
@@ -632,29 +633,37 @@ class StockScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 3,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.of(ctx).pop();
-                        _showEditProductModal(context, ref, product);
-                      },
-                      icon: const Icon(Icons.edit_rounded, size: 18, color: AppColors.brandNavy),
-                      label: const Text('Modifier', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.brandNavy)),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.border),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  if (isAdmin) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 3,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          _showEditProductModal(context, ref, product);
+                        },
+                        icon: const Icon(Icons.edit_rounded, size: 18, color: AppColors.brandNavy),
+                        label: const Text('Modifier', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.brandNavy)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.border),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: () => _confirmDeleteProduct(context, ref, product),
-                    icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-                    tooltip: 'Supprimer l\'article',
-                    style: IconButton.styleFrom(
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () => _confirmDeleteProduct(context, ref, product),
+                      icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                      tooltip: 'Supprimer l\'article',
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.error.withValues(alpha: 0.1),
+                        padding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
                       backgroundColor: Colors.red.shade50,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -1138,26 +1147,13 @@ class StockScreen extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        if (selectedImagePath != null && File(selectedImagePath!).existsSync())
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.file(
-                              File(selectedImagePath!),
-                              width: 52,
-                              height: 52,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        else
-                          Container(
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              color: AppColors.brandNavy.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.add_a_photo_outlined, color: AppColors.brandNavy),
-                          ),
+                        AppProductImage(
+                          imageSource: selectedImagePath,
+                          width: 52,
+                          height: 52,
+                          borderRadius: 10,
+                          fallbackIcon: Icons.add_a_photo_outlined,
+                        ),
                         const SizedBox(width: 14),
                         Row(
                           children: [
@@ -1205,6 +1201,21 @@ class StockScreen extends ConsumerWidget {
                           controller: barcodeCtrl,
                           decoration: InputDecoration(
                             labelText: 'Code-barres / Réf',
+                            prefixIcon: const Icon(Icons.qr_code_rounded),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.brandOrange),
+                              tooltip: 'Scanner avec la caméra',
+                              onPressed: () async {
+                                final code = await MobileBarcodeScannerModal.show(
+                                  context,
+                                  title: 'Modifier le Code-barres',
+                                  hintText: 'Cadrez le nouveau code-barres',
+                                );
+                                if (code != null && code.isNotEmpty) {
+                                  barcodeCtrl.text = code;
+                                }
+                              },
+                            ),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
@@ -1367,6 +1378,53 @@ class StockScreen extends ConsumerWidget {
     );
   }
 
+  void _confirmPurgeStock(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.error),
+            SizedBox(width: 8),
+            Text('Vider le catalogue ?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: const Text(
+          'Cette action supprimera tous les articles et mouvements de stock actuels pour repartir d\'un catalogue 100% vierge.\n\nVoulez-vous continuer ?',
+          style: TextStyle(fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final db = ref.read(mobileDatabaseProvider);
+              await db.delete(db.mobileProducts).go();
+              await db.delete(db.mobileStockMovements).go();
+              ref.invalidate(stockDataProvider);
+              if (ctx.mounted) Navigator.of(ctx).pop();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Catalogue de stock vidé avec succès !'),
+                    backgroundColor: AppColors.brandEmerald,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Oui, tout vider'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Modal d'Ajout de Nouveau Produit ──
   void _showAddProductModal(BuildContext context, WidgetRef ref) {
     final nameCtrl = TextEditingController();
@@ -1444,26 +1502,13 @@ class StockScreen extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        if (selectedImagePath != null && File(selectedImagePath!).existsSync())
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.file(
-                              File(selectedImagePath!),
-                              width: 52,
-                              height: 52,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        else
-                          Container(
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              color: AppColors.brandNavy.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.add_a_photo_outlined, color: AppColors.brandNavy),
-                          ),
+                        AppProductImage(
+                          imageSource: selectedImagePath,
+                          width: 52,
+                          height: 52,
+                          borderRadius: 10,
+                          fallbackIcon: Icons.add_a_photo_outlined,
+                        ),
                         const SizedBox(width: 14),
                         Row(
                           children: [
@@ -1515,6 +1560,20 @@ class StockScreen extends ConsumerWidget {
                             labelText: 'Code-barres / Référence',
                             hintText: 'ex: 615102930491',
                             prefixIcon: const Icon(Icons.qr_code_rounded),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.brandOrange),
+                              tooltip: 'Scanner avec la caméra',
+                              onPressed: () async {
+                                final code = await MobileBarcodeScannerModal.show(
+                                  context,
+                                  title: 'Scanner le Code-barres',
+                                  hintText: 'Cadrez le code du produit à enregistrer',
+                                );
+                                if (code != null && code.isNotEmpty) {
+                                  barcodeCtrl.text = code;
+                                }
+                              },
+                            ),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),

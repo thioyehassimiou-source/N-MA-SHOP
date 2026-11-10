@@ -5,18 +5,18 @@
 const CONFIG = {
   APP_NAME: "N’MaShop",
   APP_SLOGAN: "Gérer · Vendre · Grandir",
-  APP_VERSION: "1.2.1",
+  APP_VERSION: "1.3.0",
   APP_SIZE: "82 Mo",
   APP_OS: "Windows 10 / 11 (64-bit)",
   APP_ARCH: "x64 (PC de bureau & Ordinateurs portables)",
-  LAST_UPDATE: "Septembre 2026",
+  LAST_UPDATE: "Novembre 2026",
   LICENSE_TRIAL: "7 jours d'essai gratuit complet (100% hors-ligne, sans engagement)",
   
   // Liens de téléchargement du logiciel Windows & Multiplateforme
-  DOWNLOAD_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.1/NMaShop_Installer.zip",
-  DOWNLOAD_PORTABLE_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.1/NMaShop_Windows_Portable_v1.2.1.zip",
-  DOWNLOAD_LINUX_URL: "downloads/nmashop_linux_release.tar.gz",
-  DOWNLOAD_APK_URL: "downloads/NMaShop_Admin_Mobile_v1.1.9.apk",
+  DOWNLOAD_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.3.0/NMaShop_Installer.zip",
+  DOWNLOAD_PORTABLE_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.3.0/NMaShop_Windows_Portable_v1.3.0.zip",
+  DOWNLOAD_LINUX_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.3.0/NMaShop_Linux_v1.3.0_x64.tar.gz",
+  DOWNLOAD_APK_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.3.0/NMaShop_Admin_Mobile_v1.3.0.apk",
   
   // Auteur & Conception Réelle (Transparence Fondateur)
   DEV_NAME: "Hassimiou Thioye",

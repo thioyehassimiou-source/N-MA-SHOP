@@ -1,3 +1,4 @@
+import '../../../../core/domain/payment_method.dart';
 import '../credit_summary.dart';
 
 /// Accès au cahier de crédit : qui doit combien.
@@ -9,14 +10,21 @@ abstract interface class ReceivablesRepository {
   /// (il génère aussi l'écriture comptable), pas par ce dépôt de lecture.
   Stream<List<CreditSummary>> watchCreditSummaries();
 
-  /// Récupère l'historique des paiements d'un client.
+  /// Récupère l'historique chronologique des paiements d'un client.
   Future<List<PaymentHistoryItem>> getPaymentHistory(String customerId);
 }
 
-/// Représente un paiement effectué par un client pour régler ses crédits.
+/// Représente un paiement/tranche de remboursement effectué par un client.
 class PaymentHistoryItem {
-  const PaymentHistoryItem({required this.amount, required this.date});
+  const PaymentHistoryItem({
+    required this.amount,
+    required this.date,
+    this.paymentMethod = PaymentMethod.cash,
+    this.saleReference,
+  });
 
   final int amount;
   final DateTime date;
+  final PaymentMethod paymentMethod;
+  final String? saleReference;
 }

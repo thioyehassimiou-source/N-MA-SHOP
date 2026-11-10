@@ -152,7 +152,8 @@ class AppSidebar extends ConsumerWidget {
         
     final destinations = _mainDestinations.where((d) {
       if (user?.isCashier == true) {
-        if (d.path == '/fournisseurs' ||
+        if (d.path == '/' ||
+            d.path == '/fournisseurs' ||
             d.path == '/depenses' ||
             d.path == '/rapports' ||
             d.path == '/equipe' ||

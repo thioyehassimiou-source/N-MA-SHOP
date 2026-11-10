@@ -17,34 +17,13 @@ final treasuryDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((r
   final period = ref.watch(treasuryPeriodProvider);
   final prefs = await SharedPreferences.getInstance();
 
+  // Nettoyage immédiat des dépenses de démonstration si présentes
+  try {
+    await db.customStatement("DELETE FROM mobile_expenses WHERE id LIKE 'exp-%-1' OR id LIKE 'exp-%-2';");
+  } catch (_) {}
+
   List<MobileExpense> allExpenses = await db.select(db.mobileExpenses).get();
   List<MobileSale> allSales = await db.select(db.mobileSales).get();
-
-  // Initialiser quelques exemples si vide
-  if (allExpenses.isEmpty) {
-    final now = DateTime.now();
-    await db.into(db.mobileExpenses).insert(
-      MobileExpensesCompanion.insert(
-        id: 'exp-${now.millisecondsSinceEpoch}-1',
-        title: 'Transport Réassort Marchandises',
-        amount: const drift.Value(25000),
-        category: const drift.Value('Transport'),
-        note: const drift.Value('Taxi-bagage grand marché'),
-        createdAt: drift.Value(now.subtract(const Duration(hours: 3))),
-      ),
-    );
-    await db.into(db.mobileExpenses).insert(
-      MobileExpensesCompanion.insert(
-        id: 'exp-${now.millisecondsSinceEpoch}-2',
-        title: 'Achat Sacs Emballages Plastiques',
-        amount: const drift.Value(15000),
-        category: const drift.Value('Sacs/Emballages'),
-        note: const drift.Value('100 sacs imprimés N\'MaShop'),
-        createdAt: drift.Value(now.subtract(const Duration(hours: 1))),
-      ),
-    );
-    allExpenses = await db.select(db.mobileExpenses).get();
-  }
 
   final now = DateTime.now();
   final todayDateKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';

@@ -6,7 +6,11 @@ import '../../../../core/widgets/nma_mobile_card.dart';
 import '../../../../core/widgets/nma_mobile_header.dart';
 import '../../alerts/presentation/alerts_screen.dart';
 import '../../backup/presentation/backup_restore_screen.dart';
+import '../../clients/presentation/clients_screen.dart';
+import '../../deliveries/presentation/deliveries_screen.dart';
+import '../../quotes/presentation/quotes_screen.dart';
 import '../../receivables/presentation/receivables_screen.dart';
+import '../../reports/presentation/reports_screen.dart';
 import '../../suppliers/presentation/suppliers_screen.dart';
 import 'dashboard_controller.dart';
 import 'widgets/kpi_card.dart';
@@ -254,6 +258,50 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(builder: (_) => const ReceivablesScreen()),
+                            );
+                          },
+                        ),
+                        _CategoryPillTile(
+                          label: 'Livraisons',
+                          icon: Icons.two_wheeler_rounded,
+                          color: const Color(0xFFF59E0B),
+                          bgColor: const Color(0xFFFEF3C7),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const DeliveriesScreen()),
+                            );
+                          },
+                        ),
+                        _CategoryPillTile(
+                          label: 'Clients',
+                          icon: Icons.contacts_rounded,
+                          color: const Color(0xFF0D9488),
+                          bgColor: const Color(0xFFCCFBF1),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const ClientsScreen()),
+                            );
+                          },
+                        ),
+                        _CategoryPillTile(
+                          label: 'Bilan',
+                          icon: Icons.insights_rounded,
+                          color: const Color(0xFF7C3AED),
+                          bgColor: const Color(0xFFEDE9FE),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                            );
+                          },
+                        ),
+                        _CategoryPillTile(
+                          label: 'Devis',
+                          icon: Icons.request_quote_rounded,
+                          color: const Color(0xFF0284C7),
+                          bgColor: const Color(0xFFE0F2FE),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const QuotesScreen()),
                             );
                           },
                         ),

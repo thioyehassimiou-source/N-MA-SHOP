@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'core/license/mobile_license_provider.dart';
 import 'core/network/api_client.dart';
 import 'core/theme/app_colors.dart';
 import 'features/auth/presentation/auth_landing_screen.dart';
+import 'features/license/presentation/mobile_license_gate_screen.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/shell/main_navigation_shell.dart';
 
@@ -142,7 +144,20 @@ class _AppGateState extends ConsumerState<AppGate> {
       return const AuthLandingScreen();
     }
 
-    return const MainNavigationShell();
+    final licenseAsync = ref.watch(mobileLicenseProvider);
+    return licenseAsync.when(
+      loading: () => const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      ),
+      error: (_, _) => const MainNavigationShell(),
+      data: (license) {
+        if (license.isExpired) {
+          return const MobileLicenseGateScreen();
+        }
+        return const MainNavigationShell();
+      },
+    );
   }
 }
 

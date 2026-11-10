@@ -34,17 +34,28 @@ Future<void> main() async {
   // Initialise les données de localisation FR (formats de dates/nombres).
   await initializeDateFormatting('fr', null);
 
+  // Ouvre la base locale et SharedPreferences.
+  final database = AppDatabase();
+  final prefs = await SharedPreferences.getInstance();
+
   // Configuration des contraintes de fenêtre pour Desktop (Windows / Linux / macOS)
   try {
     await windowManager.ensureInitialized();
-    const windowOptions = WindowOptions(
-      size: Size(1280, 768),
-      minimumSize: Size(1024, 680),
+    final savedBusinessName = prefs.getString('business_name');
+    final appTitle = (savedBusinessName != null &&
+            savedBusinessName.trim().isNotEmpty &&
+            savedBusinessName != 'Ma Boutique')
+        ? "$savedBusinessName • N'MaShop POS"
+        : "N'MaShop - Gestion Commerciale & Caisse POS";
+
+    final windowOptions = WindowOptions(
+      size: const Size(1280, 768),
+      minimumSize: const Size(1024, 680),
       center: true,
       backgroundColor: Colors.white,
       skipTaskbar: false,
       titleBarStyle: TitleBarStyle.normal,
-      title: "N'MaShop - Gestion Commerciale & Caisse POS",
+      title: appTitle,
     );
     windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.setMinimumSize(const Size(1024, 680));
@@ -54,10 +65,6 @@ Future<void> main() async {
   } catch (_) {
     // Fallback si exécuté sur plateforme web/mobile
   }
-
-  // Ouvre la base locale et SharedPreferences.
-  final database = AppDatabase();
-  final prefs = await SharedPreferences.getInstance();
 
   // Initialisation du stockage dédié des images et migration automatique en arrière-plan
   Future.microtask(() => ImageStorageService.initializeStorage(db: database));

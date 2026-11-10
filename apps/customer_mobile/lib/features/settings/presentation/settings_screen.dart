@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/license/mobile_license_model.dart';
+import '../../../core/license/mobile_license_provider.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/nma_mobile_header.dart';
 import '../../auth/data/auth_service.dart';
 import '../../auth/presentation/auth_landing_screen.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
+import '../../license/presentation/mobile_license_gate_screen.dart';
 import '../../onboarding/presentation/onboarding_screen.dart';
 import '../../backup/presentation/backup_restore_screen.dart';
+import '../../stock/presentation/stock_screen.dart';
+import '../../sales/presentation/sales_screen.dart';
+import '../../receivables/presentation/receivables_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -207,6 +213,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  void _confirmPurgeAllData() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.error),
+            SizedBox(width: 8),
+            Text('Vider la boutique ?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: const Text(
+          'Cette action va effacer toutes les données de test (articles, ventes, dépenses, clients, devis). La boutique redeviendra totalement vierge.',
+          style: TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final db = ref.read(mobileDatabaseProvider);
+              await db.purgeAllData();
+              ref.invalidate(dashboardControllerProvider);
+              ref.invalidate(stockDataProvider);
+              ref.invalidate(salesDataProvider);
+              ref.invalidate(receivablesDataProvider);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ Toutes les données ont été vidées avec succès !'),
+                    backgroundColor: AppColors.brandEmerald,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: const Text('Vider Maintenant'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _confirmLogout() {
     showDialog(
       context: context,
@@ -244,6 +297,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final licenseAsync = ref.watch(mobileLicenseProvider);
+    final license = licenseAsync.valueOrNull;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const NmaMobileAppBar(
@@ -297,12 +353,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.brandEmerald.withValues(alpha: 0.25),
+                              color: license != null && license.isValid
+                                  ? (license.status == MobileLicenseStatus.active
+                                      ? AppColors.brandEmerald.withValues(alpha: 0.25)
+                                      : AppColors.warning.withValues(alpha: 0.25))
+                                  : AppColors.error.withValues(alpha: 0.25),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text(
-                              'Licence Active',
-                              style: TextStyle(color: Color(0xFF6EE7B7), fontSize: 11, fontWeight: FontWeight.bold),
+                            child: Text(
+                              license?.statusLabel ?? 'Licence Active',
+                              style: TextStyle(
+                                color: license != null && license.isValid
+                                    ? (license.status == MobileLicenseStatus.active ? const Color(0xFF6EE7B7) : AppColors.warning)
+                                    : AppColors.error,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -324,6 +390,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 24),
+
+          // Section 0 : Licence Officielle N'MaShop
+          _buildSectionHeader('LICENCE OFFICIELLE & SÉCURITÉ', Icons.verified_user_rounded),
+          _buildCard(
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.verified_user_rounded, color: AppColors.brandEmerald),
+                title: const Text('Statut de la Licence', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: Text(license?.statusLabel ?? 'Chargement...', style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+                trailing: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const MobileLicenseGateScreen(isModal: true)),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.brandOrange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: const Text('Gérer / Activer', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              if (license != null) ...[
+                const Divider(color: AppColors.border),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.event_available_rounded, color: AppColors.brandNavy),
+                  title: const Text('Validité / Expiration', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  subtitle: Text(
+                    license.isLifetime
+                        ? 'Licence à vie (Illimitée)'
+                        : (license.expiryDate != null
+                            ? 'Expire le ${license.expiryDate!.day.toString().padLeft(2, '0')}/${license.expiryDate!.month.toString().padLeft(2, '0')}/${license.expiryDate!.year} (${license.daysLeft} jours restants)'
+                            : 'Période d\'essai en cours'),
+                    style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 20),
 
           // Section 1 : Mode de Fonctionnement Local & Réseau
           _buildSectionHeader('MODE DE FONCTIONNEMENT & DONNÉES LOCALES', Icons.sd_storage_rounded),
@@ -481,6 +591,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     MaterialPageRoute(builder: (_) => const OnboardingScreen()),
                   );
                 },
+              ),
+              const Divider(color: AppColors.border),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.delete_sweep_rounded, color: AppColors.error),
+                title: const Text('Vider toutes les données (Remise à zéro)', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: const Text('Efface le stock, les ventes, les dépenses et les clients fictifs', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                trailing: const Icon(Icons.chevron_right, color: AppColors.error),
+                onTap: _confirmPurgeAllData,
               ),
               const Divider(color: AppColors.border),
               ListTile(

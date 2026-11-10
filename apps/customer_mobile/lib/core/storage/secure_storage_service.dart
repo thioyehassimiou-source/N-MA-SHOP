@@ -128,6 +128,22 @@ class StorageService {
   Future<bool> isPaired() async => isLoggedIn();
 
   static const _keyPin = 'nmashop_pin';
+  static const _keyUserRole = 'nmashop_user_role';
+
+  Future<String> getUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUserRole) ?? 'admin';
+  }
+
+  Future<void> saveUserRole(String role) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUserRole, role);
+  }
+
+  Future<bool> isAdmin() async {
+    final role = await getUserRole();
+    return role != 'cashier';
+  }
 
   Future<void> saveLocalPin(String pin) async {
     final prefs = await SharedPreferences.getInstance();

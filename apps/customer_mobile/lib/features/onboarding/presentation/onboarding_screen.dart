@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/brand_logo.dart';
-import '../../auth/presentation/auth_landing_screen.dart';
+import '../../auth/presentation/register_shop_screen.dart';
 
 class _FeatureItem {
   const _FeatureItem({
@@ -136,7 +136,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (context, anim, secAnim) => const AuthLandingScreen(),
+        pageBuilder: (context, anim, secAnim) => const RegisterShopScreen(),
         transitionsBuilder: (context, animation, secAnim, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -251,17 +251,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          Icon(
+                            _currentPage == _pages.length - 1
+                                ? Icons.storefront_rounded
+                                : Icons.arrow_forward_rounded,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
                           Text(
                             _currentPage == _pages.length - 1
-                                ? 'Commencer avec N\'MaShop'
+                                ? 'Configurer ma boutique'
                                 : 'Suivant',
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 15.5,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward_rounded, size: 20),
                         ],
                       ),
                     ),

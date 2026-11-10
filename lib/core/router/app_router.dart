@@ -87,12 +87,17 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // ── 3. Déverrouillé : écran de connexion inutile ───────────────────────
       if (location == '/connexion') {
-        return '/';
+        final user = ref.read(authProvider);
+        return (user != null && user.isCashier) ? '/vendre' : '/';
       }
 
       // ── 4. Contrôle des Permissions : Bloquer les écrans Admin pour les vendeurs ─
       final user = ref.read(authProvider);
       if (user != null && user.isCashier) {
+        // Le vendeur n'a pas accès au Tableau de bord patron (CA global, marges, statistiques)
+        if (location == '/' || location == '/dashboard') {
+          return '/vendre';
+        }
         const adminRoutes = [
           '/equipe',
           '/rapports',

@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/storage/secure_storage_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../alerts/presentation/alerts_screen.dart';
 import '../auth/data/auth_service.dart';
 import '../auth/presentation/auth_landing_screen.dart';
 import '../backup/presentation/backup_restore_screen.dart';
+import '../clients/presentation/clients_screen.dart';
 import '../dashboard/presentation/dashboard_screen.dart';
+import '../deliveries/presentation/deliveries_screen.dart';
 import '../onboarding/presentation/onboarding_screen.dart';
+import '../quotes/presentation/quotes_screen.dart';
 import '../receivables/presentation/receivables_screen.dart';
+import '../reports/presentation/reports_screen.dart';
 import '../sales/presentation/sales_screen.dart';
 import '../settings/presentation/settings_screen.dart';
 import '../stock/presentation/stock_screen.dart';
@@ -24,8 +29,38 @@ class MainNavigationShell extends ConsumerStatefulWidget {
 class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
   int _currentIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  String _shopName = "N'MaShop";
+  String _userRole = 'admin';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadShopAndRole();
+  }
+
+  Future<void> _loadShopAndRole() async {
+    try {
+      final storage = ref.read(storageServiceProvider);
+      final name = await storage.getShopName();
+      final role = await storage.getUserRole();
+      if (mounted) {
+        setState(() {
+          if (name.isNotEmpty) _shopName = name;
+          _userRole = role;
+          if (role == 'cashier' && _currentIndex == 0) {
+            _currentIndex = 1; // Redirection automatique sur Vente POS
+          }
+        });
+      }
+    } catch (_) {}
+  }
 
   void _navigateToTab(int index) {
+    if (_userRole == 'cashier' && (index == 0 || index == 2 || index == 4)) {
+      // Le vendeur n'a accès qu'à la Vente (1) et au Stock (3)
+      setState(() => _currentIndex = 1);
+      return;
+    }
     setState(() => _currentIndex = index);
   }
 
@@ -80,16 +115,18 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
                         child: const Icon(Icons.storefront_rounded, color: AppColors.brandOrange, size: 26),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'N\'MaShop',
-                              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                              _shopName.isNotEmpty ? _shopName : "N'MaShop",
+                              style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            Text(
-                              'Gestion Commerciale & Caisse POS',
+                            const Text(
+                              'N\'MaShop POS • Caisse Mobile',
                               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                             ),
                           ],
@@ -151,31 +188,68 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceivablesScreen()));
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.contacts_rounded, color: Color(0xFF0D9488)),
+              title: const Text('Répertoire des Clients', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Annuaire complet, fidélité & coordonnées', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ClientsScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.request_quote_rounded, color: Color(0xFF0284C7)),
+              title: const Text('Devis & Factures Proforma', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Propositions & conversion directe en vente', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const QuotesScreen()));
+              },
+            ),
 
             const Divider(color: AppColors.border, height: 24),
 
             // SECTION 2 : FINANCES & LOGISTIQUE
-            _buildDrawerSectionHeader('FINANCES & LOGISTIQUE'),
-            ListTile(
-              leading: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.brandNavy),
-              title: const Text('Caisse & Trésorerie', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              subtitle: const Text('Solde théorique & saisie des dépenses', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
-              onTap: () {
-                Navigator.of(context).pop();
-                _navigateToTab(2);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.local_shipping_rounded, color: Color(0xFF6366F1)),
-              title: const Text('Fournisseurs & Achats', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              subtitle: const Text('Approvisionnements & dettes grossistes', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SuppliersScreen()));
-              },
-            ),
-
-            const Divider(color: AppColors.border, height: 24),
+            if (_userRole != 'cashier') ...[
+              _buildDrawerSectionHeader('FINANCES & LOGISTIQUE'),
+              ListTile(
+                leading: const Icon(Icons.two_wheeler_rounded, color: Color(0xFFF59E0B)),
+                title: const Text('Livraisons & Coursiers', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: const Text('Suivi des colis & gestion des livreurs', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DeliveriesScreen()));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.insights_rounded, color: Color(0xFF7C3AED)),
+                title: const Text('Bilan & Bénéfices Réels', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: const Text('Marges nettes, rentabilité & ratios', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReportsScreen()));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.brandNavy),
+                title: const Text('Caisse & Trésorerie', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: const Text('Solde théorique & saisie des dépenses', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _navigateToTab(2);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.local_shipping_rounded, color: Color(0xFF6366F1)),
+                title: const Text('Fournisseurs & Achats', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: const Text('Approvisionnements & dettes grossistes', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SuppliersScreen()));
+                },
+              ),
+              const Divider(color: AppColors.border, height: 24),
+            ],
 
             // SECTION 3 : SYSTÈME & CONFIGURATION
             _buildDrawerSectionHeader('SYSTÈME & CONFIGURATION'),
@@ -188,24 +262,26 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AlertsScreen()));
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.backup_rounded, color: Color(0xFF0EA5E9)),
-              title: const Text('Sauvegarde & Restauration', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              subtitle: const Text('Exportation SQLite locale sécurisée', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BackupRestoreScreen()));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings_rounded, color: Color(0xFF64748B)),
-              title: const Text('Paramètres de la boutique', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              subtitle: const Text('Informations, devise & code PIN', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
-              onTap: () {
-                Navigator.of(context).pop();
-                _navigateToTab(4);
-              },
-            ),
+            if (_userRole != 'cashier') ...[
+              ListTile(
+                leading: const Icon(Icons.backup_rounded, color: Color(0xFF0EA5E9)),
+                title: const Text('Sauvegarde & Restauration', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: const Text('Exportation SQLite locale sécurisée', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BackupRestoreScreen()));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings_rounded, color: Color(0xFF64748B)),
+                title: const Text('Paramètres de la boutique', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                subtitle: const Text('Informations, devise & code PIN', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _navigateToTab(4);
+                },
+              ),
+            ],
             ListTile(
               leading: const Icon(Icons.help_outline_rounded, color: AppColors.brandEmerald),
               title: const Text('Guide Commercial Onboarding', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -254,13 +330,18 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
             height: 58,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Accueil'),
-                _buildNavItem(1, Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Ventes'),
-                _buildNavItem(2, Icons.account_balance_wallet_outlined, Icons.account_balance_wallet_rounded, 'Caisse'),
-                _buildNavItem(3, Icons.inventory_2_outlined, Icons.inventory_2_rounded, 'Stocks'),
-                _buildNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Paramètres'),
-              ],
+              children: _userRole == 'cashier'
+                  ? [
+                      _buildNavItem(1, Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Caisse POS'),
+                      _buildNavItem(3, Icons.inventory_2_outlined, Icons.inventory_2_rounded, 'Articles & Stock'),
+                    ]
+                  : [
+                      _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Accueil'),
+                      _buildNavItem(1, Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Ventes'),
+                      _buildNavItem(2, Icons.account_balance_wallet_outlined, Icons.account_balance_wallet_rounded, 'Caisse'),
+                      _buildNavItem(3, Icons.inventory_2_outlined, Icons.inventory_2_rounded, 'Stocks'),
+                      _buildNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Paramètres'),
+                    ],
             ),
           ),
         ),

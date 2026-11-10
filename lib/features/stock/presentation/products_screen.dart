@@ -660,36 +660,37 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       letterSpacing: 0.5,
                     ),
                     columns: [
-                      DataColumn(
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Checkbox(
-                              value: allSelected ? true : (someSelected ? null : false),
-                              tristate: true,
-                              visualDensity: VisualDensity.compact,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              onChanged: (val) {
-                                setState(() {
-                                  if (val == true) {
-                                    _selected.addAll(items.map((p) => p.id));
-                                  } else {
-                                    for (final p in items) {
-                                      _selected.remove(p.id);
+                      if (isAdmin)
+                        DataColumn(
+                          label: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: allSelected ? true : (someSelected ? null : false),
+                                tristate: true,
+                                visualDensity: VisualDensity.compact,
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                onChanged: (val) {
+                                  setState(() {
+                                    if (val == true) {
+                                      _selected.addAll(items.map((p) => p.id));
+                                    } else {
+                                      for (final p in items) {
+                                        _selected.remove(p.id);
+                                      }
                                     }
-                                  }
-                                });
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            const Text('SÉLECTION'),
-                          ],
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('SÉLECTION'),
+                            ],
+                          ),
                         ),
-                      ),
                       const DataColumn(label: Text('PHOTO')),
                       const DataColumn(label: Text("NOM DE L'ARTICLE")),
                       const DataColumn(label: Text('UNITÉ')),
-                      const DataColumn(label: Text("PRIX D'ACHAT")),
+                      if (isAdmin) const DataColumn(label: Text("PRIX D'ACHAT")),
                       const DataColumn(label: Text('PRIX DE VENTE')),
                       const DataColumn(label: Text('STOCK EN BOUTIQUE')),
                       const DataColumn(label: Text('STATUT')),
@@ -702,22 +703,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
                       return DataRow(
                         selected: isChecked,
-                        onSelectChanged: (val) {
-                          setState(() {
-                            if (val == true) {
-                              _selected.add(p.id);
-                            } else {
-                              _selected.remove(p.id);
-                            }
-                          });
-                        },
-                        cells: [
-                          DataCell(
-                            Checkbox(
-                              value: isChecked,
-                              visualDensity: VisualDensity.compact,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              onChanged: (val) {
+                        onSelectChanged: isAdmin
+                            ? (val) {
                                 setState(() {
                                   if (val == true) {
                                     _selected.add(p.id);
@@ -725,9 +712,26 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                                     _selected.remove(p.id);
                                   }
                                 });
-                              },
+                              }
+                            : null,
+                        cells: [
+                          if (isAdmin)
+                            DataCell(
+                              Checkbox(
+                                value: isChecked,
+                                visualDensity: VisualDensity.compact,
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                onChanged: (val) {
+                                  setState(() {
+                                    if (val == true) {
+                                      _selected.add(p.id);
+                                    } else {
+                                      _selected.remove(p.id);
+                                    }
+                                  });
+                                },
+                              ),
                             ),
-                          ),
                           DataCell(
                             Opacity(
                               opacity: out ? 0.5 : 1.0,
@@ -767,15 +771,16 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                               ),
                             ),
                           ),
-                          DataCell(
-                            Text(
-                              '${formatAmount(p.purchasePrice)} GNF',
-                              style: AppTypography.bodySm.copyWith(
-                                color: context.colors.onSurfaceVariant,
-                                fontWeight: FontWeight.w500,
+                          if (isAdmin)
+                            DataCell(
+                              Text(
+                                '${formatAmount(p.purchasePrice)} GNF',
+                                style: AppTypography.bodySm.copyWith(
+                                  color: context.colors.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
-                          ),
                           DataCell(
                             Text(
                               '${formatAmount(p.salePrice)} GNF',

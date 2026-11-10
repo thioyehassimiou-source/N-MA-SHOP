@@ -519,14 +519,41 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    client.storeName.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textDark,
-                      letterSpacing: -0.2,
-                    ),
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          client.storeName.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.textDark,
+                            letterSpacing: -0.2,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: client.hardwareId.toUpperCase().contains('MOB')
+                              ? AppTheme.emeraldBg
+                              : AppTheme.primaryIndigo.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          client.hardwareId.toUpperCase().contains('MOB') ? '📱 Mobile' : '🖥️ PC',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: client.hardwareId.toUpperCase().contains('MOB')
+                                ? AppTheme.emeraldActive
+                                : AppTheme.primaryIndigo,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Container(

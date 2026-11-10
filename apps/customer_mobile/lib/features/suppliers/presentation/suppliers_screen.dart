@@ -15,55 +15,17 @@ final suppliersSearchQueryProvider = StateProvider<String>((ref) => '');
 final suppliersDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final db = ref.watch(mobileDatabaseProvider);
 
+  // Nettoyage immédiat des fournisseurs et achats de démonstration si présents
+  try {
+    await db.customStatement("DELETE FROM mobile_suppliers WHERE id LIKE 'supp-%-1' OR id LIKE 'supp-%-2';");
+    await db.customStatement("DELETE FROM mobile_purchases WHERE id LIKE 'BL-%';");
+    await db.customStatement("DELETE FROM mobile_purchase_items WHERE id = 'item-purch-1';");
+  } catch (_) {}
+
   List<MobileSupplier> suppliers = await db.select(db.mobileSuppliers).get();
   List<MobilePurchase> purchases = await db.select(db.mobilePurchases).get();
   List<MobilePurchaseItem> purchaseItems = await db.select(db.mobilePurchaseItems).get();
   List<MobileProduct> products = await db.select(db.mobileProducts).get();
-
-  // Initialisation échantillons si vide
-  if (suppliers.isEmpty) {
-    final now = DateTime.now();
-    final s1 = MobileSuppliersCompanion.insert(
-      id: 'supp-${now.millisecondsSinceEpoch}-1',
-      name: 'Grossiste Sobragui & Cie',
-      phone: const drift.Value('624556677'),
-      company: const drift.Value('Sobragui Guinée S.A.'),
-    );
-    final s2 = MobileSuppliersCompanion.insert(
-      id: 'supp-${now.millisecondsSinceEpoch}-2',
-      name: 'Importateur Riz & Huile Diallo',
-      phone: const drift.Value('621889900'),
-      company: const drift.Value('Diallo & Frères Import-Export'),
-    );
-    await db.into(db.mobileSuppliers).insert(s1);
-    await db.into(db.mobileSuppliers).insert(s2);
-    suppliers = await db.select(db.mobileSuppliers).get();
-  }
-
-  // Échantillons d'achats si vide et des produits existent
-  if (purchases.isEmpty && products.isNotEmpty) {
-    final now = DateTime.now();
-    final p1 = MobilePurchasesCompanion.insert(
-      id: 'BL-${now.year}09-01',
-      supplierId: suppliers.first.id,
-      totalAmount: const drift.Value(450000),
-      amountPaid: const drift.Value(450000),
-      date: drift.Value(now.subtract(const Duration(days: 2))),
-    );
-    await db.into(db.mobilePurchases).insert(p1);
-
-    final item1 = MobilePurchaseItemsCompanion.insert(
-      id: 'item-purch-1',
-      purchaseId: 'BL-${now.year}09-01',
-      productId: products.first.id,
-      quantity: const drift.Value(20),
-      unitPrice: drift.Value(products.first.purchasePrice),
-    );
-    await db.into(db.mobilePurchaseItems).insert(item1);
-
-    purchases = await db.select(db.mobilePurchases).get();
-    purchaseItems = await db.select(db.mobilePurchaseItems).get();
-  }
 
   // Map des achats par fournisseur
   final Map<String, List<MobilePurchase>> purchasesBySupplier = {};

@@ -62,3 +62,4 @@ releases/
 scratch/
 *.wav
 .vercel/
+distribution/downloads/nmashop_linux_release/

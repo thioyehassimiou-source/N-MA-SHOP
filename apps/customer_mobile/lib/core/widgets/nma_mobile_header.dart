@@ -191,7 +191,7 @@ class NmaMobileAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
 
             // Actions à droite (Notifications, Refresh, Panier, etc.)
-            if (actions != null) ...actions!,
+            ...?actions,
           ],
         ),
       ),
