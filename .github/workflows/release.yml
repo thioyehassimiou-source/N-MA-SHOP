@@ -242,6 +242,9 @@ jobs:
           cd apps/admin_mobile
           flutter test test/
 
+      - name: 🤖 Accepter les licences Android
+        run: yes | flutter doctor --android-licenses || true
+
       - name: 🔨 Compiler APK Release
         run: |
           cd apps/admin_mobile
@@ -250,7 +253,9 @@ jobs:
 
       - name: 📦 Préparer l'APK pour la distribution
         run: |
-          cp apps/admin_mobile/build/app/outputs/flutter-apk/app-release.apk NMaShop_Admin_Mobile_v${{ env.APP_VERSION }}.apk
+          APK_FILE=$(find . -name "*release.apk" -not -path "*/intermediates/*" | head -n 1)
+          echo "Trouvé APK : $APK_FILE"
+          cp "$APK_FILE" NMaShop_Admin_Mobile_v${{ env.APP_VERSION }}.apk
 
       - name: ⬆️ Upload APK Admin Mobile
         uses: actions/upload-artifact@v4
