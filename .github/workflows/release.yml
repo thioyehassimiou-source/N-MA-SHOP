@@ -198,75 +198,9 @@ jobs:
           path: NMaShop_Linux_v*.tar.gz
           retention-days: 30
 
-  build-admin-mobile:
-    name: 📱 Build Admin Mobile (Android APK)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: 📥 Checkout du code
-        uses: actions/checkout@v4
-
-      - name: 📌 Déterminer la version
-        shell: bash
-        run: |
-          VERSION="${{ github.event.inputs.version }}"
-          if [ -z "$VERSION" ]; then
-            TAG="${{ github.ref_name }}"
-            VERSION="${TAG#v}"
-          fi
-          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
-            VERSION="1.3.0"
-          fi
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: ☕ Configurer Java JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "17"
-
-      - name: 🐦 Installer Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          cache: true
-
-      - name: 📦 Dépendances Admin Mobile
-        run: |
-          cd apps/admin_mobile
-          flutter clean
-          flutter pub get
-
-      - name: 🧪 Tester Admin Mobile
-        run: |
-          cd apps/admin_mobile
-          flutter test test/
-
-      - name: 🤖 Accepter les licences Android
-        run: yes | flutter doctor --android-licenses || true
-
-      - name: 🔨 Compiler APK Release
-        run: |
-          cd apps/admin_mobile
-          chmod +x android/gradlew
-          flutter build apk --release --build-name=${{ env.APP_VERSION }}
-
-      - name: 📦 Préparer l'APK pour la distribution
-        run: |
-          APK_FILE=$(find . -name "*release.apk" -not -path "*/intermediates/*" | head -n 1)
-          echo "Trouvé APK : $APK_FILE"
-          cp "$APK_FILE" NMaShop_Admin_Mobile_v${{ env.APP_VERSION }}.apk
-
-      - name: ⬆️ Upload APK Admin Mobile
-        uses: actions/upload-artifact@v4
-        with:
-          name: NMaShop-Admin-Mobile-APK-v${{ env.APP_VERSION }}
-          path: NMaShop_Admin_Mobile_v*.apk
-          retention-days: 30
-
   publish-release:
     name: 🏷️ Publier la Release GitHub
-    needs: [build-windows, build-linux, build-admin-mobile]
+    needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -288,7 +222,7 @@ jobs:
           fi
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: 📥 Télécharger tous les artefacts compilés (Windows, Linux & Android APK)
+      - name: 📥 Télécharger tous les artefacts compilés (Windows & Linux)
         uses: actions/download-artifact@v4
         with:
           pattern: NMaShop-*
@@ -299,7 +233,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', env.APP_VERSION) }}
-          name: N'MaShop v${{ env.APP_VERSION }} (Desktop & Admin Mobile)
+          name: N'MaShop v${{ env.APP_VERSION }} (Desktop Windows & Linux)
           body: |
             🎉 **Publication Officielle de Production — N'MaShop v${{ env.APP_VERSION }}**
             
@@ -311,8 +245,6 @@ jobs:
               * **Version portable** : `NMaShop_Windows_Portable_v${{ env.APP_VERSION }}.zip` (décompresser et lancer directement)
             * 🐧 **Linux (Ubuntu / Debian x64)** :
               * **Archive binaire native** : `NMaShop_Linux_v${{ env.APP_VERSION }}_x64.tar.gz`
-            * 📱 **Android (Application Administrateur Mobile)** :
-              * **APK Installable** : `NMaShop_Admin_Mobile_v${{ env.APP_VERSION }}.apk` (Générateur de clés mobile, suivi des clients et transmission WhatsApp)
             
             ### 🛡️ Sécurité & Spécifications :
             * Code compilé nativement AOT et obfusqué (Levier 1 Sécurité).
