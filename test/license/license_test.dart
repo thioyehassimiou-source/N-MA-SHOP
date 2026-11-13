@@ -443,8 +443,9 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
 
-      // Clé réelle générée pour le client expirant le 28/02/2027
-      const clientKey = 'NMAS-20270228-71C6DF24';
+      // Clé dynamique générée pour le client expirant dans 200 jours
+      final expiry = DateTime.now().add(const Duration(days: 200));
+      final clientKey = LicenseCore.generateAnnualKey(expiry);
       final res = await service.activateAsync(clientKey, prefs);
 
       expect(res.result, LicenseActivationResult.success);
