@@ -16,7 +16,7 @@ import 'license_model.dart';
 /// 2. Validation hybride (signature HMAC localement & extensible à distance).
 /// 3. Empreinte unique de l'appareil (Device Binding via HardwareIdService).
 /// 4. Protection anti-triche de la date (Anti-Tamper / Uptime Checkpoint).
-/// 5. Période d'essai gratuite de 7 jours & Verrouillage instantané.
+/// 5. Période d'essai gratuite de 14 jours & Verrouillage instantané.
 class LicenseService {
   // ── Paramètres ─────────────────────────────────────────────────────────────
   static const String _prefFirstLaunch = 'lic_first_launch';
@@ -161,7 +161,7 @@ class LicenseService {
       );
     }
 
-    // ── 4. Période d'Essai (7 Jours) ─────────────────────────────────────────
+    // ── 4. Période d'Essai (14 Jours) ─────────────────────────────────────────
     final nowUtc = now.toUtc();
 
     final firstLaunchStr = prefs.getString(_prefFirstLaunch);
@@ -177,7 +177,7 @@ class LicenseService {
       final dbAnchor = await _readDatabaseTrialAnchor();
 
       // Si SharedPreferences ET la base de données ont été supprimés (réinitialisation/désinstallation complète) :
-      // Les anciennes ancres furtives résiduelles sur le disque sont ignorées pour permettre une réinstallation propre à 7j 0h
+      // Les anciennes ancres furtives résiduelles sur le disque sont ignorées pour permettre une réinstallation propre à 14j 0h
       if (firstLaunchStr == null && dbAnchor == null) {
         firstLaunch = null;
       } else {

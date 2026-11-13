@@ -126,7 +126,7 @@ class LicenseNotifier extends AsyncNotifier<LicenseInfo> {
     )..start();
   }
 
-  /// Permet de réinitialiser complètement l'essai à 7j 0h pour les tests.
+  /// Permet de réinitialiser complètement l'essai à 14j 0h pour les tests.
   Future<LicenseInfo> resetTrialForTesting() async {
     final prefs = ref.read(sharedPreferencesProvider);
     await LicenseService.resetTrialForTesting(prefs);

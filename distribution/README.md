@@ -14,7 +14,7 @@ Site web officiel de présentation et de distribution du logiciel **N’MaShop**
   - Dépenses, flux de caisse et marges commerciales.
   - Suivi des vendeurs & commissions.
   - **100% Hors-Ligne (Offline-First)** : Base locale SQLite ultra-rapide sans dépendance internet.
-  - **Essai gratuit de 7 jours** intégré dès le premier lancement.
+  - **Essai gratuit de 14 jours** intégré dès le premier lancement.
 - **Design SaaS Haut de Gamme** : Navigation en verre poli (glassmorphism), mockup de fenêtre Windows interactif avec vue réelle de caisse en GNF, cartes de comparatif (« Avant sur cahier » vs « Avec N'MaShop »).
 - **Configuration Centralisée** : Modifier le lien de téléchargement Windows ou le WhatsApp officiel en 1 seul endroit dans `assets/js/config.js`.
 

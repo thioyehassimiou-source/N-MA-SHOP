@@ -5,16 +5,16 @@
 const CONFIG = {
   APP_NAME: "N’MaShop",
   APP_SLOGAN: "Gérer · Vendre · Grandir",
-  APP_VERSION: "1.2.1",
+  APP_VERSION: "1.2.2",
   APP_SIZE: "82 Mo",
   APP_OS: "Windows 10 / 11 (64-bit)",
   APP_ARCH: "x64 (PC de bureau & Ordinateurs portables)",
-  LAST_UPDATE: "Septembre 2026",
-  LICENSE_TRIAL: "7 jours d'essai gratuit complet (100% hors-ligne, sans engagement)",
+  LAST_UPDATE: "Novembre 2026",
+  LICENSE_TRIAL: "14 jours d'essai gratuit complet (100% hors-ligne, sans engagement)",
   
   // Liens de téléchargement du logiciel Windows & Multiplateforme
-  DOWNLOAD_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.1/NMaShop_Installer.zip",
-  DOWNLOAD_PORTABLE_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.1/NMaShop_Windows_Portable_v1.2.1.zip",
+  DOWNLOAD_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.2/NMaShop_Installer.zip",
+  DOWNLOAD_PORTABLE_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.2/NMaShop_Windows_Portable_v1.2.2.zip",
   DOWNLOAD_LINUX_URL: "downloads/nmashop_linux_release.tar.gz",
   DOWNLOAD_APK_URL: "downloads/NMaShop_Admin_Mobile_v1.1.9.apk",
   
@@ -37,18 +37,18 @@ const CONFIG = {
     TRIAL: {
       NAME: "Essai Découverte",
       PRICE: "0 GNF",
-      PERIOD: "7 jours offerts",
+      PERIOD: "14 jours offerts",
       BADGE: "100% Gratuit",
       DESC: "Installez et commencez à vendre immédiatement sur votre PC sans carte ni engagement.",
       FEATURES: [
         "Toutes les fonctionnalités débloquées",
         "Fonctionne 100% hors-ligne (zéro coupure)",
-        "Ventes et caisse illimitées pendant 7j",
+        "Ventes et caisse illimitées pendant 14j",
         "Gestion du stock et alertes de seuil bas",
         "Carnet de crédits clients numérique",
         "Aucune carte ni moyen de paiement requis"
       ],
-      CTA: "Télécharger l'essai gratuit 7 jours",
+      CTA: "Télécharger l'essai gratuit 14 jours",
       ACTION: "download"
     },
     ANNUAL: {

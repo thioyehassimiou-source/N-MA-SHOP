@@ -21,6 +21,10 @@ void main(List<String> args) {
 
   if (args.isEmpty) {
     print('Utilisation :');
+    print('  dart run tools/generate_license.dart days <nb_jours> [hardware_id]');
+    print('    Exemple 14 jours universel : dart run tools/generate_license.dart days 14');
+    print('    Exemple 14 jours lié au PC : dart run tools/generate_license.dart days 14 NMAS-A1B2');
+    print('');
     print('  dart run tools/generate_license.dart months <nb_mois> [hardware_id]');
     print('    Exemple 5 mois universel : dart run tools/generate_license.dart months 5');
     print('    Exemple 5 mois lié au PC : dart run tools/generate_license.dart months 5 NMAS-A1B2');
@@ -44,6 +48,36 @@ void main(List<String> args) {
         : LicenseCore.generateLifetimeKey();
     print('✅ Clé à vie générée ${hwId != null ? "(liée au PC $hwId)" : "(universelle)"} :');
     print('\n\t$key\n');
+    return;
+  }
+
+  if (type == 'days' || type == 'jours') {
+    if (args.length < 2) {
+      print('❌ Précisez le nombre de jours. Ex: dart run tools/generate_license.dart days 14');
+      exit(1);
+    }
+    final days = int.tryParse(args[1]);
+    if (days == null || days <= 0) {
+      print('❌ Nombre de jours invalide.');
+      exit(1);
+    }
+
+    final now = DateTime.now();
+    final expiry = now.add(Duration(days: days));
+    final dateStr = '${expiry.year.toString().padLeft(4, '0')}-'
+        '${expiry.month.toString().padLeft(2, '0')}-'
+        '${expiry.day.toString().padLeft(2, '0')}';
+
+    final key = hwId != null && hwId.isNotEmpty
+        ? LicenseCore.generateHardwareBoundKey(
+            hardwareId: hwId,
+            expiryDate: expiry,
+          )
+        : LicenseCore.generateAnnualKey(expiry);
+
+    print('✅ Clé pour $days jours (valable jusqu\'au $dateStr) ${hwId != null ? "(liée au PC $hwId)" : "(universelle)"} :');
+    print('\n\t$key\n');
+    print('💡 Note : Donnez cette clé au client pour lui accorder ses $days jours d\'accès sans réinstallation.');
     return;
   }
 

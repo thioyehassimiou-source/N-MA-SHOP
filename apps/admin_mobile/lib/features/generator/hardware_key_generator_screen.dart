@@ -139,6 +139,7 @@ class _HardwareKeyGeneratorScreenState extends ConsumerState<HardwareKeyGenerato
     final isBound = _hardwareIdCtrl.text.trim().isNotEmpty;
     final typeLabel = switch (_selectedType) {
       AdminLicenseType.lifetime => 'Licence à vie (Illimitée)',
+      AdminLicenseType.trial => 'Période d\'Essai Prolongée (14 jours — Expire le ${DateFormat('dd/MM/yyyy').format(_expiryDate)})',
       AdminLicenseType.days30 => 'Abonnement Mensuel (30 jours — Expire le ${DateFormat('dd/MM/yyyy').format(_expiryDate)})',
       _ => 'Abonnement Annuel (1 An — Expire le ${DateFormat('dd/MM/yyyy').format(_expiryDate)})',
     };
@@ -412,11 +413,19 @@ Merci pour votre confiance.
                 ],
                 const SizedBox(height: 18),
 
-                // ── Formule de Licence (Annuelle / À Vie) ──────────
+                // ── Formule de Licence (Essai 14j / Annuelle / À Vie) ──
                 const Text('Formule de Licence', style: TextStyle(color: AppTheme.textDark, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
+                    _buildFormulaCard(
+                      title: 'Essai 14j',
+                      subtitle: 'Gratuit',
+                      type: AdminLicenseType.trial,
+                      days: 14,
+                      defaultAmount: '0',
+                    ),
+                    const SizedBox(width: 8),
                     _buildFormulaCard(
                       title: 'Annuelle',
                       subtitle: '1 500 000 GNF',

@@ -224,7 +224,7 @@ Voici votre clé d'activation officielle N'MaShop PC :
         final days = lic.expiresAt!.difference(DateTime.now()).inDays + 1;
         statusText = 'Essai ($days j)';
       } else {
-        statusText = 'Essai (7j)';
+        statusText = 'Essai (${LicenseCryptoEngine.trialDays}j)';
       }
     } else if (lic.isInGracePeriod) {
       statusColor = Colors.deepOrange;

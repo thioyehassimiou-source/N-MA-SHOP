@@ -53,7 +53,7 @@ abstract final class LicenseCryptoEngine {
     );
   }
 
-  static const int trialDays = 7;
+  static const int trialDays = 14;
   static const int offlineGracePeriodDays = 5; // 5 jours de grâce hors-ligne après échéance contractuelle
 
   /// Calcule si une licence est en période de grâce hors-ligne.

@@ -20,7 +20,7 @@ class LicenseCore {
   static String get secret => '$_f1$_f2$_f3$_f4$_f5#$localSecuritySalt';
 
   // ── Paramètres ─────────────────────────────────────────────────────────────
-  static const int trialDays = 7; // 7 jours d'essai gratuit au premier lancement
+  static const int trialDays = 14; // 14 jours d'essai gratuit au premier lancement
   static const int offlineGracePeriodDays = 5; // 5 jours de grâce hors-ligne après échéance contractuelle
 
   // ── Validation interne ──────────────────────────────────────────────────────

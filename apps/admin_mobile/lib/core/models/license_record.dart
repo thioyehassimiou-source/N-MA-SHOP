@@ -22,7 +22,7 @@ extension AdminLicenseTypeExt on AdminLicenseType {
       case AdminLicenseType.annual:
         return '365jours';
       case AdminLicenseType.trial:
-        return '7jours';
+        return '14jours';
     }
   }
 }

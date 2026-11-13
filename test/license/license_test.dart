@@ -193,7 +193,7 @@ void main() {
       } catch (_) {}
     });
 
-    test('First launch initializes 7-day trial', () async {
+    test('First launch initializes 14-day trial', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
 
@@ -221,14 +221,14 @@ void main() {
 
       expect(info.status, LicenseStatus.trial);
       expect(info.isTrial, isTrue);
-      expect(info.daysLeft, inInclusiveRange(3, 5));
+      expect(info.daysLeft, inInclusiveRange(10, 12));
     });
 
     test('Expired trial locks the user to expired state', () async {
-      final tenDaysAgo = DateTime.now().subtract(const Duration(days: 10));
+      final twentyDaysAgo = DateTime.now().subtract(const Duration(days: 20));
       SharedPreferences.setMockInitialValues({
-        'lic_first_launch': tenDaysAgo.toIso8601String(),
-        'lic_last_known_time': tenDaysAgo.toIso8601String(),
+        'lic_first_launch': twentyDaysAgo.toIso8601String(),
+        'lic_last_known_time': twentyDaysAgo.toIso8601String(),
       });
       final prefs = await SharedPreferences.getInstance();
 

@@ -4,7 +4,7 @@
 
 #define MyAppName "N'MaShop"
 #ifndef MyAppVersion
-#define MyAppVersion "1.2.1"
+#define MyAppVersion "1.2.2"
 #endif
 #define MyAppPublisher "Hassimiou Thioye Développeur"
 #define MyAppURL "https://github.com/thioyehassimiou-source/N-MA-SHOP"

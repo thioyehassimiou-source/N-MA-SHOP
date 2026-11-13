@@ -487,7 +487,7 @@ class _BrandPanel extends StatelessWidget {
                         : license.status == LicenseStatus.deviceMismatch
                             ? 'Licence dédiée à une autre machine.'
                             : license.type == LicenseType.trial
-                                ? 'Votre période d\'essai\nde 7 jours est terminée.'
+                                ? 'Votre période d\'essai\nde 14 jours est terminée.'
                                 : 'Votre abonnement N\'MaShop\nest arrivé à échéance.',
                     textAlign: TextAlign.center,
                     style: TextStyle(

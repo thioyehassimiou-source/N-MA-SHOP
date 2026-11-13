@@ -206,7 +206,7 @@ class AdminSyncService {
         type = AdminLicenseType.lifetime;
       } else {
         final diff = expiryDate.difference(activatedAt).inDays;
-        if (diff <= 10) {
+        if (diff <= 16) {
           type = AdminLicenseType.trial;
         } else if (diff <= 35) {
           type = AdminLicenseType.days30;

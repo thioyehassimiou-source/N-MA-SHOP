@@ -102,7 +102,7 @@ class StatisticsDashboardView extends ConsumerWidget {
                 SizedBox(width: 14),
                 Expanded(
                   child: Text(
-                    'Les licences d\'essai de 7 jours sont accordées automatiquement lors du premier lancement de N\'MaShop PC sur l\'ordinateur du client.',
+                    'Les licences d\'essai de 14 jours sont accordées automatiquement lors du premier lancement de N\'MaShop PC sur l\'ordinateur du client.',
                     style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
                   ),
                 ),

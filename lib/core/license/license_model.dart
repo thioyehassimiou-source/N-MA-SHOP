@@ -21,7 +21,7 @@ enum LicenseStatus {
 
 /// Type de la licence activée.
 enum LicenseType {
-  /// Période d'essai gratuite (7 jours).
+  /// Période d'essai gratuite (14 jours).
   trial,
 
   /// Licence mensuelle (expire dans ~30 jours).
@@ -93,8 +93,8 @@ class LicenseInfo {
     final dur = remainingDuration;
     if (dur == null || dur <= Duration.zero) return 'Essai expiré';
     final totalHours = dur.inHours;
-    if (totalHours >= 167) {
-      return 'Essai : 7 jours restants';
+    if (totalHours >= 335) {
+      return 'Essai : 14 jours restants';
     }
     final days = dur.inDays;
     final hours = dur.inHours % 24;
@@ -175,7 +175,7 @@ class LicenseInfo {
           countStr = ' — ${m}m restante${m > 1 ? 's' : ''}';
         }
       }
-      return 'Période d\'essai gratuite (7 jours)$countStr • Expire le $dateStr';
+      return 'Période d\'essai gratuite (14 jours)$countStr • Expire le $dateStr';
     }
     if (status == LicenseStatus.expired) {
       return 'Période d\'essai ou licence expirée. Veuillez saisir votre clé de renouvellement.';
