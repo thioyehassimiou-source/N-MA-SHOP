@@ -351,7 +351,7 @@ void main() {
 
       final info = await service.checkAsync(prefs);
       expect(info.isTrial, isTrue);
-      expect(info.daysLeft, 7);
+      expect(info.daysLeft, LicenseCore.trialDays);
       expect(info.isExpired, isFalse);
     });
 
