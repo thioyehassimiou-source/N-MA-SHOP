@@ -483,7 +483,7 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
           ? 'Désactivée ($clientDaysRemaining j)'
           : 'Désactivée';
     } else if (isStoreActive) {
-      if (clientLicense?.isLifetime == true) {
+      if (clientLicense.isLifetime) {
         statusLabel = 'À Vie';
       } else if (clientDaysRemaining != null && clientDaysRemaining > 0) {
         statusLabel = 'Active ($clientDaysRemaining j restants)';
@@ -491,7 +491,7 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
         statusLabel = 'Active';
       }
     } else if (isInGrace) {
-      statusLabel = 'En Grâce (${clientLicense?.graceDaysLeft}j)';
+      statusLabel = 'En Grâce (${clientLicense.graceDaysLeft}j)';
     } else if (isPaidExpired) {
       statusLabel = 'Expirée';
     } else {

@@ -54,7 +54,6 @@ jobs:
           cd apps/admin_mobile
           chmod +x android/gradlew
           export LINT_PRINT_STACKTRACE=true
-          flutter analyze --no-fatal-infos --no-fatal-warnings || true
           flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation
 
       - name: 📦 Préparer le fichier APK
