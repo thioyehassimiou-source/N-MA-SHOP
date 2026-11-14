@@ -16,7 +16,7 @@ const CONFIG = {
   DOWNLOAD_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.2/NMaShop_Installer.zip",
   DOWNLOAD_PORTABLE_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.2/NMaShop_Windows_Portable_v1.2.2.zip",
   DOWNLOAD_LINUX_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.2/NMaShop_Linux_v1.2.2_x64.tar.gz",
-  DOWNLOAD_APK_URL: "downloads/NMaShop_Admin_Mobile_v1.1.9.apk",
+  DOWNLOAD_APK_URL: "https://github.com/thioyehassimiou-source/N-MA-SHOP/releases/download/v1.2.2/NMaShop_Admin_Mobile_v1.2.2.apk",
   
   // Auteur & Conception Réelle (Transparence Fondateur)
   DEV_NAME: "Hassimiou Thioye",
