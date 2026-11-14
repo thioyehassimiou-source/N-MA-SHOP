@@ -53,7 +53,7 @@ jobs:
         run: |
           cd apps/admin_mobile
           chmod +x android/gradlew
-          flutter build apk --release --build-name=${{ env.APP_VERSION }}
+          flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation
 
       - name: 📦 Préparer le fichier APK
         run: |

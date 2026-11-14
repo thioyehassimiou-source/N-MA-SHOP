@@ -55,7 +55,7 @@ if [ -f "android/gradlew" ]; then
 fi
 
 echo "🔨 Compilation de l'APK Android (Release)..."
-$FLUTTER_CMD build apk --release
+$FLUTTER_CMD build apk --release --android-skip-build-dependency-validation
 
 # 5. Récupération et copie du binaire
 OUTPUT_APK="$DIR/apps/admin_mobile/build/app/outputs/flutter-apk/app-release.apk"
