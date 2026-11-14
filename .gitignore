@@ -46,6 +46,8 @@ app.*.map.json
 
 # Media & Large Files
 audio_demo/
+test_release_linux/
+lancer_nmashop.sh
 .venv/
 *.mkv
 *.mp4

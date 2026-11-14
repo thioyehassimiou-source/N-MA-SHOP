@@ -459,6 +459,8 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
     final licenses = ref.watch(licensesProvider);
 
     final clientLicense = _findLicenseForClient(client, licenses);
+    final clientDaysRemaining = clientLicense?.daysRemaining;
+    final exp = clientLicense?.effectiveExpiresAt;
 
     final bool isDeactivated = clientLicense != null && !clientLicense.isActive;
     final bool isStoreActive = clientLicense != null && clientLicense.isActive && !clientLicense.isExpired && clientLicense.type != AdminLicenseType.trial;
@@ -466,23 +468,34 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
     final bool isPaidExpired = clientLicense != null && clientLicense.isActive && clientLicense.type != AdminLicenseType.trial && clientLicense.isStrictlyExpired;
 
     String trialLabel = 'Mode Essai';
-    if (clientLicense != null && clientLicense.expiresAt != null) {
-      final now = DateTime.now();
-      if (now.isAfter(clientLicense.expiresAt!)) {
+    if (clientDaysRemaining != null) {
+      if (clientDaysRemaining <= 0) {
         trialLabel = 'Essai Expiré';
       } else {
-        final days = clientLicense.expiresAt!.difference(now).inDays + 1;
-        trialLabel = 'Essai ($days j restants)';
+        trialLabel = 'Essai ($clientDaysRemaining j restants)';
       }
     }
 
-    final String statusLabel = isDeactivated
-        ? 'Désactivée'
-        : (isStoreActive
-            ? 'Active'
-            : (isInGrace
-                ? 'En Grâce (${clientLicense.graceDaysLeft}j)'
-                : (isPaidExpired ? 'Expirée' : trialLabel)));
+    final String statusLabel;
+    if (isDeactivated) {
+      statusLabel = (clientDaysRemaining != null && clientDaysRemaining > 0)
+          ? 'Désactivée ($clientDaysRemaining j)'
+          : 'Désactivée';
+    } else if (isStoreActive) {
+      if (clientLicense?.isLifetime == true) {
+        statusLabel = 'À Vie';
+      } else if (clientDaysRemaining != null && clientDaysRemaining > 0) {
+        statusLabel = 'Active ($clientDaysRemaining j restants)';
+      } else {
+        statusLabel = 'Active';
+      }
+    } else if (isInGrace) {
+      statusLabel = 'En Grâce (${clientLicense?.graceDaysLeft}j)';
+    } else if (isPaidExpired) {
+      statusLabel = 'Expirée';
+    } else {
+      statusLabel = trialLabel;
+    }
 
     final Color statusBg = isDeactivated
         ? AppTheme.roseBg
@@ -605,6 +618,19 @@ class _ClientListViewState extends ConsumerState<ClientListView> {
                     ),
                   ],
                 ),
+              ),
+            ],
+            if (clientLicense != null && exp != null && !clientLicense.isLifetime) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.timer_outlined, size: 14, color: AppTheme.textSecondary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Expiration : ${DateFormat('dd/MM/yyyy').format(exp)} (${clientDaysRemaining != null && clientDaysRemaining > 0 ? '$clientDaysRemaining j restants' : 'Échue'})',
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                  ),
+                ],
               ),
             ],
             const SizedBox(height: 14),

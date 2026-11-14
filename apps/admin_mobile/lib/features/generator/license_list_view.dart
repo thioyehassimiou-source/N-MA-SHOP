@@ -195,9 +195,24 @@ Voici votre clé d'activation officielle N'MaShop PC :
   }
 
   Widget _buildNmaLicenseCard(BuildContext context, LicenseRecord lic) {
-    final expiryText = lic.expiresAt != null
-        ? DateFormat('dd/MM/yyyy').format(lic.expiresAt!)
-        : 'À Vie (Illimitée)';
+    final exp = lic.effectiveExpiresAt;
+    final daysLeft = lic.daysRemaining;
+
+    final String expiryText;
+    if (lic.isLifetime || (exp != null && exp.year >= 9000)) {
+      expiryText = 'À Vie (Illimitée)';
+    } else if (exp != null) {
+      final formatted = DateFormat('dd/MM/yyyy').format(exp);
+      if (daysLeft != null && daysLeft > 0) {
+        expiryText = '$formatted ($daysLeft j restants)';
+      } else if (lic.isInGracePeriod) {
+        expiryText = '$formatted (Grâce: ${lic.graceDaysLeft}j)';
+      } else {
+        expiryText = '$formatted (Expirée)';
+      }
+    } else {
+      expiryText = 'À Vie (Illimitée)';
+    }
 
     final isTrial = lic.type == AdminLicenseType.trial || lic.licenseKey.startsWith('TRIAL-');
     final isPending = lic.hardwareId.isEmpty;
@@ -210,7 +225,11 @@ Voici votre clé d'activation officielle N'MaShop PC :
     if (!isActive) {
       statusColor = AppTheme.roseAlert;
       statusBgColor = AppTheme.roseBg;
-      statusText = 'Désactivée';
+      if (daysLeft != null && daysLeft > 0) {
+        statusText = 'Désactivée ($daysLeft j)';
+      } else {
+        statusText = 'Désactivée';
+      }
     } else if (isPending) {
       statusColor = Colors.orange;
       statusBgColor = Colors.orange.withValues(alpha: 0.15);
@@ -218,11 +237,10 @@ Voici votre clé d'activation officielle N'MaShop PC :
     } else if (isTrial) {
       statusColor = AppTheme.amberTrial;
       statusBgColor = AppTheme.amberBg;
-      if (lic.expiresAt != null && DateTime.now().isAfter(lic.expiresAt!)) {
+      if (daysLeft != null && daysLeft <= 0) {
         statusText = 'Essai expiré';
-      } else if (lic.expiresAt != null) {
-        final days = lic.expiresAt!.difference(DateTime.now()).inDays + 1;
-        statusText = 'Essai ($days j)';
+      } else if (daysLeft != null) {
+        statusText = 'Essai ($daysLeft j restants)';
       } else {
         statusText = 'Essai (${LicenseCryptoEngine.trialDays}j)';
       }
@@ -234,10 +252,18 @@ Voici votre clé d'activation officielle N'MaShop PC :
       statusColor = AppTheme.roseAlert;
       statusBgColor = AppTheme.roseBg;
       statusText = 'Expirée';
+    } else if (lic.isLifetime) {
+      statusColor = AppTheme.emeraldActive;
+      statusBgColor = AppTheme.emeraldBg;
+      statusText = 'À Vie';
     } else {
       statusColor = AppTheme.emeraldActive;
       statusBgColor = AppTheme.emeraldBg;
-      statusText = 'Active';
+      if (daysLeft != null && daysLeft > 0) {
+        statusText = 'Active ($daysLeft j restants)';
+      } else {
+        statusText = 'Active';
+      }
     }
 
     return Card(
