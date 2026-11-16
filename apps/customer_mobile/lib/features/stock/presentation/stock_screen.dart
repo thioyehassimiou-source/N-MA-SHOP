@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:image_picker/image_picker.dart';
-import '../../../../core/database/mobile_database.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../../core/utils/image_picker_helper.dart';
-import '../../../../core/widgets/nma_mobile_header.dart';
+import '../../../core/database/mobile_database.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/utils/image_picker_helper.dart';
+import '../../../core/widgets/nma_mobile_header.dart';
 
 final stockFilterProvider = StateProvider<String>((ref) => 'all'); // 'all', 'low', 'out'
 final stockSearchProvider = StateProvider<String>((ref) => '');

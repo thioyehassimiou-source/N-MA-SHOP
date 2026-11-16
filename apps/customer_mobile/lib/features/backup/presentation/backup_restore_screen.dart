@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../core/database/mobile_database.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/nma_mobile_header.dart';
+import '../../../core/database/mobile_database.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/nma_mobile_header.dart';
 
 final dbStatsProvider = FutureProvider.autoDispose<Map<String, int>>((ref) async {
   final db = ref.watch(mobileDatabaseProvider);

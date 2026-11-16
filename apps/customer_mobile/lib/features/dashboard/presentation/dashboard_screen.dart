@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/nma_mobile_card.dart';
-import '../../../../core/widgets/nma_mobile_header.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/nma_mobile_card.dart';
+import '../../../core/widgets/nma_mobile_header.dart';
 import '../../alerts/presentation/alerts_screen.dart';
 import '../../backup/presentation/backup_restore_screen.dart';
 import '../../receivables/presentation/receivables_screen.dart';

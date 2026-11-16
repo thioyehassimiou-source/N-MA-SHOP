@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:drift/drift.dart' as drift;
-import '../../../../core/database/mobile_database.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/nma_mobile_header.dart';
+import '../../../core/database/mobile_database.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/nma_mobile_header.dart';
 import '../../sales/presentation/sales_screen.dart';
 import '../../treasury/presentation/treasury_screen.dart';
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/network/api_client.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../shell/main_navigation_shell.dart';
 import '../data/auth_service.dart';
 
