@@ -52,7 +52,7 @@ jobs:
       - name: 🔨 Compiler APK Release
         run: |
           cd apps/customer_mobile
-          chmod +x android/gradlew
+          [ -f android/gradlew ] && chmod +x android/gradlew || true
           export LINT_PRINT_STACKTRACE=true
           flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation
 
