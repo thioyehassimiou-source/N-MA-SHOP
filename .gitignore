@@ -48,6 +48,8 @@ app.*.map.json
 audio_demo/
 test_release_linux/
 lancer_nmashop.sh
+test_customer_web/
+lancer_customer_mobile_web.sh
 .venv/
 *.mkv
 *.mp4

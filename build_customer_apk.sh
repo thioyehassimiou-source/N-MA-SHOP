@@ -52,3 +52,4 @@ if [ -f "$OUTPUT_APK" ]; then
     echo "    Emplacement : $ROOT_APK"
     echo "============================================================="
 fi
+

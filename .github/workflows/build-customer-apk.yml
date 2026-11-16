@@ -56,6 +56,13 @@ jobs:
           export LINT_PRINT_STACKTRACE=true
           flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation
 
+      - name: 🌐 Compiler Web Mobile
+        run: |
+          cd apps/customer_mobile
+          flutter build web --release --base-href /
+          cd build/web
+          tar -czf ../../../NMaShop_Customer_Mobile_Web.tar.gz .
+
       - name: 📦 Préparer le fichier APK
         run: |
           APK_FILE=$(find apps/customer_mobile/build/app/outputs/flutter-apk/ -name "*release.apk" 2>/dev/null | head -n 1)
@@ -75,11 +82,21 @@ jobs:
           path: NMaShop_Mobile_v*.apk
           retention-days: 30
 
-      - name: 🚀 Attacher l'APK à la Release GitHub
+      - name: ⬆️ Télécharger Web Mobile (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMaShop_Customer_Mobile_Web
+          path: NMaShop_Customer_Mobile_Web.tar.gz
+          retention-days: 30
+
+      - name: 🚀 Attacher à la Release GitHub
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.version != ''
         with:
           tag_name: v${{ env.APP_VERSION }}
-          files: NMaShop_Mobile_v*.apk
+          files: |
+            NMaShop_Mobile_v*.apk
+            NMaShop_Customer_Mobile_Web.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
