@@ -9,12 +9,40 @@ on:
         default: "1.2.0"
 
 jobs:
-  build-apk:
-    name: 🛍️ Compiler l'APK Android Customer Mobile
+  build-web:
+    name: 🌐 Compiler Web Mobile Commerçant
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    steps:
+      - name: 📥 Checkout du code
+        uses: actions/checkout@v4
 
+      - name: 🐦 Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          cache: true
+
+      - name: 📦 Dépendances
+        run: |
+          cd apps/customer_mobile
+          flutter pub get
+
+      - name: 🌐 Compiler Web Mobile
+        run: |
+          cd apps/customer_mobile
+          flutter build web --release --base-href /
+          tar -czf "$GITHUB_WORKSPACE/NMaShop_Customer_Mobile_Web.tar.gz" -C build/web .
+
+      - name: ⬆️ Télécharger Web Mobile (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMaShop_Customer_Mobile_Web
+          path: NMaShop_Customer_Mobile_Web.tar.gz
+          retention-days: 30
+
+  build-apk:
+    name: 📱 Compiler l'APK Android Customer Mobile
+    runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout du code
         uses: actions/checkout@v4
@@ -49,22 +77,20 @@ jobs:
       - name: 🤖 Accepter les licences Android
         run: yes | flutter doctor --android-licenses || true
 
-      - name: 🌐 Compiler Web Mobile
-        run: |
-          cd apps/customer_mobile
-          flutter build web --release --base-href /
-          cd build/web
-          tar -czf ../../../NMaShop_Customer_Mobile_Web.tar.gz .
-
       - name: 🔨 Compiler APK Release
         run: |
           cd apps/customer_mobile
           [ -f android/gradlew ] && chmod +x android/gradlew || true
           export LINT_PRINT_STACKTRACE=true
-          flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation
+          flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation -v || {
+            echo "### ❌ Erreur Gradle détaillée" >> $GITHUB_STEP_SUMMARY
+            echo '```text' >> $GITHUB_STEP_SUMMARY
+            cd android && ./gradlew assembleRelease --stacktrace 2>&1 | tail -n 80 >> $GITHUB_STEP_SUMMARY || true
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
 
       - name: 📦 Préparer le fichier APK
-        if: always()
         run: |
           APK_FILE=$(find apps/customer_mobile/build/app/outputs/flutter-apk/ -name "*release.apk" 2>/dev/null | head -n 1)
           if [ -z "$APK_FILE" ]; then
@@ -73,40 +99,41 @@ jobs:
           if [ -z "$APK_FILE" ]; then
             APK_FILE=$(find . -name "*release.apk" -not -path "*/intermediates/*" | head -n 1)
           fi
-          if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
-            echo "APK trouvé : $APK_FILE"
-            cp "$APK_FILE" NMaShop_Mobile_v${{ env.APP_VERSION }}.apk
-          else
-            echo "Aucun fichier APK trouvé à copier."
-          fi
-
-      - name: ⬆️ Télécharger Web Mobile (Artifact)
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: NMaShop_Customer_Mobile_Web
-          path: NMaShop_Customer_Mobile_Web.tar.gz
-          if-no-files-found: ignore
-          retention-days: 30
+          echo "APK trouvé : $APK_FILE"
+          cp "$APK_FILE" NMaShop_Mobile_v${{ env.APP_VERSION }}.apk
 
       - name: ⬆️ Télécharger l'APK compilé (Artifact)
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: NMaShop_Mobile_v${{ env.APP_VERSION }}.apk
           path: NMaShop_Mobile_v*.apk
-          if-no-files-found: ignore
           retention-days: 30
+
+  publish-release:
+    name: 🚀 Publication Release GitHub
+    needs: [build-web, build-apk]
+    if: (startsWith(github.ref, 'refs/tags/v') || github.event.inputs.version != '') && always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 📥 Télécharger tous les artefacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 📌 Organiser les fichiers
+        run: |
+          mkdir -p release_files
+          find artifacts/ -name "*.apk" -exec cp {} release_files/ \;
+          find artifacts/ -name "*.tar.gz" -exec cp {} release_files/ \;
+          ls -la release_files/
 
       - name: 🚀 Attacher à la Release GitHub
         uses: softprops/action-gh-release@v2
-        if: (startsWith(github.ref, 'refs/tags/v') || github.event.inputs.version != '') && !cancelled()
         with:
-          tag_name: v${{ env.APP_VERSION }}
+          tag_name: v${{ github.event.inputs.version || '1.2.0' }}
           fail_on_unmatched_files: false
-          files: |
-            NMaShop_Mobile_v*.apk
-            NMaShop_Customer_Mobile_Web.tar.gz
+          files: release_files/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
