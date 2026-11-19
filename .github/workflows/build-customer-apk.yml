@@ -79,6 +79,7 @@ jobs:
 
       - name: 📲 Installer Android SDK 35
         run: |
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/tools/bin:$PATH"
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0" || true
 
@@ -86,8 +87,11 @@ jobs:
         run: |
           cd apps/customer_mobile
           [ -f android/gradlew ] && chmod +x android/gradlew || true
-          export LINT_PRINT_STACKTRACE=true
-          flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation
+          flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation || {
+            echo "::error::Échec de Flutter build. Affichage des détails Gradle..."
+            cd android && ./gradlew assembleRelease --stacktrace --info
+            exit 1
+          }
 
       - name: 📦 Préparer le fichier APK
         run: |
