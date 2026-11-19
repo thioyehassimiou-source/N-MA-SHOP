@@ -31,12 +31,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final data = state.data;
 
     final totalSales = data?.today.totalSales ?? 0;
-    final cash = data?.today.cashCollected ?? 0;
+    final cash = data?.today.cashInBox ?? (data?.today.cashCollected ?? 0);
+    final cashCollected = data?.today.cashCollected ?? 0;
     final momo = data?.today.momoCollected ?? 0;
+    final card = data?.today.cardCollected ?? 0;
     final credit = data?.today.creditIssued ?? 0;
 
-    final cashRatio = totalSales > 0 ? (cash / totalSales).clamp(0.0, 1.0) : 0.0;
+    final cashRatio = totalSales > 0 ? (cashCollected / totalSales).clamp(0.0, 1.0) : 0.0;
     final momoRatio = totalSales > 0 ? (momo / totalSales).clamp(0.0, 1.0) : 0.0;
+    final cardRatio = totalSales > 0 ? (card / totalSales).clamp(0.0, 1.0) : 0.0;
     final creditRatio = totalSales > 0 ? (credit / totalSales).clamp(0.0, 1.0) : 0.0;
 
     final shopName = data?.shop.name ?? 'Ma Boutique';
@@ -377,10 +380,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                       KpiCard(
                         title: 'Dettes à payer',
-                        value: formatGnfCompact(0),
-                        subtitle: 'Aux fournisseurs',
+                        value: formatGnfCompact(data?.receivables.debtsToSuppliers ?? 0),
+                        subtitle: (data?.receivables.debtsToSuppliers ?? 0) > 0 ? 'Factures impayées' : 'Toutes soldées',
                         icon: Icons.storefront_rounded,
                         color: AppColors.iconNavy,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const SuppliersScreen()),
+                          );
+                        },
                       ),
                       KpiCard(
                         title: 'Ticket moyen',
@@ -411,7 +419,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         const SizedBox(height: 16),
                         _PaymentMethodRow(
                           label: 'Espèces',
-                          amount: cash,
+                          amount: cashCollected,
                           ratio: cashRatio,
                           color: AppColors.brandEmerald,
                           icon: Icons.payments_rounded,
@@ -424,6 +432,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           color: AppColors.brandOrange,
                           icon: Icons.phone_android_rounded,
                         ),
+                        if (card > 0) ...[
+                          const SizedBox(height: 12),
+                          _PaymentMethodRow(
+                            label: 'Banque & Carte',
+                            amount: card,
+                            ratio: cardRatio,
+                            color: const Color(0xFF7C3AED),
+                            icon: Icons.credit_card_rounded,
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         _PaymentMethodRow(
                           label: 'Ventes à Crédit',

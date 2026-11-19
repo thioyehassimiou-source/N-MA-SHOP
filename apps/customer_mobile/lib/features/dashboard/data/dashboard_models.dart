@@ -27,7 +27,10 @@ class DayKpis {
   final int salesCount;
   final int cashCollected;
   final int momoCollected;
+  final int cardCollected;
   final int creditIssued;
+  final int cashInBox;
+  final int expenses;
 
   DayKpis({
     this.totalSales = 0,
@@ -35,7 +38,10 @@ class DayKpis {
     this.salesCount = 0,
     this.cashCollected = 0,
     this.momoCollected = 0,
+    this.cardCollected = 0,
     this.creditIssued = 0,
+    this.cashInBox = 0,
+    this.expenses = 0,
   });
 
   factory DayKpis.fromJson(Map<String, dynamic>? json) {
@@ -46,7 +52,10 @@ class DayKpis {
       salesCount: json['salesCount'] ?? 0,
       cashCollected: json['cashCollected'] ?? 0,
       momoCollected: json['momoCollected'] ?? 0,
+      cardCollected: json['cardCollected'] ?? 0,
       creditIssued: json['creditIssued'] ?? 0,
+      cashInBox: json['cashInBox'] ?? json['cashCollected'] ?? 0,
+      expenses: json['expenses'] ?? 0,
     );
   }
 }
@@ -69,14 +78,20 @@ class StockSummary {
 class ReceivablesSummary {
   final int totalAmount;
   final int debtorsCount;
+  final int debtsToSuppliers;
 
-  ReceivablesSummary({this.totalAmount = 0, this.debtorsCount = 0});
+  ReceivablesSummary({
+    this.totalAmount = 0,
+    this.debtorsCount = 0,
+    this.debtsToSuppliers = 0,
+  });
 
   factory ReceivablesSummary.fromJson(Map<String, dynamic>? json) {
     if (json == null) return ReceivablesSummary();
     return ReceivablesSummary(
       totalAmount: json['totalAmount'] ?? 0,
       debtorsCount: json['debtorsCount'] ?? 0,
+      debtsToSuppliers: json['debtsToSuppliers'] ?? 0,
     );
   }
 }

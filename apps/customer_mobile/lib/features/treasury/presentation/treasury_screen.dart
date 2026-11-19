@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
@@ -7,6 +8,7 @@ import '../../../core/database/mobile_database.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/nma_mobile_header.dart';
+import '../../dashboard/presentation/dashboard_controller.dart';
 
 enum TreasuryPeriod { today, last7Days, thisMonth }
 
@@ -17,40 +19,74 @@ final treasuryDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((r
   final period = ref.watch(treasuryPeriodProvider);
   final prefs = await SharedPreferences.getInstance();
 
-  List<MobileExpense> allExpenses = await db.select(db.mobileExpenses).get();
-  List<MobileSale> allSales = await db.select(db.mobileSales).get();
+  // 1. S'assurer de la présence des tables SQLite pour la trésorerie et clôtures
+  await db.customStatement('''
+    CREATE TABLE IF NOT EXISTS mobile_treasury (
+      id TEXT PRIMARY KEY,
+      date_key TEXT NOT NULL UNIQUE,
+      opening_float INTEGER NOT NULL DEFAULT 0,
+      cash_in INTEGER NOT NULL DEFAULT 0,
+      cash_out INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    )
+  ''');
+  await db.customStatement('''
+    CREATE TABLE IF NOT EXISTS mobile_closures (
+      id TEXT PRIMARY KEY,
+      date_key TEXT NOT NULL,
+      opening_float INTEGER NOT NULL DEFAULT 0,
+      cash_collected INTEGER NOT NULL DEFAULT 0,
+      momo_collected INTEGER NOT NULL DEFAULT 0,
+      card_collected INTEGER NOT NULL DEFAULT 0,
+      total_expenses INTEGER NOT NULL DEFAULT 0,
+      theoretical_cash INTEGER NOT NULL DEFAULT 0,
+      counted_cash INTEGER NOT NULL DEFAULT 0,
+      difference INTEGER NOT NULL DEFAULT 0,
+      note TEXT,
+      closed_at TEXT NOT NULL
+    )
+  ''');
 
-  // Initialiser quelques exemples si vide
-  if (allExpenses.isEmpty) {
-    final now = DateTime.now();
-    await db.into(db.mobileExpenses).insert(
-      MobileExpensesCompanion.insert(
-        id: 'exp-${now.millisecondsSinceEpoch}-1',
-        title: 'Transport Réassort Marchandises',
-        amount: const drift.Value(25000),
-        category: const drift.Value('Transport'),
-        note: const drift.Value('Taxi-bagage grand marché'),
-        createdAt: drift.Value(now.subtract(const Duration(hours: 3))),
-      ),
-    );
-    await db.into(db.mobileExpenses).insert(
-      MobileExpensesCompanion.insert(
-        id: 'exp-${now.millisecondsSinceEpoch}-2',
-        title: 'Achat Sacs Emballages Plastiques',
-        amount: const drift.Value(15000),
-        category: const drift.Value('Sacs/Emballages'),
-        note: const drift.Value('100 sacs imprimés N\'MaShop'),
-        createdAt: drift.Value(now.subtract(const Duration(hours: 1))),
-      ),
-    );
-    allExpenses = await db.select(db.mobileExpenses).get();
-  }
+  // Récupération stricte des données réelles SQLite (aucune fausse dépense mockée)
+  final allExpenses = await db.select(db.mobileExpenses).get();
+  final allSales = await db.select(db.mobileSales).get();
 
   final now = DateTime.now();
   final todayDateKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-  final openingFloat = prefs.getInt('nmashop_cash_float_$todayDateKey') ?? 0;
+  
+  // Lecture du fond de caisse depuis SQLite mobile_treasury (avec repli sur SharedPreferences)
+  int openingFloat = prefs.getInt('nmashop_cash_float_$todayDateKey') ?? 0;
+  try {
+    final treasuryRows = await db.customSelect(
+      'SELECT opening_float FROM mobile_treasury WHERE date_key = ? LIMIT 1',
+      variables: [drift.Variable.withString(todayDateKey)],
+    ).get();
+    if (treasuryRows.isNotEmpty) {
+      openingFloat = treasuryRows.first.read<int>('opening_float');
+    }
+  } catch (_) {}
+
+  // Vérifier si une clôture journalière a déjà été enregistrée pour aujourd'hui
+  Map<String, dynamic>? todayClosure;
+  try {
+    final closureRows = await db.customSelect(
+      'SELECT * FROM mobile_closures WHERE date_key = ? ORDER BY closed_at DESC LIMIT 1',
+      variables: [drift.Variable.withString(todayDateKey)],
+    ).get();
+    if (closureRows.isNotEmpty) {
+      final r = closureRows.first.data;
+      todayClosure = {
+        'id': r['id'],
+        'countedCash': r['counted_cash'],
+        'difference': r['difference'],
+        'closedAt': r['closed_at'],
+        'note': r['note'],
+      };
+    }
+  } catch (_) {}
 
   DateTime startDate;
+  final endDate = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
   switch (period) {
     case TreasuryPeriod.today:
       startDate = DateTime(now.year, now.month, now.day);
@@ -70,13 +106,13 @@ final treasuryDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((r
 
   for (final s in allSales) {
     if (s.isCancelled) continue;
-    if (s.date.isAfter(startDate) || s.date.isAtSameMomentAs(startDate)) {
+    if (s.date.isAfter(startDate.subtract(const Duration(milliseconds: 1))) && s.date.isBefore(endDate)) {
       totalSalesAmount += s.total;
       if (s.paymentMethod == 0) {
         cashCollected += s.amountPaid;
-      } else if (s.paymentMethod == 1 || s.paymentMethod == 2) {
+      } else if (s.paymentMethod == 1 || s.paymentMethod == 2 || s.paymentMethod == 3) {
         momoCollected += s.amountPaid;
-      } else {
+      } else if (s.paymentMethod == 4) {
         cardCollected += s.amountPaid;
       }
     }
@@ -87,7 +123,7 @@ final treasuryDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((r
   final List<MobileExpense> filteredExpenses = [];
 
   for (final e in allExpenses) {
-    if (e.createdAt.isAfter(startDate) || e.createdAt.isAtSameMomentAs(startDate)) {
+    if (e.createdAt.isAfter(startDate.subtract(const Duration(milliseconds: 1))) && e.createdAt.isBefore(endDate)) {
       filteredExpenses.add(e);
       totalExpenses += e.amount;
       expensesByCategory[e.category] = (expensesByCategory[e.category] ?? 0) + e.amount;
@@ -110,6 +146,7 @@ final treasuryDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((r
     'theoreticalCash': theoreticalCash,
     'expensesByCategory': expensesByCategory,
     'filteredExpenses': filteredExpenses,
+    'todayClosure': todayClosure,
   };
 });
 
@@ -171,6 +208,7 @@ class TreasuryScreen extends ConsumerWidget {
           final theoreticalCash = data['theoreticalCash'] as int? ?? 0;
           final expensesByCategory = (data['expensesByCategory'] as Map<String, int>?) ?? {};
           final expenses = (data['filteredExpenses'] as List<MobileExpense>?) ?? [];
+          final todayClosure = data['todayClosure'] as Map<String, dynamic>?;
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
@@ -186,6 +224,48 @@ class TreasuryScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 14),
+
+              // ── BADGE DE CLÔTURE DU JOUR (SI ENREGISTRÉE) ──
+              if (todayClosure != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.brandEmerald.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.brandEmerald.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.brandEmerald.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check_circle_rounded, color: AppColors.brandEmerald, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Caisse Clôturée Aujourd\'hui',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.brandEmerald),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Compté : ${AppFormatters.formatCurrency(todayClosure['countedCash'] as int? ?? 0)} • Écart : ${(todayClosure['difference'] as int? ?? 0) >= 0 ? "+${AppFormatters.formatCurrency(todayClosure['difference'] as int? ?? 0)}" : AppFormatters.formatCurrency(todayClosure['difference'] as int? ?? 0)}',
+                              style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
 
               // ── HERO CARD : SOLDE THÉORIQUE CAISSE ──
               Container(
@@ -278,7 +358,9 @@ class TreasuryScreen extends ConsumerWidget {
                         openingFloat: openingFloat,
                         cashCollected: cashCollected,
                         momoCollected: momoCollected,
+                        cardCollected: cardCollected,
                         totalExpenses: totalExpenses,
+                        todayDateKey: todayDateKey,
                       ),
                       icon: const Icon(Icons.calculate_rounded, size: 18),
                       label: const Text('Faire le Point (Clôture)', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
@@ -685,7 +767,22 @@ class TreasuryScreen extends ConsumerWidget {
                     final newAmt = int.tryParse(floatCtrl.text.trim()) ?? 0;
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.setInt('nmashop_cash_float_$todayDateKey', newAmt);
+
+                    final db = ref.read(mobileDatabaseProvider);
+                    await db.customInsert(
+                      'INSERT OR REPLACE INTO mobile_treasury (id, date_key, opening_float, cash_in, cash_out, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+                      variables: [
+                        drift.Variable.withString('treasury-$todayDateKey'),
+                        drift.Variable.withString(todayDateKey),
+                        drift.Variable.withInt(newAmt),
+                        drift.Variable.withInt(0),
+                        drift.Variable.withInt(0),
+                        drift.Variable.withString(DateTime.now().toIso8601String()),
+                      ],
+                    );
+
                     ref.invalidate(treasuryDataProvider);
+                    ref.read(dashboardControllerProvider.notifier).refresh();
                     if (!ctx.mounted) return;
                     Navigator.of(ctx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -714,6 +811,7 @@ class TreasuryScreen extends ConsumerWidget {
     final amountCtrl = TextEditingController();
     final noteCtrl = TextEditingController();
     String selectedCategory = 'Transport';
+    DateTime selectedDate = DateTime.now();
 
     final categories = ['Transport', 'Loyer', 'Électricité', 'Salaire', 'Approvisionnement', 'Sacs/Emballages', 'Divers'];
 
@@ -816,6 +914,58 @@ class TreasuryScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 10),
 
+                  // Sélecteur de date / heure pour la dépense
+                  InkWell(
+                    onTap: () async {
+                      final pickedDate = await showDatePicker(
+                        context: ctx,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2030),
+                      );
+                      if (pickedDate != null && ctx.mounted) {
+                        final pickedTime = await showTimePicker(
+                          context: ctx,
+                          initialTime: TimeOfDay.fromDateTime(selectedDate),
+                        );
+                        final newDateTime = DateTime(
+                          pickedDate.year,
+                          pickedDate.month,
+                          pickedDate.day,
+                          pickedTime?.hour ?? selectedDate.hour,
+                          pickedTime?.minute ?? selectedDate.minute,
+                        );
+                        setStateModal(() {
+                          selectedDate = newDateTime;
+                        });
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.outline),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.brandNavy),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Date & heure de l\'opération', style: TextStyle(fontSize: 10.5, color: AppColors.onSurfaceVariant)),
+                              Text(AppFormatters.formatDateTime(selectedDate), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppColors.brandNavy)),
+                            ],
+                          ),
+                          const Spacer(),
+                          const Icon(Icons.arrow_drop_down_rounded, color: AppColors.brandNavy),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
                   TextField(
                     controller: noteCtrl,
                     decoration: InputDecoration(
@@ -840,17 +990,40 @@ class TreasuryScreen extends ConsumerWidget {
                       }
 
                       final db = ref.read(mobileDatabaseProvider);
+                      final expId = 'exp-${DateTime.now().millisecondsSinceEpoch}';
 
                       final newExp = MobileExpensesCompanion.insert(
-                        id: 'exp-${DateTime.now().millisecondsSinceEpoch}',
+                        id: expId,
                         title: title,
                         amount: drift.Value(amount),
                         category: drift.Value(selectedCategory),
                         note: drift.Value(noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null),
+                        createdAt: drift.Value(selectedDate),
                       );
 
                       await db.into(db.mobileExpenses).insert(newExp);
+
+                      // File d'attente de synchronisation SQLite locale
+                      await db.into(db.mobileSyncQueue).insert(
+                        MobileSyncQueueCompanion.insert(
+                          id: 'sync-$expId',
+                          entityType: 'expense',
+                          entityId: expId,
+                          action: 'create',
+                          payload: jsonEncode({
+                            'id': expId,
+                            'title': title,
+                            'amount': amount,
+                            'category': selectedCategory,
+                            'note': noteCtrl.text.trim(),
+                            'createdAt': selectedDate.toIso8601String(),
+                          }),
+                        ),
+                      );
+
+                      // Mise à jour immédiate du solde et des barres par catégorie
                       ref.invalidate(treasuryDataProvider);
+                      ref.read(dashboardControllerProvider.notifier).refresh();
 
                       if (!ctx.mounted) return;
                       Navigator.of(ctx).pop();
@@ -887,9 +1060,12 @@ class TreasuryScreen extends ConsumerWidget {
     required int openingFloat,
     required int cashCollected,
     required int momoCollected,
+    required int cardCollected,
     required int totalExpenses,
+    required String todayDateKey,
   }) {
     final countedCtrl = TextEditingController();
+    final closureNoteCtrl = TextEditingController();
     int difference = 0;
     bool hasEnteredCount = false;
 
@@ -947,6 +1123,8 @@ class TreasuryScreen extends ConsumerWidget {
                         _buildSummaryLine('Fond de caisse initial', '+ ${AppFormatters.formatCurrency(openingFloat)}'),
                         _buildSummaryLine('Encaissements Espèces', '+ ${AppFormatters.formatCurrency(cashCollected)}'),
                         _buildSummaryLine('Mobile Money (hors caisse cash)', AppFormatters.formatCurrency(momoCollected)),
+                        if (cardCollected > 0)
+                          _buildSummaryLine('Banque & Carte (TPE/Virement)', AppFormatters.formatCurrency(cardCollected)),
                         _buildSummaryLine('Dépenses Espèces décaissées', '- ${AppFormatters.formatCurrency(totalExpenses)}', isNegative: true),
                         const Divider(height: 16),
                         _buildSummaryLine('SOLDE THÉORIQUE ATTENDU', AppFormatters.formatCurrency(theoreticalCash), isTotal: true),
@@ -1041,11 +1219,110 @@ class TreasuryScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                   ],
 
-                  // Bouton Partager Bilan Z (WhatsApp)
+                  // Champ observation / justification
+                  TextField(
+                    controller: closureNoteCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Observation / Note de clôture (optionnel)',
+                      hintText: 'ex: Petite monnaie conservée, billet endommagé',
+                      prefixIcon: const Icon(Icons.edit_note_rounded),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 1. BOUTON ENREGISTRER LA CLÔTURE DANS SQLITE
                   ElevatedButton.icon(
+                    onPressed: () async {
+                      final countedText = countedCtrl.text.trim();
+                      if (countedText.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Veuillez saisir le montant physique compté dans la caisse.')),
+                        );
+                        return;
+                      }
+                      final countedAmt = int.tryParse(countedText) ?? 0;
+                      final diff = countedAmt - theoreticalCash;
+                      final note = closureNoteCtrl.text.trim();
+
+                      final db = ref.read(mobileDatabaseProvider);
+                      final now = DateTime.now();
+                      final closureId = 'closure-$todayDateKey-${now.millisecondsSinceEpoch}';
+
+                      // Enregistrement direct dans la table SQLite mobile_closures
+                      await db.customInsert(
+                        'INSERT OR REPLACE INTO mobile_closures (id, date_key, opening_float, cash_collected, momo_collected, card_collected, total_expenses, theoretical_cash, counted_cash, difference, note, closed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        variables: [
+                          drift.Variable.withString(closureId),
+                          drift.Variable.withString(todayDateKey),
+                          drift.Variable.withInt(openingFloat),
+                          drift.Variable.withInt(cashCollected),
+                          drift.Variable.withInt(momoCollected),
+                          drift.Variable.withInt(cardCollected),
+                          drift.Variable.withInt(totalExpenses),
+                          drift.Variable.withInt(theoreticalCash),
+                          drift.Variable.withInt(countedAmt),
+                          drift.Variable.withInt(diff),
+                          drift.Variable.withString(note),
+                          drift.Variable.withString(now.toIso8601String()),
+                        ],
+                      );
+
+                      // File d'attente de synchronisation
+                      await db.into(db.mobileSyncQueue).insert(
+                        MobileSyncQueueCompanion.insert(
+                          id: 'sync-$closureId',
+                          entityType: 'treasury_closure',
+                          entityId: closureId,
+                          action: 'create',
+                          payload: jsonEncode({
+                            'id': closureId,
+                            'dateKey': todayDateKey,
+                            'openingFloat': openingFloat,
+                            'cashCollected': cashCollected,
+                            'momoCollected': momoCollected,
+                            'cardCollected': cardCollected,
+                            'totalExpenses': totalExpenses,
+                            'theoreticalCash': theoreticalCash,
+                            'countedCash': countedAmt,
+                            'difference': diff,
+                            'note': note,
+                            'closedAt': now.toIso8601String(),
+                          }),
+                        ),
+                      );
+
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool('nmashop_closed_$todayDateKey', true);
+
+                      ref.invalidate(treasuryDataProvider);
+                      ref.read(dashboardControllerProvider.notifier).refresh();
+
+                      if (!ctx.mounted) return;
+                      Navigator.of(ctx).pop();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Clôture journalière enregistrée dans SQLite ! (Écart : ${diff >= 0 ? "+${AppFormatters.formatCurrency(diff)}" : AppFormatters.formatCurrency(diff)})'),
+                          backgroundColor: AppColors.brandEmerald,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.white),
+                    label: const Text('Valider & Enregistrer la Clôture', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandNavy,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 2. BOUTON PARTAGER LE BILAN Z (WHATSAPP)
+                  OutlinedButton.icon(
                     onPressed: () => _shareBilanZ(
                       openingFloat: openingFloat,
                       cashCollected: cashCollected,
@@ -1055,23 +1332,19 @@ class TreasuryScreen extends ConsumerWidget {
                       countedCash: countedAmt,
                       difference: difference,
                     ),
-                    icon: const Icon(Icons.share_rounded, color: Colors.white),
-                    label: const Text('Partager le Bilan Z (WhatsApp / SMS)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF25D366),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    icon: const Icon(Icons.share_rounded, color: Color(0xFF25D366)),
+                    label: const Text('Partager le Bilan Z (WhatsApp / SMS)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF25D366))),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: const BorderSide(color: Color(0xFF25D366)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                   const SizedBox(height: 8),
 
-                  OutlinedButton(
+                  TextButton(
                     onPressed: () => Navigator.of(ctx).pop(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Fermer le Point de Caisse', style: TextStyle(color: AppColors.brandNavy, fontWeight: FontWeight.bold)),
+                    child: const Text('Fermer sans clôturer', style: TextStyle(color: AppColors.textMuted)),
                   ),
                 ],
               ),
@@ -1158,6 +1431,7 @@ _Généré automatiquement par N'MaShop Mobile_
               final db = ref.read(mobileDatabaseProvider);
               await (db.delete(db.mobileExpenses)..where((tbl) => tbl.id.equals(exp.id))).go();
               ref.invalidate(treasuryDataProvider);
+              ref.read(dashboardControllerProvider.notifier).refresh();
               if (!ctx.mounted) return;
               Navigator.of(ctx).pop();
               ScaffoldMessenger.of(context).showSnackBar(
