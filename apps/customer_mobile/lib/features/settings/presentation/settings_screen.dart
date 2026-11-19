@@ -1,8 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/license/license_model.dart';
+import '../../../core/license/license_provider.dart';
+import '../../../core/license/presentation/activate_license_dialog.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/nma_mobile_header.dart';
@@ -11,6 +16,8 @@ import '../../auth/presentation/auth_landing_screen.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../../onboarding/presentation/onboarding_screen.dart';
 import '../../backup/presentation/backup_restore_screen.dart';
+import 'shop_profile_provider.dart';
+import 'widgets/edit_shop_profile_sheet.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -20,8 +27,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  String _shopName = 'Chargement...';
-  String _currency = 'GNF';
   String _serverUrl = '...';
   String _deviceId = '...';
   bool _dataSaverMode = true;
@@ -31,6 +36,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isTestingPing = false;
   String? _pingResult;
   bool _isCheckingUpdate = false;
+  bool _copiedDeviceId = false;
 
   @override
   void initState() {
@@ -40,19 +46,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final storage = ref.read(storageServiceProvider);
-    final shopName = await storage.getShopName();
-    final currency = await storage.getCurrency();
     final serverUrl = await storage.getServerUrl();
     final deviceId = await storage.getOrCreateDeviceId();
 
     if (mounted) {
       setState(() {
-        _shopName = shopName;
-        _currency = currency;
         _serverUrl = serverUrl;
         _deviceId = deviceId;
       });
     }
+  }
+
+  void _copyDeviceId(String id) {
+    Clipboard.setData(ClipboardData(text: id));
+    setState(() => _copiedDeviceId = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Identifiant unique de l\'appareil copié !'),
+        backgroundColor: AppColors.brandEmerald,
+        duration: Duration(seconds: 2),
+      ),
+    );
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _copiedDeviceId = false);
+    });
   }
 
   Future<void> _testPing() async {
@@ -208,8 +225,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Future<void> _launchWhatsAppSupport() async {
-    final message = "Bonjour Support N'MaShop, j'utilise l'application mobile (Boutique : $_shopName). J'ai besoin d'une assistance.";
+  Future<void> _launchWhatsAppSupport(String shopName) async {
+    final message = "Bonjour Support N'MaShop, j'utilise l'application mobile (Boutique : $shopName). J'ai besoin d'une assistance.";
     final uri = Uri.parse('whatsapp://send?phone=224624193069&text=${Uri.encodeComponent(message)}');
     final fallbackUri = Uri.parse('https://wa.me/224624193069?text=${Uri.encodeComponent(message)}');
     try {
@@ -227,76 +244,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
-  }
-
-  void _showEditShopDialog() {
-    final nameCtrl = TextEditingController(text: _shopName);
-    final currencyCtrl = TextEditingController(text: _currency);
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Modifier ma Boutique'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Renseignez les coordonnées de votre boutique :',
-              style: TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: nameCtrl,
-              decoration: InputDecoration(
-                labelText: 'Nom de la boutique',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.storefront_rounded),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: currencyCtrl,
-              decoration: InputDecoration(
-                labelText: 'Devise principale (ex: GNF, FCFA, USD)',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.payments_rounded),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final newName = nameCtrl.text.trim();
-              final newCurrency = currencyCtrl.text.trim();
-              Navigator.of(ctx).pop();
-              if (newName.isNotEmpty) {
-                final storage = ref.read(storageServiceProvider);
-                final currentPin = await storage.getLocalPin() ?? '1234';
-                await storage.saveLocalShop(
-                  shopName: newName,
-                  currency: newCurrency.isEmpty ? 'GNF' : newCurrency,
-                  pin: currentPin,
-                );
-                _loadSettings();
-                ref.read(dashboardControllerProvider.notifier).refresh();
-              }
-            },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                ),
-            child: const Text('Sauvegarder'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showEditServerUrlDialog() {
@@ -390,103 +337,312 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final profile = ref.watch(shopProfileProvider);
+    final license = ref.watch(licenseInfoProvider);
+    final deviceId = license.deviceId.isNotEmpty ? license.deviceId : _deviceId;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: const NmaMobileAppBar(
         title: 'Paramètres & Configuration',
-        subtitle: 'Boutique, imprimantes & synchronisation',
+        subtitle: 'Boutique, licence & synchronisation',
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Carte En-tête Boutique
+          // ── CARTE EN-TÊTE PROFIL COMMERCIAL DE LA BOUTIQUE ──
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               gradient: AppColors.heroNavyGradient,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.brandNavy.withValues(alpha: 0.2),
+                  color: AppColors.brandNavy.withValues(alpha: 0.25),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
               ],
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Avatar / Logo de la Boutique
+                    GestureDetector(
+                      onTap: () => EditShopProfileSheet.show(context),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.brandOrange.withValues(alpha: 0.6),
+                                width: 2,
+                              ),
+                              image: (profile.logoPath != null && File(profile.logoPath!).existsSync())
+                                  ? DecorationImage(
+                                      image: FileImage(File(profile.logoPath!)),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
+                            child: (profile.logoPath == null || !File(profile.logoPath!).existsSync())
+                                ? const Icon(Icons.storefront_rounded, color: AppColors.brandOrange, size: 28)
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: AppColors.brandOrange,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit_rounded, color: Colors.white, size: 11),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+
+                    // Nom et détails
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile.shopName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Gérant : ${profile.managerName}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (profile.phoneNumber.isNotEmpty) ...[
+                            const SizedBox(height: 1),
+                            Text(
+                              profile.phoneNumber,
+                              style: const TextStyle(color: Colors.white60, fontSize: 11),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    // Bouton Modifier
+                    IconButton(
+                      icon: const Icon(Icons.mode_edit_outline_rounded, color: Colors.white),
+                      tooltip: 'Modifier le profil commercial',
+                      onPressed: () => EditShopProfileSheet.show(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Badges Info (Devise + Adresse + Statut)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Devise : ${profile.currency}',
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (profile.address.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.location_on_rounded, size: 12, color: AppColors.brandOrange),
+                            const SizedBox(width: 4),
+                            Text(
+                              profile.address,
+                              style: const TextStyle(color: Colors.white70, fontSize: 11),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: license.isPosUnlocked
+                            ? AppColors.brandEmerald.withValues(alpha: 0.25)
+                            : AppColors.error.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        license.statusBadgeLabel,
+                        style: TextStyle(
+                          color: license.isPosUnlocked ? const Color(0xFF6EE7B7) : const Color(0xFFFCA5A5),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── BANNIÈRE COMPTE À REBOURS DE LICENCE DYNAMIQUE ──
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: license.isPosUnlocked
+                  ? (license.isCommercial ? AppColors.successContainer : const Color(0xFFFEF3C7))
+                  : AppColors.errorContainer,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: license.isPosUnlocked
+                    ? (license.isCommercial ? AppColors.brandEmerald.withValues(alpha: 0.3) : const Color(0xFFF59E0B))
+                    : AppColors.error.withValues(alpha: 0.3),
+              ),
+            ),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
+                    color: Colors.white,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.brandOrange.withValues(alpha: 0.5), width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.store_mall_directory_rounded, color: AppColors.brandOrange, size: 30),
+                  child: Icon(
+                    license.isPosUnlocked
+                        ? (license.isCommercial ? Icons.verified_rounded : Icons.hourglass_top_rounded)
+                        : Icons.lock_clock_rounded,
+                    color: license.isPosUnlocked
+                        ? (license.isCommercial ? AppColors.brandEmerald : const Color(0xFFD97706))
+                        : AppColors.error,
+                    size: 24,
+                  ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _shopName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
+                        license.bannerText,
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: license.isPosUnlocked
+                              ? (license.isCommercial ? AppColors.brandEmerald : const Color(0xFFB45309))
+                              : AppColors.error,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.brandEmerald.withValues(alpha: 0.25),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Licence Active',
-                              style: TextStyle(color: Color(0xFF6EE7B7), fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Devise : $_currency',
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          ),
-                        ],
+                      const SizedBox(height: 2),
+                      Text(
+                        license.isCommercial
+                            ? 'Licence commerciale officielle enregistrée'
+                            : (license.isPosUnlocked
+                                ? 'Période complète de 14 jours accordée au démarrage'
+                                : 'Activez votre clé pour déverrouiller la caisse POS'),
+                        style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
                       ),
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit_rounded, color: Colors.white70),
-                  onPressed: _showEditShopDialog,
-                  tooltip: 'Modifier les informations de la boutique',
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    ActivateLicenseDialog.show(
+                      context,
+                      deviceId: deviceId,
+                      shopName: profile.shopName,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: license.isPosUnlocked ? AppColors.brandOrange : AppColors.error,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text(
+                    license.isCommercial ? 'Détails' : 'Activer',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
 
-          // Section 1 : Mode de Fonctionnement Local & Réseau
+          // ── SECTION 1 : MODE DE FONCTIONNEMENT LOCAL & RÉSEAU ──
           _buildSectionHeader('MODE DE FONCTIONNEMENT & DONNÉES LOCALES', Icons.sd_storage_rounded),
           _buildCard(
             children: [
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.phonelink_setup_rounded, color: AppColors.brandEmerald),
-                title: const Text('Mode de fonctionnement', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                subtitle: const Text('100% Autonome Local (SQLite Drift sur ce smartphone)', style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
+                title: const Text('Moteur de Licence N\'MaShop', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: Text(
+                  '${license.bannerText} • Cryptographie HMAC-SHA256',
+                  style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+                ),
+                trailing: TextButton(
+                  onPressed: () => ActivateLicenseDialog.show(
+                    context,
+                    deviceId: deviceId,
+                    shopName: profile.shopName,
+                  ),
+                  child: const Text('Gérer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+              ),
+              const Divider(color: AppColors.border),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.storage_rounded, color: AppColors.brandNavy),
+                title: const Text('Base de Données Locale SQLite', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                subtitle: const Text('100% Autonome Local (Drift SQLite sur ce smartphone)', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.successContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text('100% Autonome', style: TextStyle(color: AppColors.brandEmerald, fontSize: 10, fontWeight: FontWeight.bold)),
+                  child: const Text('Actif', style: TextStyle(color: AppColors.brandEmerald, fontSize: 10, fontWeight: FontWeight.bold)),
                 ),
               ),
               const Divider(color: AppColors.border),
@@ -546,7 +702,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Section 2 : Alertes & Seuils Commerciaux
+          // ── SECTION 2 : ALERTES & SEUILS COMMERCIAUX ──
           _buildSectionHeader('SEUILS D\'ALERTES BUSINESS', Icons.notifications_active_outlined),
           _buildCard(
             children: [
@@ -593,7 +749,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Section 3 : Sécurité & Appareil
+          // ── SECTION 3 : SÉCURITÉ & DONNÉES ──
           _buildSectionHeader('SÉCURITÉ & DONNÉES', Icons.security_rounded),
           _buildCard(
             children: [
@@ -612,9 +768,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const Divider(color: AppColors.border),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.phone_android_rounded, color: AppColors.onSurfaceVariant),
-                title: const Text('Identifiant de cet appareil', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                subtitle: Text(_deviceId, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                leading: const Icon(Icons.phone_android_rounded, color: AppColors.brandNavy),
+                title: const Text('Machine / Device ID', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                subtitle: Text(deviceId, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.brandNavy)),
+                trailing: IconButton(
+                  icon: Icon(_copiedDeviceId ? Icons.check_rounded : Icons.copy_rounded, size: 18),
+                  color: _copiedDeviceId ? AppColors.brandEmerald : AppColors.brandOrange,
+                  tooltip: 'Copier l\'identifiant',
+                  onPressed: () => _copyDeviceId(deviceId),
+                ),
               ),
               const Divider(color: AppColors.border),
               ListTile(
@@ -640,7 +802,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Section 4 : Support & Mises à jour
+          // ── SECTION 4 : SUPPORT & MISES À JOUR ──
           _buildSectionHeader('SUPPORT & MISES À JOUR', Icons.support_agent_rounded),
           _buildCard(
             children: [
@@ -665,7 +827,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: const Text('Assistance WhatsApp Directe', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 subtitle: const Text('Échangez avec l\'équipe technique (+224 624 19 30 69)', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 trailing: const Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.brandEmerald),
-                onTap: _launchWhatsAppSupport,
+                onTap: () => _launchWhatsAppSupport(profile.shopName),
               ),
               const Divider(color: AppColors.border),
               ListTile(
@@ -680,20 +842,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Assistance & Version
+          // ── ASSISTANCE & VERSION ──
           Center(
             child: Column(
-              children: const [
-                Text(
+              children: [
+                const Text(
                   'N\'MaShop — Gestion Commerciale & Caisse POS',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.onSurfaceVariant),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Version 1.2.0 • Support : +224 624 19 30 69',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  'Version 1.2.0 • ID: $deviceId',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
               ],
             ),
           ),

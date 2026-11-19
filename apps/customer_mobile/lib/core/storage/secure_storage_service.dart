@@ -11,6 +11,12 @@ class StorageService {
   static const _keyShopId = 'nmashop_shop_id';
   static const _keyShopName = 'nmashop_shop_name';
   static const _keyCurrency = 'nmashop_currency';
+  static const _keyPhone = 'nmashop_phone';
+  static const _keyManagerName = 'nmashop_manager_name';
+  static const _keyAddress = 'nmashop_address';
+  static const _keyLogoPath = 'nmashop_logo_path';
+  static const _keyInstallationDate = 'nmashop_installation_date';
+  static const _keyLicenseKey = 'nmashop_license_key';
   static const _keyServerUrl = 'nmashop_server_url';
   static const _keyLastSync = 'nmashop_last_sync';
 
@@ -116,6 +122,85 @@ class StorageService {
     return prefs.getString(_keyCurrency) ?? 'GNF';
   }
 
+  Future<String> getPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyPhone) ?? '';
+  }
+
+  Future<String> getManagerName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyManagerName) ?? 'Administrateur';
+  }
+
+  Future<String> getAddress() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyAddress) ?? '';
+  }
+
+  Future<String?> getLogoPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyLogoPath);
+  }
+
+  Future<void> saveShopProfile({
+    String? shopName,
+    String? phone,
+    String? managerName,
+    String? address,
+    String? currency,
+    String? logoPath,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (shopName != null) await prefs.setString(_keyShopName, shopName);
+    if (phone != null) await prefs.setString(_keyPhone, phone);
+    if (managerName != null) await prefs.setString(_keyManagerName, managerName);
+    if (address != null) await prefs.setString(_keyAddress, address);
+    if (currency != null) await prefs.setString(_keyCurrency, currency);
+    if (logoPath != null) await prefs.setString(_keyLogoPath, logoPath);
+  }
+
+  Future<DateTime> getOrCreateInstallationDate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final str = prefs.getString(_keyInstallationDate);
+    if (str != null) {
+      final parsed = DateTime.tryParse(str);
+      if (parsed != null) return parsed;
+    }
+    final now = DateTime.now();
+    await prefs.setString(_keyInstallationDate, now.toIso8601String());
+    return now;
+  }
+
+  Future<void> setInstallationDate(DateTime date) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyInstallationDate, date.toIso8601String());
+  }
+
+  Future<String?> getLicenseKey() async {
+    try {
+      final key = await _secureStorage.read(key: _keyLicenseKey);
+      if (key != null && key.isNotEmpty) return key;
+    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyLicenseKey);
+  }
+
+  Future<void> saveLicenseKey(String key) async {
+    try {
+      await _secureStorage.write(key: _keyLicenseKey, value: key);
+    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyLicenseKey, key);
+  }
+
+  Future<void> clearLicenseKey() async {
+    try {
+      await _secureStorage.delete(key: _keyLicenseKey);
+    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyLicenseKey);
+  }
+
   Future<bool> isLoggedIn() async {
     try {
       final token = await getAccessToken();
@@ -149,6 +234,10 @@ class StorageService {
     required String shopName,
     required String currency,
     required String pin,
+    String? phone,
+    String? managerName,
+    String? address,
+    String? logoPath,
   }) async {
     final shopId = 'mob-shop-${DateTime.now().millisecondsSinceEpoch}';
     final accessToken = 'local-access-token-${DateTime.now().millisecondsSinceEpoch}';
@@ -163,6 +252,14 @@ class StorageService {
       shopName: shopName,
       currency: currency,
       serverUrl: serverUrl,
+    );
+    await saveShopProfile(
+      shopName: shopName,
+      phone: phone,
+      managerName: managerName,
+      address: address,
+      currency: currency,
+      logoPath: logoPath,
     );
   }
 
@@ -187,6 +284,10 @@ class StorageService {
     await prefs.remove(_keyShopId);
     await prefs.remove(_keyShopName);
     await prefs.remove(_keyCurrency);
+    await prefs.remove(_keyPhone);
+    await prefs.remove(_keyManagerName);
+    await prefs.remove(_keyAddress);
+    await prefs.remove(_keyLogoPath);
     await prefs.remove(_keyPin);
     await prefs.remove(_keyLastSync);
   }
