@@ -82,13 +82,7 @@ jobs:
           cd apps/customer_mobile
           [ -f android/gradlew ] && chmod +x android/gradlew || true
           export LINT_PRINT_STACKTRACE=true
-          flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation -v || {
-            echo "### ❌ Erreur Gradle détaillée" >> $GITHUB_STEP_SUMMARY
-            echo '```text' >> $GITHUB_STEP_SUMMARY
-            cd android && ./gradlew assembleRelease --stacktrace 2>&1 | tail -n 80 >> $GITHUB_STEP_SUMMARY || true
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            exit 1
-          }
+          flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation
 
       - name: 📦 Préparer le fichier APK
         run: |
