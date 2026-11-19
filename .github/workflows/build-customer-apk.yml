@@ -20,7 +20,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
-          cache: false
+          cache: true
 
       - name: 📦 Dépendances
         run: |
@@ -62,34 +62,17 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: 🤖 Installer et configurer Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platforms;android-35
-            build-tools;35.0.0
-            platform-tools
-
       - name: 🐦 Installer Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
-          cache: false
+          cache: true
 
       - name: 📦 Dépendances Customer Mobile
         run: |
           cd apps/customer_mobile
           flutter clean
           flutter pub get
-
-      - name: 📝 Configurer local.properties
-        run: |
-          mkdir -p apps/customer_mobile/android
-          echo "sdk.dir=$ANDROID_HOME" > apps/customer_mobile/android/local.properties
-          if [ -n "$FLUTTER_ROOT" ]; then
-            echo "flutter.sdk=$FLUTTER_ROOT" >> apps/customer_mobile/android/local.properties
-          fi
-          cat apps/customer_mobile/android/local.properties
 
       - name: 🤖 Accepter les licences Android
         run: yes | flutter doctor --android-licenses || true
