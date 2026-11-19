@@ -206,3 +206,13 @@ final mobileDatabaseProvider = Provider<MobileDatabase>((ref) {
   ref.onDispose(() => db.close());
   return db;
 });
+
+// ── Extensions de compatibilité imagePath / imageUrl ──
+extension MobileProductImageExt on MobileProduct {
+  String? get imagePath => imageUrl;
+}
+
+extension MobileProductsCompanionImageExt on MobileProductsCompanion {
+  Value<String?> get imagePath => imageUrl;
+}
+

@@ -9,7 +9,7 @@ class MobileImagePicker {
   /// Ouvre la galerie photo ou l'appareil photo et copie l'image dans le dossier local de l'application.
   static Future<String?> pickAndSaveImage({
     required ImageSource source,
-    required String folderName,
+    String folderName = 'product_images',
   }) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
@@ -35,4 +35,26 @@ class MobileImagePicker {
       return null;
     }
   }
+
+  static Future<String?> pickFromCamera({String folderName = 'product_images'}) =>
+      pickAndSaveImage(source: ImageSource.camera, folderName: folderName);
+
+  static Future<String?> pickFromGallery({String folderName = 'product_images'}) =>
+      pickAndSaveImage(source: ImageSource.gallery, folderName: folderName);
 }
+
+/// Helper pour la capture et sélection d'images (Appareil photo / Galerie)
+class ImagePickerHelper {
+  static Future<String?> pickAndSaveImage({
+    required ImageSource source,
+    String folderName = 'product_images',
+  }) =>
+      MobileImagePicker.pickAndSaveImage(source: source, folderName: folderName);
+
+  static Future<String?> pickFromCamera({String folderName = 'product_images'}) =>
+      MobileImagePicker.pickFromCamera(folderName: folderName);
+
+  static Future<String?> pickFromGallery({String folderName = 'product_images'}) =>
+      MobileImagePicker.pickFromGallery(folderName: folderName);
+}
+

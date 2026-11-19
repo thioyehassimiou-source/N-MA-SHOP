@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/image_picker_helper.dart';
 import '../../../core/widgets/nma_mobile_header.dart';
+import '../../dashboard/presentation/dashboard_controller.dart';
 
 final stockFilterProvider = StateProvider<String>((ref) => 'all'); // 'all', 'low', 'out'
 final stockSearchProvider = StateProvider<String>((ref) => '');
@@ -15,63 +16,8 @@ final stockSearchProvider = StateProvider<String>((ref) => '');
 final stockDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final db = ref.watch(mobileDatabaseProvider);
 
-  // Charger les produits depuis la base SQLite locale (MobileDatabase)
-  List<MobileProduct> products = await db.select(db.mobileProducts).get();
-
-  // Si la base est totalement vide au premier démarrage, insérer 2 échantillons par défaut
-  if (products.isEmpty) {
-    final now = DateTime.now();
-    final sample1 = MobileProductsCompanion.insert(
-      id: 'prod-${now.millisecondsSinceEpoch}-1',
-      name: 'Jus de Mangue 1L',
-      barcode: const drift.Value('61510001002'),
-      reference: const drift.Value('REF-JUS-01'),
-      unit: const drift.Value('pièce'),
-      purchasePrice: const drift.Value(15000),
-      salePrice: const drift.Value(20000),
-      stockQuantity: const drift.Value(20),
-      lowStockThreshold: const drift.Value(5),
-    );
-    final sample2 = MobileProductsCompanion.insert(
-      id: 'prod-${now.millisecondsSinceEpoch}-2',
-      name: 'Sac de Riz Parfumé 25kg',
-      barcode: const drift.Value('61510001003'),
-      reference: const drift.Value('REF-RIZ-25'),
-      unit: const drift.Value('Sac'),
-      purchasePrice: const drift.Value(180000),
-      salePrice: const drift.Value(210000),
-      stockQuantity: const drift.Value(3),
-      lowStockThreshold: const drift.Value(5),
-    );
-    await db.into(db.mobileProducts).insert(sample1);
-    await db.into(db.mobileProducts).insert(sample2);
-
-    // Enregistrer les mouvements initiaux
-    await db.into(db.mobileStockMovements).insert(
-      MobileStockMovementsCompanion.insert(
-        id: 'mvt-init-1',
-        productId: 'prod-${now.millisecondsSinceEpoch}-1',
-        type: 0,
-        quantity: 20,
-        unitCost: const drift.Value(15000),
-        reason: const drift.Value('Stock initial'),
-        date: drift.Value(now),
-      ),
-    );
-    await db.into(db.mobileStockMovements).insert(
-      MobileStockMovementsCompanion.insert(
-        id: 'mvt-init-2',
-        productId: 'prod-${now.millisecondsSinceEpoch}-2',
-        type: 0,
-        quantity: 3,
-        unitCost: const drift.Value(180000),
-        reason: const drift.Value('Stock initial'),
-        date: drift.Value(now),
-      ),
-    );
-
-    products = await db.select(db.mobileProducts).get();
-  }
+  // Charger les produits réels depuis la base SQLite locale (MobileDatabase)
+  final products = await db.select(db.mobileProducts).get();
 
   num totalValue = 0;
   int lowCount = 0;
@@ -98,6 +44,7 @@ final stockDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
       'quantity': qty,
       'lowStockThreshold': threshold,
       'imageUrl': p.imageUrl,
+      'imagePath': p.imageUrl,
       'status': status,
     };
   }).toList();
@@ -236,75 +183,182 @@ class StockScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    if (totalProducts > 0) ...[
+                      const SizedBox(height: 10),
 
-                    // Champ de recherche
-                    TextField(
-                      onChanged: (val) => ref.read(stockSearchProvider.notifier).state = val,
-                      decoration: InputDecoration(
-                        hintText: 'Rechercher un produit, code-barres...',
-                        hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-                        prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textMuted),
-                        suffixIcon: search.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 18, color: AppColors.textMuted),
-                                onPressed: () => ref.read(stockSearchProvider.notifier).state = '',
-                              )
-                            : null,
-                        filled: true,
-                        fillColor: AppColors.surfaceVariant,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+                      // Champ de recherche
+                      TextField(
+                        onChanged: (val) => ref.read(stockSearchProvider.notifier).state = val,
+                        decoration: InputDecoration(
+                          hintText: 'Rechercher un produit, code-barres...',
+                          hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+                          prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textMuted),
+                          suffixIcon: search.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18, color: AppColors.textMuted),
+                                  onPressed: () => ref.read(stockSearchProvider.notifier).state = '',
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: AppColors.surfaceVariant,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
+                      const SizedBox(height: 10),
 
-                    // Filtres rapides
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildFilterChip(ref, 'Tous ($totalProducts)', 'all', filter),
-                          const SizedBox(width: 8),
-                          _buildFilterChip(ref, 'Stock bas ($lowStockCount)', 'low', filter, color: AppColors.warning),
-                          const SizedBox(width: 8),
-                          _buildFilterChip(ref, 'Ruptures ($outOfStockCount)', 'out', filter, color: AppColors.error),
-                        ],
+                      // Filtres rapides
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildFilterChip(ref, 'Tous ($totalProducts)', 'all', filter),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(ref, 'Stock bas ($lowStockCount)', 'low', filter, color: AppColors.warning),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(ref, 'Ruptures ($outOfStockCount)', 'out', filter, color: AppColors.error),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
 
-              // Liste des articles
+              // Contenu principal : liste ou état vide
               Expanded(
-                child: filteredItems.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.inventory_rounded, size: 48, color: AppColors.textMuted),
-                            SizedBox(height: 12),
-                            Text('Aucun produit trouvé', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 14)),
-                          ],
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-                        itemCount: filteredItems.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final item = filteredItems[index];
-                          return _buildProductCard(context, ref, item);
-                        },
-                      ),
+                child: totalProducts == 0
+                    ? _buildEmptyStockBanner(context, ref)
+                    : filteredItems.isEmpty
+                        ? _buildNoSearchResultState(ref)
+                        : ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                            itemCount: filteredItems.length,
+                            separatorBuilder: (_, _) => const SizedBox(height: 10),
+                            itemBuilder: (context, index) {
+                              final item = filteredItems[index];
+                              return _buildProductCard(context, ref, item);
+                            },
+                          ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildEmptyStockBanner(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.outline.withValues(alpha: 0.6)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  color: AppColors.brandNavy.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.inventory_2_outlined,
+                  size: 38,
+                  color: AppColors.brandNavy,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Catalogue de stock vide',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.brandNavy,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Votre boutique ne contient encore aucun article.\nAjoutez votre premier produit avec photo (caméra ou galerie), vos prix et la quantité initiale.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.onSurfaceVariant,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => _showAddProductModal(context, ref),
+                icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                label: const Text(
+                  'Ajouter mon premier article',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brandNavy,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoSearchResultState(WidgetRef ref) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.search_off_rounded, size: 48, color: AppColors.textMuted),
+            const SizedBox(height: 12),
+            const Text(
+              'Aucun produit correspondant',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.onSurface),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Modifiez votre recherche ou réinitialisez les filtres.',
+              style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12.5),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () {
+                ref.read(stockSearchProvider.notifier).state = '';
+                ref.read(stockFilterProvider.notifier).state = 'all';
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text('Réinitialiser les filtres'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -337,7 +391,7 @@ class StockScreen extends ConsumerWidget {
     final price = (item['unitPrice'] as num?) ?? 0;
     final unit = item['unit'] as String? ?? 'pièce';
     final status = item['status'] as String? ?? 'ok';
-    final imageUrl = item['imageUrl'] as String?;
+    final imageUrl = (item['imagePath'] as String?) ?? (item['imageUrl'] as String?);
 
     Color statusBg;
     Color statusFg;
@@ -357,28 +411,13 @@ class StockScreen extends ConsumerWidget {
       statusText = '$qty $unit(s)';
     }
 
-    Widget leadImage;
-    if (imageUrl != null && imageUrl.isNotEmpty && File(imageUrl).existsSync()) {
-      leadImage = ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.file(
-          File(imageUrl),
-          width: 48,
-          height: 48,
-          fit: BoxFit.cover,
-        ),
-      );
-    } else {
-      leadImage = Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: AppColors.brandNavy.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Icon(Icons.inventory_2_rounded, color: AppColors.brandNavy, size: 24),
-      );
-    }
+    final leadImage = ProductImageThumbnail(
+      imagePath: imageUrl,
+      width: 48,
+      height: 48,
+      borderRadius: 10,
+      iconSize: 24,
+    );
 
     return Material(
       color: Colors.transparent,
@@ -501,26 +540,13 @@ class StockScreen extends ConsumerWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (product.imageUrl != null && product.imageUrl!.isNotEmpty && File(product.imageUrl!).existsSync())
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        File(product.imageUrl!),
-                        width: 54,
-                        height: 54,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  else
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: AppColors.brandNavy.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.inventory_2_rounded, color: AppColors.brandNavy, size: 28),
-                    ),
+                  ProductImageThumbnail(
+                    imagePath: product.imagePath,
+                    width: 54,
+                    height: 54,
+                    borderRadius: 12,
+                    iconSize: 28,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -954,23 +980,48 @@ class StockScreen extends ConsumerWidget {
 
                   ElevatedButton(
                     onPressed: () async {
+                      final enteredQty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+                      if ((adjustmentType == 0 || adjustmentType == 1) && enteredQty <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Veuillez saisir une quantité supérieure à 0'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                        return;
+                      }
+                      if (adjustmentType == 2 && enteredQty < 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('La quantité physique ne peut pas être négative'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                        return;
+                      }
+
                       final now = DateTime.now();
                       final db = ref.read(mobileDatabaseProvider);
 
                       int movementQty = enteredQty;
                       int mvtType = 2; // Adjustment
+                      String defaultReason = 'Ajustement manuel';
+
                       if (adjustmentType == 0) {
                         movementQty = enteredQty;
-                        mvtType = 0; // Purchase/Entrée
+                        mvtType = 0; // Purchase / Approvisionnement
+                        defaultReason = 'Réapprovisionnement marchandise';
                       } else if (adjustmentType == 1) {
                         movementQty = -enteredQty;
-                        mvtType = 2; // Adjustment/Sortie
+                        mvtType = 2; // Adjustment / Sortie
+                        defaultReason = 'Casse / Dépréciation';
                       } else if (adjustmentType == 2) {
                         movementQty = resultingStock - product.stockQuantity;
-                        mvtType = 2;
+                        mvtType = 2; // Adjustment / Inventaire
+                        defaultReason = 'Inventaire physique magasin';
                       }
 
-                      // 1. Mettre à jour le stock
+                      // 1. Mettre à jour le stock dans SQLite
                       await (db.update(db.mobileProducts)..where((tbl) => tbl.id.equals(product.id))).write(
                         MobileProductsCompanion(stockQuantity: drift.Value(resultingStock)),
                       );
@@ -978,17 +1029,21 @@ class StockScreen extends ConsumerWidget {
                       // 2. Tracer dans MobileStockMovements
                       await db.into(db.mobileStockMovements).insert(
                         MobileStockMovementsCompanion.insert(
-                          id: 'mvt-manual-${now.millisecondsSinceEpoch}',
+                          id: 'mvt-adj-${now.microsecondsSinceEpoch}',
                           productId: product.id,
                           type: mvtType,
                           quantity: movementQty,
                           unitCost: drift.Value(product.purchasePrice),
-                          reason: drift.Value(reasonCtrl.text.trim().isEmpty ? 'Ajustement manuel' : reasonCtrl.text.trim()),
+                          reason: drift.Value(reasonCtrl.text.trim().isEmpty ? defaultReason : reasonCtrl.text.trim()),
                           date: drift.Value(now),
                         ),
                       );
 
                       ref.invalidate(stockDataProvider);
+                      try {
+                        ref.read(dashboardControllerProvider.notifier).refresh();
+                      } catch (_) {}
+
                       if (!ctx.mounted) return;
                       Navigator.of(ctx).pop();
 
@@ -1082,7 +1137,7 @@ class StockScreen extends ConsumerWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setStateModal) {
           Future<void> pickImage(ImageSource source) async {
-            final path = await MobileImagePicker.pickAndSaveImage(
+            final path = await ImagePickerHelper.pickAndSaveImage(
               source: source,
               folderName: 'product_images',
             );
@@ -1138,49 +1193,46 @@ class StockScreen extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        if (selectedImagePath != null && File(selectedImagePath!).existsSync())
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.file(
-                              File(selectedImagePath!),
-                              width: 52,
-                              height: 52,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        else
-                          Container(
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              color: AppColors.brandNavy.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.add_a_photo_outlined, color: AppColors.brandNavy),
-                          ),
+                        ProductImageThumbnail(
+                          imagePath: selectedImagePath,
+                          width: 54,
+                          height: 54,
+                          borderRadius: 12,
+                          iconSize: 26,
+                          fallbackIcon: Icons.add_a_photo_outlined,
+                        ),
                         const SizedBox(width: 14),
-                        Row(
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: () => pickImage(ImageSource.camera),
-                              icon: const Icon(Icons.camera_alt_rounded, size: 14),
-                              label: const Text('Photo', style: TextStyle(fontSize: 11)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.brandNavy,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        Expanded(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: () => pickImage(ImageSource.camera),
+                                icon: const Icon(Icons.camera_alt_rounded, size: 14),
+                                label: const Text('Photo', style: TextStyle(fontSize: 11)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.brandNavy,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            OutlinedButton.icon(
-                              onPressed: () => pickImage(ImageSource.gallery),
-                              icon: const Icon(Icons.photo_library_rounded, size: 14),
-                              label: const Text('Galerie', style: TextStyle(fontSize: 11)),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              OutlinedButton.icon(
+                                onPressed: () => pickImage(ImageSource.gallery),
+                                icon: const Icon(Icons.photo_library_rounded, size: 14),
+                                label: const Text('Galerie', style: TextStyle(fontSize: 11)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                ),
                               ),
-                            ),
-                          ],
+                              if (selectedImagePath != null && selectedImagePath!.isNotEmpty)
+                                IconButton(
+                                  onPressed: () => setStateModal(() => selectedImagePath = null),
+                                  icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                                  tooltip: 'Supprimer la photo',
+                                ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -1293,6 +1345,9 @@ class StockScreen extends ConsumerWidget {
                       );
 
                       ref.invalidate(stockDataProvider);
+                      try {
+                        ref.read(dashboardControllerProvider.notifier).refresh();
+                      } catch (_) {}
                       if (!ctx.mounted) return;
                       Navigator.of(ctx).pop();
 
@@ -1350,6 +1405,9 @@ class StockScreen extends ConsumerWidget {
               await (db.delete(db.mobileProducts)..where((tbl) => tbl.id.equals(product.id))).go();
 
               ref.invalidate(stockDataProvider);
+              try {
+                ref.read(dashboardControllerProvider.notifier).refresh();
+              } catch (_) {}
               if (!ctx.mounted) return;
               Navigator.of(ctx).pop(); // Ferme confirmation
               if (context.mounted) {
@@ -1388,7 +1446,7 @@ class StockScreen extends ConsumerWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setStateModal) {
           Future<void> pickImage(ImageSource source) async {
-            final path = await MobileImagePicker.pickAndSaveImage(
+            final path = await ImagePickerHelper.pickAndSaveImage(
               source: source,
               folderName: 'product_images',
             );
@@ -1444,49 +1502,46 @@ class StockScreen extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        if (selectedImagePath != null && File(selectedImagePath!).existsSync())
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.file(
-                              File(selectedImagePath!),
-                              width: 52,
-                              height: 52,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        else
-                          Container(
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              color: AppColors.brandNavy.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.add_a_photo_outlined, color: AppColors.brandNavy),
-                          ),
+                        ProductImageThumbnail(
+                          imagePath: selectedImagePath,
+                          width: 54,
+                          height: 54,
+                          borderRadius: 12,
+                          iconSize: 26,
+                          fallbackIcon: Icons.add_a_photo_outlined,
+                        ),
                         const SizedBox(width: 14),
-                        Row(
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: () => pickImage(ImageSource.camera),
-                              icon: const Icon(Icons.camera_alt_rounded, size: 14),
-                              label: const Text('Photo', style: TextStyle(fontSize: 11)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.brandNavy,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        Expanded(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: () => pickImage(ImageSource.camera),
+                                icon: const Icon(Icons.camera_alt_rounded, size: 14),
+                                label: const Text('Photo', style: TextStyle(fontSize: 11)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.brandNavy,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            OutlinedButton.icon(
-                              onPressed: () => pickImage(ImageSource.gallery),
-                              icon: const Icon(Icons.photo_library_rounded, size: 14),
-                              label: const Text('Galerie', style: TextStyle(fontSize: 11)),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              OutlinedButton.icon(
+                                onPressed: () => pickImage(ImageSource.gallery),
+                                icon: const Icon(Icons.photo_library_rounded, size: 14),
+                                label: const Text('Galerie', style: TextStyle(fontSize: 11)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                ),
                               ),
-                            ),
-                          ],
+                              if (selectedImagePath != null && selectedImagePath!.isNotEmpty)
+                                IconButton(
+                                  onPressed: () => setStateModal(() => selectedImagePath = null),
+                                  icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                                  tooltip: 'Supprimer la photo',
+                                ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -1641,7 +1696,7 @@ class StockScreen extends ConsumerWidget {
                       if (qty > 0) {
                         await db.into(db.mobileStockMovements).insert(
                           MobileStockMovementsCompanion.insert(
-                            id: 'mvt-init-${now.millisecondsSinceEpoch}',
+                            id: 'mvt-init-${now.microsecondsSinceEpoch}',
                             productId: prodId,
                             type: 0, // Entrée / Stock initial
                             quantity: qty,
@@ -1653,6 +1708,10 @@ class StockScreen extends ConsumerWidget {
                       }
 
                       ref.invalidate(stockDataProvider);
+                      try {
+                        ref.read(dashboardControllerProvider.notifier).refresh();
+                      } catch (_) {}
+
                       if (!ctx.mounted) return;
                       Navigator.of(ctx).pop();
 
@@ -1680,3 +1739,65 @@ class StockScreen extends ConsumerWidget {
     );
   }
 }
+
+/// Widget affichant la photo réelle d'un produit (Camera / Galerie)
+/// avec un repli (fallback) propre vers une icône si aucune photo n'existe ou si le fichier ne peut être chargé.
+class ProductImageThumbnail extends StatelessWidget {
+  final String? imagePath;
+  final double width;
+  final double height;
+  final double borderRadius;
+  final double iconSize;
+  final IconData fallbackIcon;
+  final Color? backgroundColor;
+
+  const ProductImageThumbnail({
+    super.key,
+    required this.imagePath,
+    this.width = 48,
+    this.height = 48,
+    this.borderRadius = 10,
+    this.iconSize = 24,
+    this.fallbackIcon = Icons.inventory_2_rounded,
+    this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rawPath = imagePath?.trim();
+    if (rawPath != null && rawPath.isNotEmpty) {
+      final cleanPath = rawPath.startsWith('file://') ? rawPath.substring(7) : rawPath;
+      final file = File(cleanPath);
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Image.file(
+            file,
+            width: width,
+            height: height,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => _buildFallback(),
+          ),
+        ),
+      );
+    }
+    return _buildFallback();
+  }
+
+  Widget _buildFallback() {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: backgroundColor ?? AppColors.brandNavy.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+      child: Center(
+        child: Icon(fallbackIcon, color: AppColors.brandNavy, size: iconSize),
+      ),
+    );
+  }
+}
+
