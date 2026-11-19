@@ -20,6 +20,9 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
   final _shopFormKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
+  final _managerController = TextEditingController(text: 'Administrateur');
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
   final _currencyController = TextEditingController(text: 'GNF');
   final _deviceNameController = TextEditingController(text: 'Terminal N\'MaShop');
   final _licenseKeyController = TextEditingController();
@@ -32,6 +35,9 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _managerController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
     _currencyController.dispose();
     _deviceNameController.dispose();
     _licenseKeyController.dispose();
@@ -81,6 +87,10 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
           currency: _currencyController.text.trim().isEmpty ? 'GNF' : _currencyController.text.trim(),
           pin: _pin.trim(),
           deviceName: _deviceNameController.text.trim().isEmpty ? 'Terminal N\'MaShop' : _deviceNameController.text.trim(),
+          phone: _phoneController.text.trim(),
+          managerName: _managerController.text.trim(),
+          address: _addressController.text.trim(),
+          licenseKey: _useTrialMode ? null : _licenseKeyController.text.trim(),
         );
 
     if (!mounted) return;
@@ -358,6 +368,30 @@ class _RegisterShopScreenState extends ConsumerState<RegisterShopScreen> {
                   textCapitalization: TextCapitalization.words,
                   decoration: _inputDeco('Ex: Boutique Diallo & Frères', Icons.storefront_rounded),
                   validator: (v) => v == null || v.trim().isEmpty ? 'Le nom de la boutique est obligatoire' : null,
+                ),
+                const SizedBox(height: 14),
+
+                _buildLabel('Nom du Gérant / Responsable'),
+                TextFormField(
+                  controller: _managerController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: _inputDeco('Ex: Mamadou Diallo', Icons.person_outline_rounded),
+                ),
+                const SizedBox(height: 14),
+
+                _buildLabel('Numéro de téléphone'),
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: _inputDeco('Ex: +224 624 00 00 00', Icons.phone_rounded),
+                ),
+                const SizedBox(height: 14),
+
+                _buildLabel('Adresse / Marché'),
+                TextFormField(
+                  controller: _addressController,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: _inputDeco('Ex: Marché Madina, Conakry', Icons.location_on_outlined),
                 ),
                 const SizedBox(height: 14),
 

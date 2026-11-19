@@ -7,6 +7,7 @@ import '../../../core/widgets/nma_mobile_header.dart';
 import '../../alerts/presentation/alerts_screen.dart';
 import '../../backup/presentation/backup_restore_screen.dart';
 import '../../receivables/presentation/receivables_screen.dart';
+import '../../settings/presentation/shop_profile_provider.dart';
 import '../../suppliers/presentation/suppliers_screen.dart';
 import 'dashboard_controller.dart';
 import 'widgets/kpi_card.dart';
@@ -42,7 +43,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final cardRatio = totalSales > 0 ? (card / totalSales).clamp(0.0, 1.0) : 0.0;
     final creditRatio = totalSales > 0 ? (credit / totalSales).clamp(0.0, 1.0) : 0.0;
 
-    final shopName = data?.shop.name ?? 'Ma Boutique';
+    final profile = ref.watch(shopProfileProvider);
+    final shopName = profile.shopName.isNotEmpty ? profile.shopName : (data?.shop.name ?? 'Ma Boutique');
 
     return Scaffold(
       backgroundColor: AppColors.background,

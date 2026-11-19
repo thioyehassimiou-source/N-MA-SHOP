@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/database/mobile_database.dart';
+import '../../../core/license/license_provider.dart';
+import '../../../core/license/presentation/pos_locked_screen.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/nma_mobile_header.dart';
@@ -99,6 +101,11 @@ class SalesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final license = ref.watch(licenseInfoProvider);
+    if (!license.isPosUnlocked) {
+      return const PosLockedActivationScreen();
+    }
+
     final period = ref.watch(salesPeriodProvider);
     final search = ref.watch(salesSearchProvider);
     final salesAsync = ref.watch(salesDataProvider);
