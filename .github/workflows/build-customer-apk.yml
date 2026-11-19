@@ -1,4 +1,4 @@
-name: 🛍️ Build Customer Mobile (APK Android Commerçant)
+name: 📱 Build N-MA SHOP Mobile (APK Android & Web Release)
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-web:
-    name: 🌐 Compiler Web Mobile Commerçant
+    name: 🌐 Compiler Web Mobile
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout du code
@@ -20,7 +20,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
-          cache: true
+          cache: false
 
       - name: 📦 Dépendances
         run: |
@@ -41,7 +41,7 @@ jobs:
           retention-days: 30
 
   build-apk:
-    name: 📱 Compiler l'APK Android Customer Mobile
+    name: 🤖 Compiler APK Android Release
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout du code
@@ -62,11 +62,19 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
+      - name: 🤖 Installer et configurer Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-35
+            build-tools;35.0.0
+            platform-tools
+
       - name: 🐦 Installer Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
-          cache: true
+          cache: false
 
       - name: 📦 Dépendances Customer Mobile
         run: |
@@ -74,24 +82,23 @@ jobs:
           flutter clean
           flutter pub get
 
+      - name: 📝 Configurer local.properties
+        run: |
+          mkdir -p apps/customer_mobile/android
+          echo "sdk.dir=$ANDROID_HOME" > apps/customer_mobile/android/local.properties
+          if [ -n "$FLUTTER_ROOT" ]; then
+            echo "flutter.sdk=$FLUTTER_ROOT" >> apps/customer_mobile/android/local.properties
+          fi
+          cat apps/customer_mobile/android/local.properties
+
       - name: 🤖 Accepter les licences Android
         run: yes | flutter doctor --android-licenses || true
-
-      - name: 📲 Installer Android SDK 35
-        run: |
-          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/tools/bin:$PATH"
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" || true
 
       - name: 🔨 Compiler APK Release
         run: |
           cd apps/customer_mobile
           [ -f android/gradlew ] && chmod +x android/gradlew || true
-          flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation || {
-            echo "::error::Échec de Flutter build. Affichage des détails Gradle..."
-            cd android && ./gradlew assembleRelease --stacktrace --info
-            exit 1
-          }
+          flutter build apk --release --build-name=${{ env.APP_VERSION }} --android-skip-build-dependency-validation
 
       - name: 📦 Préparer le fichier APK
         run: |
