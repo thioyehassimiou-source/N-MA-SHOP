@@ -6,6 +6,8 @@ import '../../../core/database/mobile_database.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/nma_mobile_header.dart';
+import '../../alerts/presentation/alerts_screen.dart';
+import '../../dashboard/presentation/dashboard_controller.dart';
 import '../../receivables/presentation/receivables_screen.dart';
 import '../../stock/presentation/stock_screen.dart';
 import '../../treasury/presentation/treasury_screen.dart';
@@ -17,43 +19,19 @@ final salesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
   final db = ref.watch(mobileDatabaseProvider);
   final period = ref.watch(salesPeriodProvider);
 
-  List<MobileSale> sales = await db.select(db.mobileSales).get();
-
-  // Si aucune vente en BDD locale au premier démarrage, insérer 2 échantillons par défaut
-  if (sales.isEmpty) {
-    final now = DateTime.now();
-    final s1 = MobileSalesCompanion.insert(
-      id: 'sale-${now.millisecondsSinceEpoch}-1',
-      reference: 'FAC-${now.millisecondsSinceEpoch % 10000}',
-      date: drift.Value(now),
-      total: const drift.Value(40000),
-      amountPaid: const drift.Value(40000),
-      paymentMethod: const drift.Value(0), // Espèces
-      sellerName: const drift.Value('Administrateur'),
-    );
-    final s2 = MobileSalesCompanion.insert(
-      id: 'sale-${now.millisecondsSinceEpoch}-2',
-      reference: 'FAC-${(now.millisecondsSinceEpoch + 1) % 10000}',
-      date: drift.Value(now.subtract(const Duration(hours: 3))),
-      total: const drift.Value(210000),
-      amountPaid: const drift.Value(210000),
-      paymentMethod: const drift.Value(1), // Orange Money / Wave
-      sellerName: const drift.Value('Administrateur'),
-    );
-    await db.into(db.mobileSales).insert(s1);
-    await db.into(db.mobileSales).insert(s2);
-    sales = await db.select(db.mobileSales).get();
-  }
+  final sales = await db.select(db.mobileSales).get();
 
   final now = DateTime.now();
   DateTime cutoff = DateTime(now.year, now.month, now.day);
   if (period == '7d') {
-    cutoff = now.subtract(const Duration(days: 7));
+    cutoff = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 7));
   } else if (period == '30d') {
-    cutoff = now.subtract(const Duration(days: 30));
+    cutoff = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30));
   }
 
   final filteredSales = sales.where((s) => s.date.isAfter(cutoff) || s.date.isAtSameMomentAs(cutoff)).toList();
+  // Tri antéchronologique (les ventes les plus récentes en premier)
+  filteredSales.sort((a, b) => b.date.compareTo(a.date));
 
   int totalAmt = 0;
   int cash = 0;
@@ -79,7 +57,7 @@ final salesDataProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
     }
   }
 
-  final recentList = filteredSales.reversed.map((s) {
+  final recentList = filteredSales.map((s) {
     String methodLabel = 'Espèces';
     if (s.paymentMethod == 1) methodLabel = 'Orange Money';
     if (s.paymentMethod == 2) methodLabel = 'Wave';
@@ -223,7 +201,14 @@ class SalesScreen extends ConsumerWidget {
                   if (query.isEmpty) return true;
                   final refCode = (s['reference'] as String? ?? '').toLowerCase();
                   final cust = (s['customerName'] as String? ?? '').toLowerCase();
-                  return refCode.contains(query) || cust.contains(query);
+                  final note = (s['note'] as String? ?? '').toLowerCase();
+                  final seller = (s['sellerName'] as String? ?? '').toLowerCase();
+                  final method = (s['paymentMethod'] as String? ?? '').toLowerCase();
+                  return refCode.contains(query) ||
+                      cust.contains(query) ||
+                      note.contains(query) ||
+                      seller.contains(query) ||
+                      method.contains(query);
                 }).toList();
 
                 return ListView(
@@ -305,16 +290,70 @@ class SalesScreen extends ConsumerWidget {
 
                     if (filteredSales.isEmpty)
                       Container(
-                        padding: const EdgeInsets.all(32),
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
                           borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.outline.withValues(alpha: 0.6)),
                         ),
                         child: Column(
-                          children: const [
-                            Icon(Icons.receipt_long_outlined, size: 40, color: AppColors.textMuted),
-                            SizedBox(height: 8),
-                            Text('Aucune vente trouvée', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13)),
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: AppColors.brandOrange.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.point_of_sale_rounded,
+                                size: 32,
+                                color: AppColors.brandOrange,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              query.isNotEmpty
+                                  ? 'Aucune vente trouvée'
+                                  : (period == 'today'
+                                      ? 'Aucune vente enregistrée aujourd\'hui'
+                                      : (period == '7d'
+                                          ? 'Aucune vente enregistrée sur les 7 derniers jours'
+                                          : 'Aucune vente enregistrée sur les 30 derniers jours')),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.brandNavy,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              query.isNotEmpty
+                                  ? 'Aucun résultat ne correspond à votre recherche.'
+                                  : 'Enregistrez votre première vente pour suivre vos encaissements en temps réel.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                            if (query.isEmpty) ...[
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: () => _showAddSaleModal(context, ref),
+                                icon: const Icon(Icons.add_shopping_cart_rounded, size: 16),
+                                label: const Text('Nouvelle Vente', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.brandOrange,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       )
@@ -572,17 +611,18 @@ class SalesScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Container(
-          height: MediaQuery.of(ctx).size.height * 0.82,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
+        return SafeArea(
+          child: Container(
+            height: MediaQuery.of(ctx).size.height * 0.85,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
                 child: Container(
                   width: 40,
                   height: 4,
@@ -812,10 +852,11 @@ class SalesScreen extends ConsumerWidget {
               ),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   // Partage WhatsApp du ticket
   Future<void> _shareTicketWhatsApp({
@@ -941,11 +982,15 @@ class SalesScreen extends ConsumerWidget {
                 }
               }
 
-              // Invalider les fournisseurs de données
+              // Invalider l'ensemble des fournisseurs de données pour mise à jour immédiate
               ref.invalidate(salesDataProvider);
               ref.invalidate(stockDataProvider);
               ref.invalidate(treasuryDataProvider);
               ref.invalidate(receivablesDataProvider);
+              ref.invalidate(alertsDataProvider);
+              try {
+                ref.read(dashboardControllerProvider.notifier).refresh();
+              } catch (_) {}
 
               if (!ctx.mounted) return;
               Navigator.of(ctx).pop(); // Ferme dialogue confirmation
@@ -973,14 +1018,17 @@ class SalesScreen extends ConsumerWidget {
   // ── Modal de Saisie POS & Encaissement ──
   void _showAddSaleModal(BuildContext context, WidgetRef ref) async {
     final db = ref.read(mobileDatabaseProvider);
-    final products = await db.select(db.mobileProducts).get();
+    final products = await (db.select(db.mobileProducts)..where((tbl) => tbl.isActive.equals(true))).get();
     final customers = await db.select(db.mobileCustomers).get();
 
     if (!context.mounted) return;
 
     if (products.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez d\'abord ajouter des produits dans l\'onglet Stocks !')),
+        const SnackBar(
+          content: Text('Veuillez d\'abord ajouter des produits en stock dans l\'onglet Stocks !'),
+          backgroundColor: AppColors.warning,
+        ),
       );
       return;
     }
@@ -1007,478 +1055,559 @@ class SalesScreen extends ConsumerWidget {
           final total = subtotal;
 
           // Par défaut, si espèces et champ vide, montant payé = total
-          int amountPaid = int.tryParse(amountPaidCtrl.text.replaceAll(' ', '').trim()) ?? (selectedPaymentMethod == 5 ? 0 : total);
+          final parsedEnteredPaid = int.tryParse(amountPaidCtrl.text.replaceAll(' ', '').trim());
+          final int amountPaidValue;
+          if (selectedPaymentMethod == 0) {
+            amountPaidValue = parsedEnteredPaid ?? total;
+          } else if (selectedPaymentMethod == 5) {
+            amountPaidValue = parsedEnteredPaid ?? 0;
+          } else {
+            amountPaidValue = total;
+          }
+
           int changeToReturn = 0;
-          if (selectedPaymentMethod == 0 && amountPaid > total) {
-            changeToReturn = amountPaid - total;
+          if (selectedPaymentMethod == 0 && amountPaidValue > total) {
+            changeToReturn = amountPaidValue - total;
           }
 
           final visibleProducts = products.where((p) {
             if (itemSearchQuery.isEmpty) return true;
             final q = itemSearchQuery.toLowerCase();
-            return p.name.toLowerCase().contains(q) || (p.barcode ?? '').contains(q);
+            return p.name.toLowerCase().contains(q) ||
+                (p.barcode ?? '').contains(q) ||
+                (p.reference ?? '').toLowerCase().contains(q);
           }).toList();
 
-          return Container(
-            height: MediaQuery.of(ctx).size.height * 0.90,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            padding: EdgeInsets.fromLTRB(
-              20,
-              14,
-              20,
-              MediaQuery.of(ctx).viewInsets.bottom + 16,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.92,
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
                           decoration: BoxDecoration(
-                            color: AppColors.brandOrange.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
+                            color: AppColors.border,
+                            borderRadius: BorderRadius.circular(2),
                           ),
-                          child: const Icon(Icons.point_of_sale_rounded, color: AppColors.brandOrange, size: 20),
                         ),
-                        const SizedBox(width: 10),
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('CAISSE POS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.brandOrange, letterSpacing: 0.8)),
-                            Text('Nouvelle Vente', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.brandNavy)),
-                          ],
-                        ),
-                      ],
-                    ),
-                    if (cart.isNotEmpty)
-                      TextButton.icon(
-                        onPressed: () => setStateModal(() => cart.clear()),
-                        icon: const Icon(Icons.delete_sweep_rounded, size: 16, color: AppColors.error),
-                        label: const Text('Vider panier', style: TextStyle(color: AppColors.error, fontSize: 11)),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Filtre de recherche d'articles
-                TextField(
-                  onChanged: (val) => setStateModal(() => itemSearchQuery = val),
-                  decoration: InputDecoration(
-                    hintText: 'Filtrer les articles du comptoir...',
-                    hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                    prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textMuted),
-                    filled: true,
-                    fillColor: AppColors.surfaceVariant,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Sélection des articles
-                Expanded(
-                  child: visibleProducts.isEmpty
-                      ? const Center(
-                          child: Text('Aucun article ne correspond à la recherche', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                        )
-                      : ListView.separated(
-                          itemCount: visibleProducts.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 6),
-                          itemBuilder: (context, index) {
-                            final prod = visibleProducts[index];
-                            final currentQtyInCart = cart[prod.id] ?? 0;
-                            final availableStock = prod.stockQuantity;
-
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: currentQtyInCart > 0 ? AppColors.brandOrange.withValues(alpha: 0.05) : AppColors.surfaceVariant,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: currentQtyInCart > 0 ? AppColors.brandOrange : AppColors.border,
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.brandOrange.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
+                                child: const Icon(Icons.point_of_sale_rounded, color: AppColors.brandOrange, size: 20),
                               ),
-                              child: Row(
+                              const SizedBox(width: 10),
+                              const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(prod.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppColors.brandNavy)),
-                                        Text(
-                                          '${AppFormatters.formatCurrency(prod.salePrice)} • Dispo: $availableStock ${prod.unit}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: availableStock <= 0 ? AppColors.error : AppColors.onSurfaceVariant,
-                                            fontWeight: availableStock <= 0 ? FontWeight.bold : FontWeight.normal,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                  Text('CAISSE POS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.brandOrange, letterSpacing: 0.8)),
+                                  Text('Nouvelle Vente', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.brandNavy)),
+                                ],
+                              ),
+                            ],
+                          ),
+                          if (cart.isNotEmpty)
+                            TextButton.icon(
+                              onPressed: () => setStateModal(() => cart.clear()),
+                              icon: const Icon(Icons.delete_sweep_rounded, size: 16, color: AppColors.error),
+                              label: const Text('Vider panier', style: TextStyle(color: AppColors.error, fontSize: 11)),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Filtre de recherche d'articles
+                      TextField(
+                        onChanged: (val) => setStateModal(() => itemSearchQuery = val),
+                        decoration: InputDecoration(
+                          hintText: 'Filtrer les articles du comptoir...',
+                          hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                          prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textMuted),
+                          filled: true,
+                          fillColor: AppColors.surfaceVariant,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Sélection des articles
+                      if (visibleProducts.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          alignment: Alignment.center,
+                          child: const Text('Aucun article ne correspond à la recherche', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        )
+                      else
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: visibleProducts.length <= 3 ? (visibleProducts.length * 68.0) : 220.0,
+                          ),
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: visibleProducts.length,
+                            separatorBuilder: (_, _) => const SizedBox(height: 6),
+                            itemBuilder: (context, index) {
+                              final prod = visibleProducts[index];
+                              final currentQtyInCart = cart[prod.id] ?? 0;
+                              final availableStock = prod.stockQuantity;
+
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: currentQtyInCart > 0 ? AppColors.brandOrange.withValues(alpha: 0.05) : AppColors.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: currentQtyInCart > 0 ? AppColors.brandOrange : AppColors.border,
                                   ),
-                                  Row(
-                                    children: [
-                                      if (currentQtyInCart > 0) ...[
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(prod.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppColors.brandNavy)),
+                                          Text(
+                                            '${AppFormatters.formatCurrency(prod.salePrice)} • Dispo: $availableStock ${prod.unit}',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: availableStock <= 0 ? AppColors.error : AppColors.onSurfaceVariant,
+                                              fontWeight: availableStock <= 0 ? FontWeight.bold : FontWeight.normal,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        if (currentQtyInCart > 0) ...[
+                                          IconButton(
+                                            visualDensity: VisualDensity.compact,
+                                            icon: const Icon(Icons.remove_circle_outline, color: AppColors.error, size: 20),
+                                            onPressed: () {
+                                              setStateModal(() {
+                                                if (currentQtyInCart > 1) {
+                                                  cart[prod.id] = currentQtyInCart - 1;
+                                                } else {
+                                                  cart.remove(prod.id);
+                                                }
+                                              });
+                                            },
+                                          ),
+                                          Text('$currentQtyInCart', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                        ],
                                         IconButton(
                                           visualDensity: VisualDensity.compact,
-                                          icon: const Icon(Icons.remove_circle_outline, color: AppColors.error, size: 20),
+                                          icon: const Icon(Icons.add_circle_rounded, color: AppColors.brandEmerald, size: 22),
                                           onPressed: () {
+                                            if (currentQtyInCart >= availableStock) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Stock insuffisant pour ${prod.name}')),
+                                              );
+                                              return;
+                                            }
                                             setStateModal(() {
-                                              if (currentQtyInCart > 1) {
-                                                cart[prod.id] = currentQtyInCart - 1;
-                                              } else {
-                                                cart.remove(prod.id);
-                                              }
+                                              cart[prod.id] = currentQtyInCart + 1;
                                             });
                                           },
                                         ),
-                                        Text('$currentQtyInCart', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                       ],
-                                      IconButton(
-                                        visualDensity: VisualDensity.compact,
-                                        icon: const Icon(Icons.add_circle_rounded, color: AppColors.brandEmerald, size: 22),
-                                        onPressed: () {
-                                          if (currentQtyInCart >= availableStock) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(content: Text('Stock insuffisant pour ${prod.name}')),
-                                            );
-                                            return;
-                                          }
-                                          setStateModal(() {
-                                            cart[prod.id] = currentQtyInCart + 1;
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                ),
-                const SizedBox(height: 10),
+                      const SizedBox(height: 10),
 
-                // Client & Mode de paiement
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      // Client & Mode de paiement
+                      Row(
                         children: [
-                          const Text('Client :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.brandNavy)),
-                          const SizedBox(height: 4),
-                          Container(
-                            height: 38,
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceVariant,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: customers.any((c) => c.name == selectedCustomerName) ? selectedCustomerName : 'Client Comptoir',
-                                isExpanded: true,
-                                icon: const Icon(Icons.arrow_drop_down, size: 20),
-                                items: [
-                                  const DropdownMenuItem(value: 'Client Comptoir', child: Text('Client Comptoir', style: TextStyle(fontSize: 12))),
-                                  ...customers.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name, style: const TextStyle(fontSize: 12)))),
-                                ],
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    setStateModal(() {
-                                      selectedCustomerName = val;
-                                      customerCtrl.text = val;
-                                    });
-                                  }
-                                },
-                              ),
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Client :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.brandNavy)),
+                                const SizedBox(height: 4),
+                                Container(
+                                  height: 38,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceVariant,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: customers.any((c) => c.name == selectedCustomerName) ? selectedCustomerName : 'Client Comptoir',
+                                      isExpanded: true,
+                                      icon: const Icon(Icons.arrow_drop_down, size: 20),
+                                      items: [
+                                        const DropdownMenuItem(value: 'Client Comptoir', child: Text('Client Comptoir', style: TextStyle(fontSize: 12))),
+                                        ...customers.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name, style: const TextStyle(fontSize: 12)))),
+                                      ],
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setStateModal(() {
+                                            selectedCustomerName = val;
+                                            customerCtrl.text = val;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Règlement :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.brandNavy)),
-                          const SizedBox(height: 4),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildPaymentChip('Espèces', 0, selectedPaymentMethod, () => setStateModal(() => selectedPaymentMethod = 0)),
-                                const SizedBox(width: 4),
-                                _buildPaymentChip('Orange Money', 1, selectedPaymentMethod, () => setStateModal(() => selectedPaymentMethod = 1)),
-                                const SizedBox(width: 4),
-                                _buildPaymentChip('Wave', 2, selectedPaymentMethod, () => setStateModal(() => selectedPaymentMethod = 2)),
-                                const SizedBox(width: 4),
-                                _buildPaymentChip('Crédit', 5, selectedPaymentMethod, () => setStateModal(() => selectedPaymentMethod = 5)),
+                                const Text('Règlement :', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.brandNavy)),
+                                const SizedBox(height: 4),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: [
+                                      _buildPaymentChip('Espèces', 0, selectedPaymentMethod, () => setStateModal(() => selectedPaymentMethod = 0)),
+                                      const SizedBox(width: 4),
+                                      _buildPaymentChip('Orange Money', 1, selectedPaymentMethod, () => setStateModal(() => selectedPaymentMethod = 1)),
+                                      const SizedBox(width: 4),
+                                      _buildPaymentChip('Wave', 2, selectedPaymentMethod, () => setStateModal(() => selectedPaymentMethod = 2)),
+                                      const SizedBox(width: 4),
+                                      _buildPaymentChip('Crédit', 5, selectedPaymentMethod, () => setStateModal(() => selectedPaymentMethod = 5)),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
+                      const SizedBox(height: 10),
 
-                // Calcul monnaie / acompte
-                if (selectedPaymentMethod == 0) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
+                      // Calcul monnaie / acompte
+                      if (selectedPaymentMethod == 0) ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: amountPaidCtrl,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Montant remis par le client (GNF)',
+                                  labelStyle: const TextStyle(fontSize: 11),
+                                  hintText: total.toString(),
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onChanged: (_) => setStateModal(() {}),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: changeToReturn > 0 ? AppColors.brandEmerald.withValues(alpha: 0.15) : AppColors.surfaceVariant,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  const Text('Monnaie à rendre', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                                  Text(
+                                    AppFormatters.formatCurrency(changeToReturn),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: changeToReturn > 0 ? AppColors.brandEmerald : AppColors.brandNavy,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        // Raccourcis de billets
+                        Row(
+                          children: [
+                            _buildQuickMoneyChip('Total exact', total, setStateModal, amountPaidCtrl),
+                            const SizedBox(width: 6),
+                            _buildQuickMoneyChip('50 000', 50000, setStateModal, amountPaidCtrl),
+                            const SizedBox(width: 6),
+                            _buildQuickMoneyChip('100 000', 100000, setStateModal, amountPaidCtrl),
+                            const SizedBox(width: 6),
+                            _buildQuickMoneyChip('200 000', 200000, setStateModal, amountPaidCtrl),
+                          ],
+                        ),
+                      ] else if (selectedPaymentMethod == 5) ...[
+                        TextField(
                           controller: amountPaidCtrl,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            labelText: 'Montant remis par le client (GNF)',
+                            labelText: 'Acompte versé aujourd\'hui (facultatif)',
                             labelStyle: const TextStyle(fontSize: 11),
-                            hintText: total.toString(),
+                            hintText: '0',
                             isDense: true,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           onChanged: (_) => setStateModal(() {}),
                         ),
-                      ),
-                      const SizedBox(width: 8),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Reste dû par le client : ${AppFormatters.formatCurrency(total - amountPaidValue)}',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.warning),
+                        ),
+                      ],
+
+                      const SizedBox(height: 10),
+
+                      // Synthèse & Validation
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: changeToReturn > 0 ? AppColors.brandEmerald.withValues(alpha: 0.15) : AppColors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(10),
+                          color: AppColors.brandNavy,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Monnaie à rendre', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                            Text(
-                              AppFormatters.formatCurrency(changeToReturn),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: changeToReturn > 0 ? AppColors.brandEmerald : AppColors.brandNavy,
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Total Net à Encaisser', style: TextStyle(fontSize: 10.5, color: Colors.white70)),
+                                Text(AppFormatters.formatCurrency(total), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+                              ],
                             ),
+                            Text('${cart.values.fold(0, (a, b) => a + b)} article(s)', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.brandOrangeLight)),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  // Raccourcis de billets
-                  Row(
-                    children: [
-                      _buildQuickMoneyChip('Total exact', total, setStateModal, amountPaidCtrl),
-                      const SizedBox(width: 6),
-                      _buildQuickMoneyChip('50 000', 50000, setStateModal, amountPaidCtrl),
-                      const SizedBox(width: 6),
-                      _buildQuickMoneyChip('100 000', 100000, setStateModal, amountPaidCtrl),
-                      const SizedBox(width: 6),
-                      _buildQuickMoneyChip('200 000', 200000, setStateModal, amountPaidCtrl),
-                    ],
-                  ),
-                ] else if (selectedPaymentMethod == 5) ...[
-                  TextField(
-                    controller: amountPaidCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Acompte versé aujourd\'hui (facultatif)',
-                      labelStyle: const TextStyle(fontSize: 11),
-                      hintText: '0',
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    onChanged: (_) => setStateModal(() {}),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Reste dû par le client : ${AppFormatters.formatCurrency(total - amountPaid)}',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.warning),
-                  ),
-                ],
+                      const SizedBox(height: 12),
 
-                const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            // 1. Vérification panier non vide
+                            if (cart.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Votre panier est vide. Veuillez sélectionner au moins un article.'),
+                                  backgroundColor: AppColors.warning,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
 
-                // Synthèse & Validation
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.brandNavy,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Total Net à Encaisser', style: TextStyle(fontSize: 10.5, color: Colors.white70)),
-                          Text(AppFormatters.formatCurrency(total), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
-                        ],
+                            // 2. Vérification client débiteur si vente à crédit
+                            if (selectedPaymentMethod == 5 && (selectedCustomerName.trim().isEmpty || selectedCustomerName == 'Client Comptoir')) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Veuillez renseigner un client débiteur pour une vente à crédit !'),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                              return;
+                            }
+
+                            // 3. Vérification des stocks disponibles
+                            for (final entry in cart.entries) {
+                              final prod = products.firstWhere((p) => p.id == entry.key);
+                              if (entry.value > prod.stockQuantity) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Stock insuffisant pour "${prod.name}" (disponible : ${prod.stockQuantity})'),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                                return;
+                              }
+                            }
+
+                            final now = DateTime.now();
+                            final saleId = 'sale-${now.millisecondsSinceEpoch}';
+                            final refCode = 'FAC-${(now.millisecondsSinceEpoch % 100000).toString().padLeft(5, '0')}';
+
+                            // 4. Calcul précis du montant payé
+                            final actualPaid = selectedPaymentMethod == 0
+                                ? (amountPaidValue >= total ? total : amountPaidValue)
+                                : (selectedPaymentMethod == 5 ? amountPaidValue.clamp(0, total) : total);
+
+                            // 5. Enregistrement de la vente dans SQLite (mobileSales)
+                            // Le paiement en espèces constitue le mouvement de caisse officiel pour la trésorerie locale
+                            final newSale = MobileSalesCompanion.insert(
+                              id: saleId,
+                              reference: refCode,
+                              date: drift.Value(now),
+                              total: drift.Value(total),
+                              amountPaid: drift.Value(actualPaid),
+                              paymentMethod: drift.Value(selectedPaymentMethod),
+                              customerId: drift.Value(selectedCustomerName),
+                              sellerName: const drift.Value('Administrateur'),
+                              isCancelled: const drift.Value(false),
+                              note: drift.Value(changeToReturn > 0
+                                  ? 'Monnaie rendue : ${AppFormatters.formatCurrency(changeToReturn)}'
+                                  : (selectedPaymentMethod == 0 ? 'Paiement espèces en caisse' : null)),
+                            );
+                            await db.into(db.mobileSales).insert(newSale);
+
+                            // 6. Insertion des lignes de vente (SaleItems) et déduction stock + traçabilité mouvements
+                            int itemIndex = 1;
+                            for (final entry in cart.entries) {
+                              final p = products.firstWhere((prod) => prod.id == entry.key);
+                              final qty = entry.value;
+                              final lineTot = p.salePrice * qty;
+
+                              // Ligne de vente
+                              await db.into(db.mobileSaleItems).insert(
+                                MobileSaleItemsCompanion.insert(
+                                  id: 'item-${now.millisecondsSinceEpoch}-$itemIndex',
+                                  saleId: saleId,
+                                  productId: p.id,
+                                  label: p.name,
+                                  quantity: drift.Value(qty),
+                                  unitPrice: drift.Value(p.salePrice),
+                                  unitCost: drift.Value(p.purchasePrice),
+                                  lineTotal: drift.Value(lineTot),
+                                ),
+                              );
+
+                              // Mouvement de stock de sortie
+                              await db.into(db.mobileStockMovements).insert(
+                                MobileStockMovementsCompanion.insert(
+                                  id: 'mvt-${now.millisecondsSinceEpoch}-$itemIndex',
+                                  productId: p.id,
+                                  type: 1, // Vente
+                                  quantity: -qty,
+                                  unitCost: drift.Value(p.purchasePrice),
+                                  sourceReference: drift.Value(refCode),
+                                  reason: drift.Value('Vente $refCode'),
+                                  date: drift.Value(now),
+                                ),
+                              );
+
+                              // Déduire stock produit dans mobileProducts
+                              final newQty = (p.stockQuantity - qty).clamp(0, 999999);
+                              await (db.update(db.mobileProducts)..where((tbl) => tbl.id.equals(p.id))).write(
+                                MobileProductsCompanion(stockQuantity: drift.Value(newQty)),
+                              );
+
+                              itemIndex++;
+                            }
+
+                            // 7. Si crédit client et client inexistant, création automatique du profil client
+                            if (selectedPaymentMethod == 5 && !customers.any((c) => c.name.toLowerCase() == selectedCustomerName.toLowerCase())) {
+                              await db.into(db.mobileCustomers).insert(
+                                MobileCustomersCompanion.insert(
+                                  id: 'cust-${now.millisecondsSinceEpoch}',
+                                  name: selectedCustomerName,
+                                  phone: const drift.Value(''),
+                                  address: const drift.Value(''),
+                                ),
+                              );
+                            }
+
+                            // 8. Vider le panier
+                            setStateModal(() => cart.clear());
+
+                            // 9. Invalider tous les fournisseurs Riverpod pour mise à jour immédiate UI
+                            ref.invalidate(salesDataProvider);
+                            ref.invalidate(stockDataProvider);
+                            ref.invalidate(treasuryDataProvider);
+                            ref.invalidate(receivablesDataProvider);
+                            ref.invalidate(alertsDataProvider);
+                            try {
+                              ref.read(dashboardControllerProvider.notifier).refresh();
+                            } catch (_) {}
+
+                            // 10. Fermer le modal de vente
+                            if (!ctx.mounted) return;
+                            Navigator.of(ctx).pop();
+
+                            // 11. Ouvrir immédiatement le ticket numérique avec partage WhatsApp
+                            if (context.mounted) {
+                              String methodLabel = 'Espèces';
+                              if (selectedPaymentMethod == 1) methodLabel = 'Orange Money';
+                              if (selectedPaymentMethod == 2) methodLabel = 'Wave';
+                              if (selectedPaymentMethod == 3) methodLabel = 'Moov Money';
+                              if (selectedPaymentMethod == 4) methodLabel = 'Virement';
+                              if (selectedPaymentMethod == 5) methodLabel = 'Crédit Client';
+
+                              _showSaleReceiptDialog(context, ref, {
+                                'id': saleId,
+                                'reference': refCode,
+                                'date': AppFormatters.formatDateTime(now),
+                                'customerName': selectedCustomerName,
+                                'totalAmount': total,
+                                'amountPaid': actualPaid,
+                                'paymentMethod': methodLabel,
+                                'paymentMethodIndex': selectedPaymentMethod,
+                                'sellerName': 'Administrateur',
+                                'isCancelled': false,
+                              });
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.brandOrange,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 2,
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle_outline_rounded, size: 20),
+                              SizedBox(width: 8),
+                              Text('Valider & Générer le Ticket', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            ],
+                          ),
+                        ),
                       ),
-                      Text('${cart.values.fold(0, (a, b) => a + b)} article(s)', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.brandOrangeLight)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
-
-                ElevatedButton(
-                  onPressed: cart.isEmpty
-                      ? null
-                      : () async {
-                          if (selectedPaymentMethod == 5 && selectedCustomerName == 'Client Comptoir') {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Veuillez renseigner un client débiteur pour une vente à crédit !')),
-                            );
-                            return;
-                          }
-
-                          final now = DateTime.now();
-                          final saleId = 'sale-${now.millisecondsSinceEpoch}';
-                          final refCode = 'FAC-${now.millisecondsSinceEpoch % 10000}';
-
-                          final actualPaid = selectedPaymentMethod == 0
-                              ? (amountPaid >= total ? total : amountPaid)
-                              : (selectedPaymentMethod == 5 ? amountPaid : total);
-
-                          // 1. Insertion de la vente
-                          final newSale = MobileSalesCompanion.insert(
-                            id: saleId,
-                            reference: refCode,
-                            date: drift.Value(now),
-                            total: drift.Value(total),
-                            amountPaid: drift.Value(actualPaid),
-                            paymentMethod: drift.Value(selectedPaymentMethod),
-                            customerId: drift.Value(selectedCustomerName),
-                            sellerName: const drift.Value('Administrateur'),
-                          );
-                          await db.into(db.mobileSales).insert(newSale);
-
-                          // 2. Insertion des lignes de vente (SaleItems) et déduction stock + traçabilité
-                          int itemIndex = 1;
-                          for (final entry in cart.entries) {
-                            final p = products.firstWhere((prod) => prod.id == entry.key);
-                            final qty = entry.value;
-                            final lineTot = p.salePrice * qty;
-
-                            // Ligne de vente
-                            await db.into(db.mobileSaleItems).insert(
-                              MobileSaleItemsCompanion.insert(
-                                id: 'item-${now.millisecondsSinceEpoch}-$itemIndex',
-                                saleId: saleId,
-                                productId: p.id,
-                                label: p.name,
-                                quantity: drift.Value(qty),
-                                unitPrice: drift.Value(p.salePrice),
-                                unitCost: drift.Value(p.purchasePrice),
-                                lineTotal: drift.Value(lineTot),
-                              ),
-                            );
-
-                            // Mouvement de stock
-                            await db.into(db.mobileStockMovements).insert(
-                              MobileStockMovementsCompanion.insert(
-                                id: 'mvt-${now.millisecondsSinceEpoch}-$itemIndex',
-                                productId: p.id,
-                                type: 1, // Vente
-                                quantity: -qty,
-                                unitCost: drift.Value(p.purchasePrice),
-                                sourceReference: drift.Value(refCode),
-                                reason: drift.Value('Vente $refCode'),
-                                date: drift.Value(now),
-                              ),
-                            );
-
-                            // Déduire stock produit
-                            final newQty = (p.stockQuantity - qty).clamp(0, 999999);
-                            await (db.update(db.mobileProducts)..where((tbl) => tbl.id.equals(p.id))).write(
-                              MobileProductsCompanion(stockQuantity: drift.Value(newQty)),
-                            );
-
-                            itemIndex++;
-                          }
-
-                          // 3. Si crédit client et client inexistant, création automatique du profil client
-                          if (selectedPaymentMethod == 5 && !customers.any((c) => c.name.toLowerCase() == selectedCustomerName.toLowerCase())) {
-                            await db.into(db.mobileCustomers).insert(
-                              MobileCustomersCompanion.insert(
-                                id: 'cust-${now.millisecondsSinceEpoch}',
-                                name: selectedCustomerName,
-                                phone: const drift.Value(''),
-                                address: const drift.Value(''),
-                              ),
-                            );
-                          }
-
-                          // Invalider les fournisseurs pour mise à jour immédiate UI
-                          ref.invalidate(salesDataProvider);
-                          ref.invalidate(stockDataProvider);
-                          ref.invalidate(treasuryDataProvider);
-                          ref.invalidate(receivablesDataProvider);
-
-                          if (!ctx.mounted) return;
-                          Navigator.of(ctx).pop();
-
-                          // Ouvrir immédiatement le ticket numérique
-                          if (context.mounted) {
-                            String methodLabel = 'Espèces';
-                            if (selectedPaymentMethod == 1) methodLabel = 'Orange Money';
-                            if (selectedPaymentMethod == 2) methodLabel = 'Wave';
-                            if (selectedPaymentMethod == 3) methodLabel = 'Moov Money';
-                            if (selectedPaymentMethod == 5) methodLabel = 'Crédit Client';
-
-                            _showSaleReceiptDialog(context, ref, {
-                              'id': saleId,
-                              'reference': refCode,
-                              'date': AppFormatters.formatDateTime(now),
-                              'customerName': selectedCustomerName,
-                              'totalAmount': total,
-                              'amountPaid': actualPaid,
-                              'paymentMethod': methodLabel,
-                              'sellerName': 'Administrateur',
-                              'isCancelled': false,
-                            });
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brandOrange,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Valider & Générer le Ticket', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                ),
-              ],
+              ),
             ),
           );
         },
