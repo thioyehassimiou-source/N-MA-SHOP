@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/nma_mobile_header.dart';
@@ -28,6 +30,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   int _largeSaleThreshold = 2000000;
   bool _isTestingPing = false;
   String? _pingResult;
+  bool _isCheckingUpdate = false;
 
   @override
   void initState() {
@@ -80,6 +83,149 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _pingResult = 'Échec de connexion au serveur.';
         });
       }
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    setState(() => _isCheckingUpdate = true);
+    try {
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+      final response = await dio.get('https://api.github.com/repos/thioyehassimiou-source/N-MA-SHOP/releases/latest');
+      setState(() => _isCheckingUpdate = false);
+
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data as Map<String, dynamic>;
+        final tagName = data['tag_name'] as String? ?? '1.2.0';
+        final cleanTag = tagName.replaceAll(RegExp(r'[^0-9.]'), '');
+        final body = data['body'] as String? ?? 'Améliorations et corrections générales de N\'MaShop.';
+        final htmlUrl = data['html_url'] as String? ?? 'https://github.com/thioyehassimiou-source/N-MA-SHOP/releases';
+
+        String? apkUrl;
+        final assets = data['assets'] as List<dynamic>?;
+        if (assets != null) {
+          for (final asset in assets) {
+            final name = (asset['name'] as String? ?? '').toLowerCase();
+            if (name.endsWith('.apk')) {
+              apkUrl = asset['browser_download_url'] as String?;
+              break;
+            }
+          }
+        }
+
+        if (mounted) {
+          _showUpdateDialog(cleanTag, body, apkUrl ?? htmlUrl);
+        }
+      }
+    } catch (_) {
+      setState(() => _isCheckingUpdate = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Impossible de vérifier les mises à jour (vérifiez votre connexion internet).'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showUpdateDialog(String latestVersion, String notes, String downloadUrl) {
+    const currentVersion = '1.2.0';
+    final hasNewVersion = latestVersion != currentVersion;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              hasNewVersion ? Icons.new_releases_rounded : Icons.check_circle_rounded,
+              color: hasNewVersion ? AppColors.brandOrange : AppColors.brandEmerald,
+            ),
+            const SizedBox(width: 8),
+            Text(hasNewVersion ? 'Mise à jour disponible' : 'Application à jour'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              hasNewVersion
+                  ? 'Une nouvelle version (v$latestVersion) est disponible ! Vous utilisez actuellement la version v$currentVersion.'
+                  : 'Votre application N\'MaShop est à jour (v$currentVersion). Vous bénéficiez de toutes les dernières fonctionnalités.',
+              style: const TextStyle(fontSize: 13),
+            ),
+            if (hasNewVersion && notes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text('Nouveautés :', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 4),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 120),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: SingleChildScrollView(
+                  child: Text(
+                    notes,
+                    style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Fermer'),
+          ),
+          if (hasNewVersion)
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brandOrange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.download_rounded, size: 16),
+              label: const Text('Télécharger l\'APK'),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                launchUrl(Uri.parse(downloadUrl), mode: LaunchMode.externalApplication);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _launchWhatsAppSupport() async {
+    final message = "Bonjour Support N'MaShop, j'utilise l'application mobile (Boutique : $_shopName). J'ai besoin d'une assistance.";
+    final uri = Uri.parse('whatsapp://send?phone=224624193069&text=${Uri.encodeComponent(message)}');
+    final fallbackUri = Uri.parse('https://wa.me/224624193069?text=${Uri.encodeComponent(message)}');
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _callSupport() async {
+    final uri = Uri.parse('tel:+224624193069');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
     }
   }
 
@@ -489,6 +635,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: const Text('Se déconnecter', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 13)),
                 subtitle: const Text('Ferme la session locale sur ce téléphone', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 onTap: _confirmLogout,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Section 4 : Support & Mises à jour
+          _buildSectionHeader('SUPPORT & MISES À JOUR', Icons.support_agent_rounded),
+          _buildCard(
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: _isCheckingUpdate
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.brandOrange),
+                      )
+                    : const Icon(Icons.system_update_rounded, color: AppColors.brandOrange),
+                title: const Text('Vérifier les mises à jour', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                subtitle: const Text('Recherche les dernières versions APK de N\'MaShop', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _isCheckingUpdate ? null : _checkForUpdates,
+              ),
+              const Divider(color: AppColors.border),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.chat_rounded, color: AppColors.brandEmerald),
+                title: const Text('Assistance WhatsApp Directe', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                subtitle: const Text('Échangez avec l\'équipe technique (+224 624 19 30 69)', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                trailing: const Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.brandEmerald),
+                onTap: _launchWhatsAppSupport,
+              ),
+              const Divider(color: AppColors.border),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.phone_rounded, color: AppColors.brandNavy),
+                title: const Text('Appeler l\'assistance téléphonique', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                subtitle: const Text('Ligne directe : +224 624 19 30 69', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                trailing: const Icon(Icons.call_rounded, size: 18, color: AppColors.brandNavy),
+                onTap: _callSupport,
               ),
             ],
           ),
