@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/image_picker_helper.dart';
-import '../data/shop_profile_model.dart';
+import '../../data/shop_profile_model.dart';
 import '../shop_profile_provider.dart';
 
 class EditShopProfileSheet extends ConsumerStatefulWidget {
